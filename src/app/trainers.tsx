@@ -23,10 +23,9 @@ export default function TrainersScreen() {
   }, [query, spec]);
 
   return (
-    <Screen>
+    <Screen edges={[]}>
       <View style={styles.header}>
-        <T type="title">Тренеры</T>
-        <T type="caption">Персональные тренировки и ведение</T>
+        <T type="caption">Персональные тренировки, ведение и групповые программы</T>
       </View>
 
       <View style={styles.search}>

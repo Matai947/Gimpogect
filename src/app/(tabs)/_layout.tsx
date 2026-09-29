@@ -13,9 +13,10 @@ function TabIcon({ name, outline, color, focused }: IconProps & { name: IconName
 }
 
 export default function TabsLayout() {
-  const { user, hydrated } = useApp();
+  const { user, hydrated, cart } = useApp();
   if (!hydrated) return null;
   if (!user) return <Redirect href="/auth" />;
+  const cartCount = cart.reduce((n, c) => n + c.qty, 0);
 
   return (
     <Tabs
@@ -30,11 +31,19 @@ export default function TabsLayout() {
           paddingTop: 6,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarBadgeStyle: { backgroundColor: Colors.accent, color: Colors.onAccent, fontSize: 10, fontWeight: '800' },
       }}>
       <Tabs.Screen name="index" options={{ title: 'Главная', tabBarIcon: (p: IconProps) => <TabIcon name="home" outline="home-outline" {...p} /> }} />
       <Tabs.Screen name="clubs" options={{ title: 'Клубы', tabBarIcon: (p: IconProps) => <TabIcon name="location" outline="location-outline" {...p} /> }} />
       <Tabs.Screen name="schedule" options={{ title: 'Расписание', tabBarIcon: (p: IconProps) => <TabIcon name="calendar" outline="calendar-outline" {...p} /> }} />
-      <Tabs.Screen name="trainers" options={{ title: 'Тренеры', tabBarIcon: (p: IconProps) => <TabIcon name="people" outline="people-outline" {...p} /> }} />
+      <Tabs.Screen
+        name="shop"
+        options={{
+          title: 'Магазин',
+          tabBarIcon: (p: IconProps) => <TabIcon name="bag-handle" outline="bag-handle-outline" {...p} />,
+          tabBarBadge: cartCount > 0 ? cartCount : undefined,
+        }}
+      />
       <Tabs.Screen name="profile" options={{ title: 'Профиль', tabBarIcon: (p: IconProps) => <TabIcon name="person" outline="person-outline" {...p} /> }} />
     </Tabs>
   );

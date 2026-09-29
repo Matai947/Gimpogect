@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { addDays, planById, toISODate } from '@/data/mock';
+import { MEMBER_DISCOUNT, PROMO_CODES, productById } from '@/data/shop';
 
 export type Membership = {
   planId: string;
@@ -20,6 +21,19 @@ export type User = {
 
 export type Visit = { date: string; clubId: string };
 
+export type CartItem = { key: string; productId: string; option?: string; qty: number };
+
+export type Order = {
+  id: string;
+  date: string;
+  items: CartItem[];
+  subtotal: number;
+  discount: number;
+  total: number;
+  clubId: string;
+  status: 'Готовится' | 'Готов к выдаче' | 'Выдан';
+};
+
 type State = {
   user: User | null;
   membership: Membership | null;
@@ -27,6 +41,8 @@ type State = {
   favorites: string[]; // clubIds
   visits: Visit[];
   weightLog: { date: string; kg: number }[];
+  cart: CartItem[];
+  orders: Order[];
   hydrated: boolean;
 };
 
@@ -43,6 +59,11 @@ type Actions = {
   toggleFavorite: (clubId: string) => void;
   checkIn: (clubId: string) => void;
   logWeight: (kg: number) => void;
+  addToCart: (productId: string, option?: string, qty?: number) => void;
+  setCartQty: (key: string, qty: number) => void;
+  removeFromCart: (key: string) => void;
+  clearCart: () => void;
+  placeOrder: (clubId: string, promo?: string) => Order | null;
 };
 
 const STORAGE_KEY = 'gym-project-state-v1';
@@ -54,6 +75,8 @@ const initialState: State = {
   favorites: [],
   visits: [],
   weightLog: [],
+  cart: [],
+  orders: [],
   hydrated: false,
 };
 
@@ -69,6 +92,10 @@ function demoWeights() {
   const today = new Date();
   const kgs = [84.2, 83.6, 83.1, 82.4, 81.9, 81.2, 80.8, 80.1];
   return kgs.map((kg, i) => ({ date: toISODate(addDays(today, -(kgs.length - 1 - i) * 7)), kg }));
+}
+
+export function cartKey(productId: string, option?: string) {
+  return option ? `${productId}::${option}` : productId;
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -189,6 +216,52 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, weightLog: [...s.weightLog.filter((w) => w.date !== today), { date: today, kg }] }));
   }, []);
 
+  /* ---------- shop ---------- */
+
+  const addToCart = useCallback((productId: string, option?: string, qty = 1) => {
+    const key = cartKey(productId, option);
+    setState((s) => {
+      const existing = s.cart.find((c) => c.key === key);
+      if (existing) return { ...s, cart: s.cart.map((c) => (c.key === key ? { ...c, qty: c.qty + qty } : c)) };
+      return { ...s, cart: [...s.cart, { key, productId, option, qty }] };
+    });
+  }, []);
+
+  const setCartQty = useCallback((key: string, qty: number) => {
+    setState((s) => ({ ...s, cart: qty <= 0 ? s.cart.filter((c) => c.key !== key) : s.cart.map((c) => (c.key === key ? { ...c, qty } : c)) }));
+  }, []);
+
+  const removeFromCart = useCallback((key: string) => {
+    setState((s) => ({ ...s, cart: s.cart.filter((c) => c.key !== key) }));
+  }, []);
+
+  const clearCart = useCallback(() => setState((s) => ({ ...s, cart: [] })), []);
+
+  const placeOrder = useCallback(
+    (clubId: string, promo?: string): Order | null => {
+      if (state.cart.length === 0) return null;
+      const subtotal = state.cart.reduce((sum, c) => sum + (productById(c.productId)?.price ?? 0) * c.qty, 0);
+      const today = toISODate(new Date());
+      const memberActive = !!state.membership && state.membership.endDate >= today;
+      const promoRate = promo ? PROMO_CODES[promo.trim().toUpperCase()] ?? 0 : 0;
+      const rate = Math.max(memberActive ? MEMBER_DISCOUNT : 0, promoRate);
+      const discount = Math.round(subtotal * rate);
+      const order: Order = {
+        id: `GP-${Date.now().toString().slice(-6)}`,
+        date: today,
+        items: state.cart,
+        subtotal,
+        discount,
+        total: subtotal - discount,
+        clubId,
+        status: 'Готовится',
+      };
+      setState((s) => ({ ...s, cart: [], orders: [order, ...s.orders] }));
+      return order;
+    },
+    [state.cart, state.membership]
+  );
+
   const value = useMemo<State & Actions>(
     () => ({
       ...state,
@@ -204,8 +277,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       toggleFavorite,
       checkIn,
       logWeight,
+      addToCart,
+      setCartQty,
+      removeFromCart,
+      clearCart,
+      placeOrder,
     }),
-    [state, login, logout, updateUser, buyPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight]
+    [state, login, logout, updateUser, buyPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -267,4 +345,29 @@ export function useVisitStats() {
       dates,
     };
   }, [visits]);
+}
+
+/** Cart totals with member / promo discount. */
+export function useCartSummary(promo?: string) {
+  const { cart } = useApp();
+  const membership = useMembershipInfo();
+  return useMemo(() => {
+    const lines = cart
+      .map((c) => ({ ...c, product: productById(c.productId) }))
+      .filter((l): l is typeof l & { product: NonNullable<typeof l.product> } => !!l.product);
+    const subtotal = lines.reduce((sum, l) => sum + l.product.price * l.qty, 0);
+    const promoRate = promo ? PROMO_CODES[promo.trim().toUpperCase()] ?? 0 : 0;
+    const memberRate = membership.active ? MEMBER_DISCOUNT : 0;
+    const rate = Math.max(memberRate, promoRate);
+    const discount = Math.round(subtotal * rate);
+    return {
+      lines,
+      count: cart.reduce((n, c) => n + c.qty, 0),
+      subtotal,
+      discount,
+      total: subtotal - discount,
+      discountSource: rate === 0 ? null : promoRate > memberRate ? ('promo' as const) : ('member' as const),
+      promoValid: promoRate > 0,
+    };
+  }, [cart, membership.active, promo]);
 }

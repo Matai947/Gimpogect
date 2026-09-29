@@ -16,7 +16,7 @@ const achievements = [
 ] as const;
 
 export default function ProfileScreen() {
-  const { user, logout, updateUser, favorites } = useApp();
+  const { user, logout, updateUser, favorites, orders } = useApp();
   const membership = useMembershipInfo();
   const stats = useVisitStats();
   const homeClub = clubById(user?.homeClubId ?? 'c1');
@@ -90,6 +90,10 @@ export default function ProfileScreen() {
           <ListRow icon="calendar-outline" title="Мои записи" subtitle="Групповые и персональные" onPress={() => router.push('/bookings')} />
           <Divider />
           <ListRow icon="trending-up-outline" title="Прогресс" subtitle="Вес и посещения" onPress={() => router.push('/progress')} />
+          <Divider />
+          <ListRow icon="people-outline" title="Тренеры" subtitle="Персональные тренировки" onPress={() => router.push('/trainers')} />
+          <Divider />
+          <ListRow icon="receipt-outline" title="Мои заказы" subtitle={orders.length ? `${orders.length} в истории` : 'Спортпит и аксессуары'} onPress={() => router.push('/orders')} />
         </Card>
       </View>
 

@@ -87,9 +87,9 @@ export const clubs: Club[] = [
     distanceKm: 1.2,
     phone: '+7 727 300 00 01',
     photos: [
-      'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80',
-      'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=1200&q=80',
-      'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=1200&q=80',
+      'https://images.unsplash.com/photo-1671970922029-0430d2ae122c?w=1200&q=80',
+      'https://images.unsplash.com/photo-1597076537061-a6b58163aa45?w=1200&q=80',
+      'https://images.unsplash.com/photo-1597076545399-91a3ff0e71b3?w=1200&q=80',
     ],
     amenities: ['Тренажёрный зал', 'Бассейн 25 м', 'Сауна и хаммам', 'Групповые залы', 'Кроссфит-зона', 'Парковка', 'Детская комната'],
     description:
@@ -108,8 +108,8 @@ export const clubs: Club[] = [
     distanceKm: 4.7,
     phone: '+7 727 300 00 02',
     photos: [
-      'https://images.unsplash.com/photo-1558611848-73f7eb4001a1?w=1200&q=80',
-      'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=1200&q=80',
+      'https://images.unsplash.com/photo-1559369064-c4d65141e408?w=1200&q=80',
+      'https://images.unsplash.com/photo-1758448756350-3d0eec02ba37?w=1200&q=80',
     ],
     amenities: ['Тренажёрный зал', 'Йога-студия', 'Сайкл-студия', 'Сауна', 'Фитнес-бар', 'Парковка'],
     description:
@@ -128,8 +128,8 @@ export const clubs: Club[] = [
     distanceKm: 2.9,
     phone: '+7 727 300 00 03',
     photos: [
-      'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1200&q=80',
-      'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=1200&q=80',
+      'https://images.unsplash.com/photo-1761971976282-b2bb051a5474?w=1200&q=80',
+      'https://images.unsplash.com/photo-1761971975769-97e598bf526b?w=1200&q=80',
     ],
     amenities: ['Тренажёрный зал', 'Бокс-зона', 'Групповые залы', 'Сауна', 'Раздевалки с сейфами'],
     description:
@@ -148,8 +148,8 @@ export const clubs: Club[] = [
     distanceKm: 1180,
     phone: '+7 717 200 00 04',
     photos: [
-      'https://images.unsplash.com/photo-1593079831268-3381b0db4a77?w=1200&q=80',
-      'https://images.unsplash.com/photo-1576678927484-cc907957088c?w=1200&q=80',
+      'https://images.unsplash.com/photo-1757924284732-4189190321cf?w=1200&q=80',
+      'https://images.unsplash.com/photo-1765728617805-b9f22d64e5b3?w=1200&q=80',
     ],
     amenities: ['Тренажёрный зал', 'Бассейн', 'Кроссфит-зона', 'Групповые залы', 'Сауна', 'Парковка'],
     description: 'Самый большой клуб сети в столице: 5 000 м², бассейн, кроссфит-бокс и восемь групповых программ ежедневно.',
@@ -166,7 +166,7 @@ export const trainers: Trainer[] = [
     reviews: 212,
     experienceYears: 8,
     pricePerSession: 12000,
-    avatar: 'https://images.unsplash.com/photo-1567013127542-490d757e51fc?w=400&q=80',
+    avatar: 'https://images.unsplash.com/photo-1704223523169-52feeed90365?w=400&q=80',
     bio: 'Мастер спорта по тяжёлой атлетике, сертифицированный тренер CrossFit L2. Помогаю выстроить технику базовых движений и безопасно прогрессировать в весах.',
   },
   {
@@ -190,7 +190,7 @@ export const trainers: Trainer[] = [
     reviews: 143,
     experienceYears: 12,
     pricePerSession: 11000,
-    avatar: 'https://images.unsplash.com/photo-1583468982228-19f19164aee2?w=400&q=80',
+    avatar: 'https://images.unsplash.com/photo-1738523686520-5965d77ab471?w=400&q=80',
     bio: 'КМС по боксу, чемпион Казахстана среди юниоров. Ставлю ударную технику с нуля и готовлю к любительским турнирам.',
   },
   {
@@ -214,7 +214,7 @@ export const trainers: Trainer[] = [
     reviews: 96,
     experienceYears: 9,
     pricePerSession: 9000,
-    avatar: 'https://images.unsplash.com/photo-1600486913747-55e5470d6f40?w=400&q=80',
+    avatar: 'https://images.unsplash.com/photo-1589860518300-9eac95f784d9?w=400&q=80',
     bio: 'Тренер по плаванию, действующий триатлет. Учу плавать взрослых с нуля и ставлю технику кроля для стайеров.',
   },
   {
@@ -226,7 +226,7 @@ export const trainers: Trainer[] = [
     reviews: 121,
     experienceYears: 5,
     pricePerSession: 8000,
-    avatar: 'https://images.unsplash.com/photo-1609899537878-88d5ba429bdb?w=400&q=80',
+    avatar: 'https://images.unsplash.com/photo-1550345332-09e3ac987658?w=400&q=80',
     bio: 'Хореограф и инструктор групповых программ. Мои занятия — это кардио, которое не чувствуется как тренировка.',
   },
 ];
@@ -259,7 +259,7 @@ export const news: NewsItem[] = [
     id: 'n1',
     title: 'Открытие клуба на Сейфуллина',
     subtitle: '15 октября • Алматы',
-    image: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=1200&q=80',
+    image: 'https://images.unsplash.com/photo-1741156229623-da94e6d7977d?w=1200&q=80',
     date: '2026-09-25',
     body: 'Пятый клуб сети в Алматы откроется 15 октября. Действующим членам клуба — неделя бесплатных тренировок в новом зале и скидка 20% на продление.',
   },
@@ -267,7 +267,7 @@ export const news: NewsItem[] = [
     id: 'n2',
     title: 'Марафон «30 дней силы»',
     subtitle: 'Старт 1 октября • Призы от партнёров',
-    image: 'https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=1200&q=80',
+    image: 'https://images.unsplash.com/photo-1607962837359-5e7e89f86776?w=1200&q=80',
     date: '2026-09-20',
     body: 'Отмечайте тренировки в приложении 30 дней подряд и получите месяц абонемента в подарок. Лучшие результаты — призы от партнёров.',
   },
@@ -275,7 +275,7 @@ export const news: NewsItem[] = [
     id: 'n3',
     title: 'Новые групповые: Mobility Flow',
     subtitle: 'Каждый вторник и четверг',
-    image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200&q=80',
+    image: 'https://images.unsplash.com/photo-1591258370814-01609b341790?w=1200&q=80',
     date: '2026-09-12',
     body: 'Программа для суставов и мобильности, идеально сочетается с силовыми тренировками. Запись открыта в расписании.',
   },

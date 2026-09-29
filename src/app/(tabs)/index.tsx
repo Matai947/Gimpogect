@@ -5,20 +5,24 @@ import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ProductCard } from '@/components/product-card';
 import { Badge, Button, Card, IconButton, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubById, clubs, formatDateHuman, formatDateLong, news, occupancyLabel, sessionById, sessionStart, trainerById } from '@/data/mock';
+import { products } from '@/data/shop';
 import { useApp, useMembershipInfo, useVisitStats } from '@/store/app-context';
+
+const shopHits = products.filter((p) => p.badge === 'Хит' || p.badge === 'Новинка').slice(0, 6);
 
 const quickActions = [
   { icon: 'calendar-outline', label: 'Записаться', href: '/(tabs)/schedule' },
-  { icon: 'people-outline', label: 'Тренеры', href: '/(tabs)/trainers' },
+  { icon: 'people-outline', label: 'Тренеры', href: '/trainers' },
   { icon: 'trending-up-outline', label: 'Прогресс', href: '/progress' },
   { icon: 'card-outline', label: 'Абонемент', href: '/membership' },
 ] as const;
 
 export default function HomeScreen() {
-  const { user, bookings } = useApp();
+  const { user, bookings, addToCart } = useApp();
   const membership = useMembershipInfo();
   const stats = useVisitStats();
   const homeClub = clubById(user?.homeClubId ?? 'c1');
@@ -223,6 +227,18 @@ export default function HomeScreen() {
               </Card>
             );
           })}
+        </ScrollView>
+      </View>
+
+      {/* Shop */}
+      <View style={[styles.section, { paddingHorizontal: 0 }]}>
+        <View style={{ paddingHorizontal: Spacing.three }}>
+          <SectionHeader title="Спортпит и аксессуары" action="В магазин" onAction={() => router.push('/(tabs)/shop')} />
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }}>
+          {shopHits.map((p) => (
+            <ProductCard key={p.id} product={p} width={150} onAdd={() => (p.options ? router.push(`/product/${p.id}`) : addToCart(p.id))} />
+          ))}
         </ScrollView>
       </View>
 

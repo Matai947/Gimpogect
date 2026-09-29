@@ -129,7 +129,7 @@ export default function ClubScreen() {
 
         {clubTrainers.length > 0 ? (
           <View style={{ marginTop: Spacing.four }}>
-            <SectionHeader title="Тренеры клуба" action="Все" onAction={() => router.push('/(tabs)/trainers')} />
+            <SectionHeader title="Тренеры клуба" action="Все" onAction={() => router.push('/trainers')} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.two }}>
               {clubTrainers.map((t) => (
                 <Pressable key={t.id} onPress={() => router.push(`/trainer/${t.id}`)} style={styles.trainer}>
