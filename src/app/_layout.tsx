@@ -2,6 +2,7 @@ import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { BackButton } from '@/components/back-button';
 import { Colors } from '@/constants/theme';
 import { AppProvider } from '@/store/app-context';
 
@@ -31,6 +32,7 @@ export default function RootLayout() {
               headerTitleStyle: { fontWeight: '700' },
               headerShadowVisible: false,
               headerBackButtonDisplayMode: 'minimal',
+              headerLeft: () => <BackButton />,
               contentStyle: { backgroundColor: Colors.background },
             }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
