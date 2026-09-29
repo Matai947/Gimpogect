@@ -118,6 +118,8 @@ export default function ProfileScreen() {
           <Divider />
           <ListRow icon="trending-up-outline" title="Прогресс" subtitle="Вес и посещения" onPress={() => router.push('/progress')} />
           <Divider />
+          <ListRow icon="sparkles-outline" title="ИИ-тренер" subtitle="План на неделю и техника упражнений" onPress={() => router.push('/coach')} />
+          <Divider />
           <ListRow icon="people-outline" title="Тренеры" subtitle="Персональные тренировки" onPress={() => router.push('/trainers')} />
           <Divider />
           <ListRow icon="receipt-outline" title="Мои заказы" subtitle={orders.length ? `${orders.length} в истории` : 'Спортпит и аксессуары'} onPress={() => router.push('/orders')} />

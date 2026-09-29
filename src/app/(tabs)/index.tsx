@@ -16,13 +16,13 @@ const shopHits = products.filter((p) => p.badge === 'Хит' || p.badge === 'Н�
 
 const quickActions = [
   { icon: 'calendar-outline', label: 'Записаться', href: '/(tabs)/schedule' },
+  { icon: 'sparkles-outline', label: 'ИИ-тренер', href: '/coach' },
   { icon: 'people-outline', label: 'Тренеры', href: '/trainers' },
-  { icon: 'trending-up-outline', label: 'Прогресс', href: '/progress' },
   { icon: 'card-outline', label: 'Абонемент', href: '/membership' },
 ] as const;
 
 export default function HomeScreen() {
-  const { user, bookings, addToCart } = useApp();
+  const { user, bookings, addToCart, coachPlan } = useApp();
   const membership = useMembershipInfo();
   const stats = useVisitStats();
   const fitness = useFitnessProfile();
@@ -162,6 +162,18 @@ export default function HomeScreen() {
             <T type="small" color={Colors.textSecondary}>
               {fitness.goalInfo.tip}
             </T>
+            <Pressable onPress={() => router.push('/coach')} style={styles.coachRow}>
+              <Ionicons name="sparkles" size={18} color={Colors.accent} />
+              <View style={{ flex: 1 }}>
+                <T type="small" style={{ fontWeight: '700' }}>
+                  ИИ-тренер
+                </T>
+                <T type="small" color={Colors.textSecondary} numberOfLines={1}>
+                  {coachPlan ? `План: ${coachPlan.title}` : 'Составит план под вашу цель и объяснит технику'}
+                </T>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+            </Pressable>
             <Row gap={Spacing.two}>
               <Button title="Занятия" size="sm" onPress={() => router.push(`/(tabs)/schedule?category=${encodeURIComponent(fitness.goalInfo.categories[0])}`)} style={{ flex: 1, paddingHorizontal: 8 }} />
               {goalTrainer ? <Button title="Тренер" size="sm" variant="secondary" onPress={() => router.push(`/trainer/${goalTrainer.id}`)} style={{ flex: 1, paddingHorizontal: 8 }} /> : null}
@@ -366,6 +378,7 @@ const styles = StyleSheet.create({
   quickIcon: { width: 56, height: 56, borderRadius: 18, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   flame: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,179,71,0.15)', alignItems: 'center', justifyContent: 'center' },
   goalIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(198,255,61,0.12)', alignItems: 'center', justifyContent: 'center' },
+  coachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, backgroundColor: 'rgba(198,255,61,0.08)', borderWidth: 1, borderColor: 'rgba(198,255,61,0.25)' },
   timeBox: { borderLeftWidth: 3, paddingLeft: 10, minWidth: 82 },
   newsCard: { width: 280, height: 160, borderRadius: Radius.lg, overflow: 'hidden', justifyContent: 'flex-end', backgroundColor: Colors.surface },
 });

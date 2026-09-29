@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile } from '@/data/fitness';
 import { addDays, planById, toISODate } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, productById } from '@/data/shop';
+import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
   planId: string;
@@ -45,6 +46,9 @@ type State = {
   weightLog: { date: string; kg: number }[];
   cart: CartItem[];
   orders: Order[];
+  coachMessages: ChatMessage[];
+  coachPlan: WeekPlan | null;
+  coachApiKey: string | null;
   hydrated: boolean;
 };
 
@@ -67,6 +71,10 @@ type Actions = {
   removeFromCart: (key: string) => void;
   clearCart: () => void;
   placeOrder: (clubId: string, promo?: string) => Order | null;
+  addCoachMessage: (msg: ChatMessage) => void;
+  clearCoachChat: () => void;
+  setCoachPlan: (plan: WeekPlan | null) => void;
+  setCoachApiKey: (key: string | null) => void;
 };
 
 const STORAGE_KEY = 'gym-project-state-v1';
@@ -80,6 +88,9 @@ const initialState: State = {
   weightLog: [],
   cart: [],
   orders: [],
+  coachMessages: [],
+  coachPlan: null,
+  coachApiKey: null,
   hydrated: false,
 };
 
@@ -116,6 +127,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) {
           const saved = JSON.parse(raw) as Partial<State>;
+          setRuntimeApiKey(saved.coachApiKey ?? null);
           setState({ ...initialState, ...saved, hydrated: true });
           return;
         }
@@ -149,8 +161,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    setRuntimeApiKey(null);
     setState({ ...initialState, hydrated: true });
     AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+  }, []);
+
+  /* ---------- AI coach ---------- */
+
+  const addCoachMessage = useCallback((msg: ChatMessage) => {
+    setState((s) => ({ ...s, coachMessages: [...s.coachMessages, msg].slice(-60) }));
+  }, []);
+
+  const clearCoachChat = useCallback(() => setState((s) => ({ ...s, coachMessages: [] })), []);
+
+  const setCoachPlan = useCallback((plan: WeekPlan | null) => setState((s) => ({ ...s, coachPlan: plan })), []);
+
+  const setCoachApiKey = useCallback((key: string | null) => {
+    const k = key?.trim() || null;
+    setRuntimeApiKey(k);
+    setState((s) => ({ ...s, coachApiKey: k }));
   }, []);
 
   const updateUser = useCallback((patch: Partial<User>) => {
@@ -305,8 +334,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       removeFromCart,
       clearCart,
       placeOrder,
+      addCoachMessage,
+      clearCoachChat,
+      setCoachPlan,
+      setCoachApiKey,
     }),
-    [state, login, logout, updateUser, completeOnboarding, buyPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder]
+    [state, login, logout, updateUser, completeOnboarding, buyPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -390,6 +423,26 @@ export function useFitnessProfile() {
       targets: dailyTargets({ ...p, weightKg: latest }),
     };
   }, [user?.profile, weightLog]);
+}
+
+/** Everything the AI coach needs to know about the user; null until onboarding is done. */
+export function useCoachContext() {
+  const { user, weightLog, visits, bookings } = useApp();
+  return useMemo(() => {
+    if (!user?.profile) return null;
+    const trend = [...weightLog].sort((a, b) => a.date.localeCompare(b.date));
+    const current = trend[trend.length - 1]?.kg ?? user.profile.weightKg;
+    const weekAgo = toISODate(addDays(new Date(), -7));
+    return {
+      name: user.name,
+      profile: user.profile,
+      currentWeightKg: current,
+      weightTrend: trend,
+      visitsThisWeek: visits.filter((v) => v.date >= weekAgo).length,
+      homeClubId: user.homeClubId,
+      upcoming: bookings.slice(0, 5),
+    };
+  }, [user, weightLog, visits, bookings]);
 }
 
 /** Cart totals with member / promo discount. */

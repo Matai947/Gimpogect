@@ -43,6 +43,7 @@ export default function RootLayout() {
             <Stack.Screen name="bookings" options={{ title: 'Мои записи' }} />
             <Stack.Screen name="progress" options={{ title: 'Мой прогресс' }} />
             <Stack.Screen name="trainers" options={{ title: 'Тренеры' }} />
+            <Stack.Screen name="coach" options={{ title: 'ИИ-тренер' }} />
             <Stack.Screen name="cart" options={{ title: 'Корзина' }} />
             <Stack.Screen name="orders" options={{ title: 'Мои заказы' }} />
             <Stack.Screen name="club/[id]" options={{ title: 'Клуб' }} />
