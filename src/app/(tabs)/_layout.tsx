@@ -16,6 +16,7 @@ export default function TabsLayout() {
   const { user, hydrated, cart } = useApp();
   if (!hydrated) return null;
   if (!user) return <Redirect href="/auth" />;
+  if (!user.profile) return <Redirect href="/onboarding" />;
   const cartCount = cart.reduce((n, c) => n + c.qty, 0);
 
   return (

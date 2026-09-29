@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile } from '@/data/fitness';
 import { addDays, planById, toISODate } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, productById } from '@/data/shop';
 
@@ -17,6 +18,7 @@ export type User = {
   name: string;
   phone: string;
   homeClubId: string;
+  profile?: FitnessProfile;
 };
 
 export type Visit = { date: string; clubId: string };
@@ -50,6 +52,7 @@ type Actions = {
   login: (phone: string, name?: string) => void;
   logout: () => void;
   updateUser: (patch: Partial<User>) => void;
+  completeOnboarding: (profile: FitnessProfile) => void;
   buyPlan: (planId: string) => void;
   freezeMembership: (days: number) => void;
   unfreezeMembership: () => void;
@@ -88,10 +91,16 @@ function demoVisits(): Visit[] {
   return offsets.map((o) => ({ date: toISODate(addDays(today, -o)), clubId: o % 3 === 0 ? 'c2' : 'c1' }));
 }
 
-function demoWeights() {
+/** 8 weekly points ending at the current weight, trending according to the goal. */
+function demoWeights(current = 80.1, goal: FitnessProfile['goal'] = 'lose') {
   const today = new Date();
-  const kgs = [84.2, 83.6, 83.1, 82.4, 81.9, 81.2, 80.8, 80.1];
-  return kgs.map((kg, i) => ({ date: toISODate(addDays(today, -(kgs.length - 1 - i) * 7)), kg }));
+  const slope = goal === 'lose' ? 0.55 : goal === 'gain' ? -0.35 : 0.08; // kg per week going back in time
+  const wobble = [0.2, -0.1, 0.15, -0.2, 0.1, -0.15, 0.05, 0];
+  return Array.from({ length: 8 }, (_, i) => {
+    const weeksAgo = 7 - i;
+    const kg = Math.round((current + slope * weeksAgo + wobble[i]) * 10) / 10;
+    return { date: toISODate(addDays(today, -weeksAgo * 7)), kg };
+  });
 }
 
 export function cartKey(productId: string, option?: string) {
@@ -146,6 +155,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateUser = useCallback((patch: Partial<User>) => {
     setState((s) => (s.user ? { ...s, user: { ...s.user, ...patch } } : s));
+  }, []);
+
+  const completeOnboarding = useCallback((profile: FitnessProfile) => {
+    setState((s) => {
+      if (!s.user) return s;
+      const today = toISODate(new Date());
+      const firstTime = !s.user.profile;
+      // First time: rebuild the demo weight history around the real weight. Later edits just log today's weight.
+      const weightLog = firstTime
+        ? demoWeights(profile.weightKg, profile.goal)
+        : [...s.weightLog.filter((w) => w.date !== today), { date: today, kg: profile.weightKg }];
+      return { ...s, user: { ...s.user, profile }, weightLog };
+    });
   }, []);
 
   const buyPlan = useCallback((planId: string) => {
@@ -268,6 +290,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       login,
       logout,
       updateUser,
+      completeOnboarding,
       buyPlan,
       freezeMembership,
       unfreezeMembership,
@@ -283,7 +306,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       clearCart,
       placeOrder,
     }),
-    [state, login, logout, updateUser, buyPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder]
+    [state, login, logout, updateUser, completeOnboarding, buyPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -345,6 +368,28 @@ export function useVisitStats() {
       dates,
     };
   }, [visits]);
+}
+
+/** Fitness profile with derived metrics; null until onboarding is done. */
+export function useFitnessProfile() {
+  const { user, weightLog } = useApp();
+  return useMemo(() => {
+    const p = user?.profile;
+    if (!p) return null;
+    const latest = [...weightLog].sort((a, b) => b.date.localeCompare(a.date))[0]?.kg ?? p.weightKg;
+    const value = bmi(latest, p.heightCm);
+    const goal = goalByKey(p.goal);
+    const toTarget = p.targetWeightKg !== undefined ? Math.round((latest - p.targetWeightKg) * 10) / 10 : undefined;
+    return {
+      ...p,
+      currentWeightKg: latest,
+      bmi: Math.round(value * 10) / 10,
+      bmiInfo: bmiLabel(value),
+      goalInfo: goal,
+      toTarget,
+      targets: dailyTargets({ ...p, weightKg: latest }),
+    };
+  }, [user?.profile, weightLog]);
 }
 
 /** Cart totals with member / promo discount. */

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -10,10 +10,22 @@ import { useApp } from '@/store/app-context';
 
 export default function ScheduleScreen() {
   const { isBooked, user } = useApp();
+  const params = useLocalSearchParams<{ category?: string }>();
   const days = useMemo(() => Array.from({ length: 14 }, (_, i) => addDays(new Date(), i)), []);
   const [date, setDate] = useState(toISODate(new Date()));
   const [category, setCategory] = useState<(typeof categories)[number]>('Все');
   const [clubId, setClubId] = useState<string>(user?.homeClubId ?? 'all');
+
+  // Deep link from the goal card: /schedule?category=Кардио. Applied once per param change during render.
+  const [appliedParam, setAppliedParam] = useState<string | undefined>();
+  if (params.category !== appliedParam) {
+    setAppliedParam(params.category);
+    const c = params.category as (typeof categories)[number] | undefined;
+    if (c && categories.includes(c)) {
+      setCategory(c);
+      setClubId('all');
+    }
+  }
 
   const sessions = useMemo(() => {
     const now = new Date();

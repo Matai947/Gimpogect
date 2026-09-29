@@ -8,9 +8,9 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ProductCard } from '@/components/product-card';
 import { Badge, Button, Card, IconButton, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { clubById, clubs, formatDateHuman, formatDateLong, news, occupancyLabel, sessionById, sessionStart, trainerById } from '@/data/mock';
+import { clubById, clubs, formatDateHuman, formatDateLong, news, occupancyLabel, sessionById, sessionStart, trainerById, trainers } from '@/data/mock';
 import { products } from '@/data/shop';
-import { useApp, useMembershipInfo, useVisitStats } from '@/store/app-context';
+import { useApp, useFitnessProfile, useMembershipInfo, useVisitStats } from '@/store/app-context';
 
 const shopHits = products.filter((p) => p.badge === 'Хит' || p.badge === 'Новинка').slice(0, 6);
 
@@ -25,7 +25,9 @@ export default function HomeScreen() {
   const { user, bookings, addToCart } = useApp();
   const membership = useMembershipInfo();
   const stats = useVisitStats();
+  const fitness = useFitnessProfile();
   const homeClub = clubById(user?.homeClubId ?? 'c1');
+  const goalTrainer = fitness ? trainers.find((t) => t.specialties.some((s) => fitness.goalInfo.specialties.includes(s))) : undefined;
 
   const upcoming = useMemo(() => {
     const now = new Date();
@@ -132,6 +134,42 @@ export default function HomeScreen() {
           </Pressable>
         ))}
       </View>
+
+      {/* Goal */}
+      {fitness ? (
+        <View style={styles.section}>
+          <Card style={{ gap: Spacing.three }}>
+            <Row gap={Spacing.three}>
+              <View style={styles.goalIcon}>
+                <Ionicons name={fitness.goalInfo.icon as React.ComponentProps<typeof Ionicons>['name']} size={22} color={Colors.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <T type="small" color={Colors.textSecondary}>
+                  Ваша цель
+                </T>
+                <T type="heading">{fitness.goalInfo.title}</T>
+              </View>
+              <Pressable onPress={() => router.push('/onboarding?edit=1')} hitSlop={8}>
+                <Ionicons name="create-outline" size={20} color={Colors.textMuted} />
+              </Pressable>
+            </Row>
+            <Row gap={Spacing.two}>
+              <MiniStat value={`${fitness.currentWeightKg}`} unit="кг" label={fitness.toTarget !== undefined ? `до цели ${Math.abs(fitness.toTarget)}` : 'вес'} />
+              <MiniStat value={`${fitness.bmi}`} label="ИМТ" unit="" color={fitness.bmiInfo.color} />
+              <MiniStat value={`${fitness.targets.calories}`} unit="ккал" label="норма в день" />
+              <MiniStat value={`${fitness.targets.protein}`} unit="г" label="белка" />
+            </Row>
+            <T type="small" color={Colors.textSecondary}>
+              {fitness.goalInfo.tip}
+            </T>
+            <Row gap={Spacing.two}>
+              <Button title="Занятия" size="sm" onPress={() => router.push(`/(tabs)/schedule?category=${encodeURIComponent(fitness.goalInfo.categories[0])}`)} style={{ flex: 1, paddingHorizontal: 8 }} />
+              {goalTrainer ? <Button title="Тренер" size="sm" variant="secondary" onPress={() => router.push(`/trainer/${goalTrainer.id}`)} style={{ flex: 1, paddingHorizontal: 8 }} /> : null}
+              <Button title="Спортпит" size="sm" variant="secondary" onPress={() => router.push('/(tabs)/shop')} style={{ flex: 1, paddingHorizontal: 8 }} />
+            </Row>
+          </Card>
+        </View>
+      ) : null}
 
       {/* Week stats */}
       <View style={styles.section}>
@@ -266,6 +304,26 @@ export default function HomeScreen() {
   );
 }
 
+function MiniStat({ value, unit, label, color }: { value: string; unit: string; label: string; color?: string }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: Colors.surfaceAlt, borderRadius: 12, padding: 8, gap: 2 }}>
+      <Row gap={2} style={{ alignItems: 'flex-end' }}>
+        <T type="subheading" color={color}>
+          {value}
+        </T>
+        {unit ? (
+          <T type="small" color={Colors.textSecondary} style={{ marginBottom: 2 }}>
+            {unit}
+          </T>
+        ) : null}
+      </Row>
+      <T type="small" color={Colors.textMuted} style={{ fontSize: 11 }} numberOfLines={1}>
+        {label}
+      </T>
+    </View>
+  );
+}
+
 function pluralDays(n: number) {
   const m10 = n % 10;
   const m100 = n % 100;
@@ -307,6 +365,7 @@ const styles = StyleSheet.create({
   quick: { flex: 1, alignItems: 'center', gap: 8 },
   quickIcon: { width: 56, height: 56, borderRadius: 18, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   flame: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,179,71,0.15)', alignItems: 'center', justifyContent: 'center' },
+  goalIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(198,255,61,0.12)', alignItems: 'center', justifyContent: 'center' },
   timeBox: { borderLeftWidth: 3, paddingLeft: 10, minWidth: 82 },
   newsCard: { width: 280, height: 160, borderRadius: Radius.lg, overflow: 'hidden', justifyContent: 'flex-end', backgroundColor: Colors.surface },
 });

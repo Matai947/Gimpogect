@@ -5,7 +5,7 @@ import { Alert, StyleSheet, View } from 'react-native';
 import { Avatar, Badge, Card, Divider, ListRow, Row, Screen, StatTile, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { clubById, clubs, formatDateLong } from '@/data/mock';
-import { useApp, useMembershipInfo, useVisitStats } from '@/store/app-context';
+import { useApp, useFitnessProfile, useMembershipInfo, useVisitStats } from '@/store/app-context';
 
 const achievements = [
   { id: 'a1', icon: 'flash', label: 'Первая тренировка', min: 1 },
@@ -19,6 +19,7 @@ export default function ProfileScreen() {
   const { user, logout, updateUser, favorites, orders } = useApp();
   const membership = useMembershipInfo();
   const stats = useVisitStats();
+  const fitness = useFitnessProfile();
   const homeClub = clubById(user?.homeClubId ?? 'c1');
 
   const changeHomeClub = () => {
@@ -55,6 +56,32 @@ export default function ProfileScreen() {
           </Row>
         </View>
       </View>
+
+      {fitness ? (
+        <View style={styles.section}>
+          <Card onPress={() => router.push('/onboarding?edit=1')} style={{ gap: Spacing.two }}>
+            <Row style={{ justifyContent: 'space-between' }}>
+              <T type="heading">Мои параметры</T>
+              <Row gap={4}>
+                <T type="small" color={Colors.accent} style={{ fontWeight: '700' }}>
+                  Изменить
+                </T>
+                <Ionicons name="chevron-forward" size={14} color={Colors.accent} />
+              </Row>
+            </Row>
+            <Row gap={Spacing.two}>
+              <Param label="Рост" value={`${fitness.heightCm} см`} />
+              <Param label="Вес" value={`${fitness.currentWeightKg} кг`} />
+              <Param label="ИМТ" value={`${fitness.bmi}`} hint={fitness.bmiInfo.label} color={fitness.bmiInfo.color} />
+            </Row>
+            <Row gap={Spacing.two}>
+              <Param label="Цель" value={fitness.goalInfo.title} />
+              <Param label="Уровень" value={fitness.level === 'beginner' ? 'Новичок' : fitness.level === 'intermediate' ? 'Средний' : 'Продвинутый'} />
+              <Param label="В неделю" value={`${fitness.daysPerWeek} трен.`} />
+            </Row>
+          </Card>
+        </View>
+      ) : null}
 
       <View style={[styles.section, { flexDirection: 'row', gap: Spacing.two }]}>
         <StatTile value={stats.total} label="всего визитов" icon="barbell-outline" />
@@ -122,6 +149,24 @@ export default function ProfileScreen() {
         </T>
       </View>
     </Screen>
+  );
+}
+
+function Param({ label, value, hint, color }: { label: string; value: string; hint?: string; color?: string }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: Colors.surfaceAlt, borderRadius: 12, padding: 10, gap: 2 }}>
+      <T type="small" color={Colors.textMuted} style={{ fontSize: 11 }}>
+        {label}
+      </T>
+      <T type="subheading" color={color} numberOfLines={1} style={{ fontSize: 15 }}>
+        {value}
+      </T>
+      {hint ? (
+        <T type="small" color={color ?? Colors.textSecondary} style={{ fontSize: 10.5 }} numberOfLines={1}>
+          {hint}
+        </T>
+      ) : null}
+    </View>
   );
 }
 

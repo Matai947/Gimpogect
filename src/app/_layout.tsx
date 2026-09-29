@@ -35,6 +35,7 @@ export default function RootLayout() {
             }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="auth" options={{ headerShown: false, gestureEnabled: false }} />
+            <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
             <Stack.Screen name="qr" options={{ presentation: 'modal', title: 'QR-пропуск' }} />
             <Stack.Screen name="membership" options={{ title: 'Абонемент' }} />
             <Stack.Screen name="bookings" options={{ title: 'Мои записи' }} />

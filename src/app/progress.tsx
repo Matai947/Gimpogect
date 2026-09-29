@@ -1,16 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { Button, Card, Row, Screen, SectionHeader, StatTile, T } from '@/components/ui';
+import { Button, Card, ProgressBar, Row, Screen, SectionHeader, StatTile, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { addDays, clubById, formatDateHuman, monthShort, parseISODate, toISODate } from '@/data/mock';
-import { useApp, useVisitStats } from '@/store/app-context';
+import { useApp, useFitnessProfile, useVisitStats } from '@/store/app-context';
 
 export default function ProgressScreen() {
   const { weightLog, logWeight, visits } = useApp();
   const stats = useVisitStats();
+  const fitness = useFitnessProfile();
   const [input, setInput] = useState('');
+  const targetProgress =
+    fitness && fitness.targetWeightKg !== undefined && fitness.weightKg !== fitness.targetWeightKg
+      ? Math.min(1, Math.max(0, (fitness.weightKg - fitness.currentWeightKg) / (fitness.weightKg - fitness.targetWeightKg)))
+      : 0;
 
   const weights = useMemo(() => [...weightLog].sort((a, b) => a.date.localeCompare(b.date)).slice(-10), [weightLog]);
   const min = Math.min(...weights.map((w) => w.kg), Infinity);
@@ -43,6 +49,64 @@ export default function ProgressScreen() {
   return (
     <Screen edges={[]}>
       <View style={styles.body}>
+        {fitness ? (
+          <Card style={{ gap: Spacing.three, marginBottom: Spacing.three }}>
+            <Row style={{ justifyContent: 'space-between' }}>
+              <View>
+                <T type="small" color={Colors.textSecondary}>
+                  Цель: {fitness.goalInfo.title}
+                </T>
+                {fitness.targetWeightKg !== undefined && fitness.toTarget !== undefined ? (
+                  <T type="heading">
+                    {Math.abs(fitness.toTarget) < 0.3 ? 'Цель достигнута 🎉' : `${fitness.toTarget > 0 ? 'Сбросить' : 'Набрать'} ещё ${Math.abs(fitness.toTarget)} кг`}
+                  </T>
+                ) : (
+                  <T type="heading">ИМТ {fitness.bmi} • {fitness.bmiInfo.label}</T>
+                )}
+              </View>
+              <Pressable onPress={() => router.push('/onboarding?edit=1')} hitSlop={8}>
+                <Ionicons name="create-outline" size={20} color={Colors.textMuted} />
+              </Pressable>
+            </Row>
+            {fitness.targetWeightKg !== undefined ? (
+              <View style={{ gap: 6 }}>
+                <ProgressBar value={targetProgress} />
+                <Row style={{ justifyContent: 'space-between' }}>
+                  <T type="small" color={Colors.textMuted}>
+                    старт {fitness.weightKg} кг
+                  </T>
+                  <T type="small" color={Colors.textMuted}>
+                    цель {fitness.targetWeightKg} кг
+                  </T>
+                </Row>
+              </View>
+            ) : null}
+            <Row gap={Spacing.two}>
+              <View style={styles.target}>
+                <Ionicons name="flame-outline" size={16} color={Colors.warning} />
+                <T type="subheading">{fitness.targets.calories}</T>
+                <T type="small" color={Colors.textMuted} style={{ fontSize: 11 }}>
+                  ккал / день
+                </T>
+              </View>
+              <View style={styles.target}>
+                <Ionicons name="egg-outline" size={16} color={Colors.accent} />
+                <T type="subheading">{fitness.targets.protein} г</T>
+                <T type="small" color={Colors.textMuted} style={{ fontSize: 11 }}>
+                  белка / день
+                </T>
+              </View>
+              <View style={styles.target}>
+                <Ionicons name="water-outline" size={16} color={Colors.info} />
+                <T type="subheading">{fitness.targets.water} л</T>
+                <T type="small" color={Colors.textMuted} style={{ fontSize: 11 }}>
+                  воды / день
+                </T>
+              </View>
+            </Row>
+          </Card>
+        ) : null}
+
         <Row gap={Spacing.two}>
           <StatTile value={stats.total} label="тренировок всего" icon="barbell-outline" />
           <StatTile value={stats.thisMonth} label="за 30 дней" icon="calendar-outline" color={Colors.info} />
@@ -170,6 +234,7 @@ export default function ProgressScreen() {
 const styles = StyleSheet.create({
   body: { padding: Spacing.three },
   cell: { height: 22, borderRadius: 6, backgroundColor: Colors.surfaceAlt },
+  target: { flex: 1, backgroundColor: Colors.surfaceAlt, borderRadius: 12, padding: 10, gap: 2 },
   delta: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 36, borderRadius: Radius.pill },
   chart: { flexDirection: 'row', alignItems: 'flex-end', height: 160, gap: 4 },
   input: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md, paddingHorizontal: Spacing.three, height: 48, borderWidth: 1, borderColor: Colors.border },

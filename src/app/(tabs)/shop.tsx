@@ -7,8 +7,8 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { ProductCard } from '@/components/product-card';
 import { Badge, IconButton, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { products, shopCategories, type Product, type ShopCategory } from '@/data/shop';
-import { useApp, useCartSummary, useMembershipInfo } from '@/store/app-context';
+import { productById, products, shopCategories, type Product, type ShopCategory } from '@/data/shop';
+import { useApp, useCartSummary, useFitnessProfile, useMembershipInfo } from '@/store/app-context';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 type Sort = 'popular' | 'cheap' | 'expensive' | 'rating';
@@ -19,6 +19,7 @@ export default function ShopScreen() {
   const { addToCart } = useApp();
   const cart = useCartSummary();
   const membership = useMembershipInfo();
+  const fitness = useFitnessProfile();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'Все' | ShopCategory>('Все');
   const [sort, setSort] = useState<Sort>('popular');
@@ -41,6 +42,10 @@ export default function ShopScreen() {
   }, [query, category, sort]);
 
   const hits = useMemo(() => products.filter((p) => p.badge === 'Хит' || p.badge === 'Новинка').slice(0, 6), []);
+  const goalProducts = useMemo(
+    () => (fitness ? fitness.goalInfo.productIds.map(productById).filter((p): p is Product => !!p) : []),
+    [fitness]
+  );
   const showHero = !query && category === 'Все';
 
   const quickAdd = (p: Product) => {
@@ -110,6 +115,20 @@ export default function ShopScreen() {
               <Ionicons name="pricetags" size={44} color={Colors.accent} style={{ opacity: 0.9 }} />
             </LinearGradient>
           </View>
+
+          {/* For your goal */}
+          {goalProducts.length > 0 ? (
+            <View style={{ marginBottom: Spacing.four }}>
+              <View style={{ paddingHorizontal: Spacing.three }}>
+                <SectionHeader title={`Для цели «${fitness?.goalInfo.title}»`} />
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }}>
+                {goalProducts.map((p) => (
+                  <ProductCard key={p.id} product={p} width={160} onAdd={() => quickAdd(p)} />
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
 
           {/* Hits */}
           <View style={{ marginBottom: Spacing.four }}>

@@ -44,7 +44,7 @@ export default function AuthScreen() {
 
   const finish = () => {
     login(formatPhone(digits), name);
-    router.replace('/(tabs)');
+    router.replace('/onboarding');
   };
 
   return (
