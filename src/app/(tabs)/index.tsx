@@ -10,14 +10,13 @@ import { Badge, Button, Card, IconButton, ProgressBar, Row, Screen, SectionHeade
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTip, goalTitle } from '@/data/fitness';
 import { clubById, clubHours, clubs, formatDateHuman, formatDateLong, news, occupancyLabel, sessionById, sessionStart, trainerById, trainers } from '@/data/mock';
-import { products } from '@/data/shop';
-import { useApp, useFitnessProfile, useI18n, useMembershipInfo, useVisitStats } from '@/store/app-context';
-
-const shopHits = products.filter((p) => p.badge === 'Хит' || p.badge === 'Новинка').slice(0, 6);
+import { useApp, useCatalog, useFitnessProfile, useI18n, useMembershipInfo, useVisitStats } from '@/store/app-context';
 
 export default function HomeScreen() {
   const { user, bookings, addToCart, coachPlan } = useApp();
   const { t, tp, td } = useI18n();
+  const { products } = useCatalog();
+  const shopHits = useMemo(() => products.filter((p) => p.badge === 'Хит' || p.badge === 'Новинка').slice(0, 6), [products]);
   const membership = useMembershipInfo();
   const stats = useVisitStats();
   const fitness = useFitnessProfile();

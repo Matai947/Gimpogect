@@ -9,14 +9,15 @@ import { ProductCard } from '@/components/product-card';
 import { Badge, Button, Card, EmptyState, IconButton, Row, Screen, SectionHeader, Stars, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice } from '@/data/mock';
-import { MEMBER_DISCOUNT, productById, products } from '@/data/shop';
-import { useApp, useCartSummary, useI18n, useMembershipInfo } from '@/store/app-context';
+import { MEMBER_DISCOUNT } from '@/data/shop';
+import { useApp, useCartSummary, useCatalog, useI18n, useMembershipInfo } from '@/store/app-context';
 
 const W = Dimensions.get('window').width;
 
 export default function ProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const product = productById(id);
+  const { products, byId } = useCatalog();
+  const product = byId(id);
   const { addToCart } = useApp();
   const { t, tp, td } = useI18n();
   const cart = useCartSummary();

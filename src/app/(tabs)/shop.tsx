@@ -8,8 +8,8 @@ import { ProductCard } from '@/components/product-card';
 import { Badge, IconButton, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
-import { productById, products, shopCategories, type Product, type ShopCategory } from '@/data/shop';
-import { useApp, useCartSummary, useFitnessProfile, useI18n, useMembershipInfo } from '@/store/app-context';
+import { shopCategories, type Product, type ShopCategory } from '@/data/shop';
+import { useApp, useCartSummary, useCatalog, useFitnessProfile, useI18n, useMembershipInfo } from '@/store/app-context';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 type Sort = 'popular' | 'cheap' | 'expensive' | 'rating';
@@ -20,6 +20,7 @@ export default function ShopScreen() {
   const cart = useCartSummary();
   const membership = useMembershipInfo();
   const fitness = useFitnessProfile();
+  const { products, byId: productById } = useCatalog();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'Все' | ShopCategory>('Все');
   const [sort, setSort] = useState<Sort>('popular');
@@ -41,10 +42,10 @@ export default function ShopScreen() {
       default:
         return filtered.sort((a, b) => b.reviews - a.reviews);
     }
-  }, [query, category, sort]);
+  }, [query, category, sort, products]);
 
-  const hits = useMemo(() => products.filter((p) => p.badge === 'Хит' || p.badge === 'Новинка').slice(0, 6), []);
-  const goalProducts = useMemo(() => (fitness ? fitness.goalInfo.productIds.map(productById).filter((p): p is Product => !!p) : []), [fitness]);
+  const hits = useMemo(() => products.filter((p) => p.badge === 'Хит' || p.badge === 'Новинка').slice(0, 6), [products]);
+  const goalProducts = useMemo(() => (fitness ? fitness.goalInfo.productIds.map(productById).filter((p): p is Product => !!p && products.includes(p)) : []), [fitness, productById, products]);
   const showHero = !query && category === 'Все';
 
   const quickAdd = (p: Product) => {

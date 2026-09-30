@@ -7,8 +7,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { Badge, Card, Divider, EmptyState, Row, Screen, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { clubById, formatDateHuman, formatPrice } from '@/data/mock';
-import { productById } from '@/data/shop';
-import { useApp, useI18n } from '@/store/app-context';
+import { useApp, useCatalog, useI18n } from '@/store/app-context';
 
 const statusColor = { Готовится: Colors.warning, 'Готов к выдаче': Colors.success, Выдан: Colors.textSecondary } as const;
 const statusKey = { Готовится: 'st_preparing', 'Готов к выдаче': 'st_ready', Выдан: 'st_done' } as const;
@@ -17,6 +16,7 @@ export default function OrdersScreen() {
   const { orders: rawOrders, orderStatusOverrides } = useApp();
   const orders = rawOrders.map((o) => ({ ...o, status: orderStatusOverrides[o.id] ?? o.status }));
   const { t } = useI18n();
+  const { byId: productById } = useCatalog();
 
   if (orders.length === 0) {
     return (

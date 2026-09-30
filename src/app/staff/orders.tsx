@@ -11,8 +11,7 @@ import { Badge, Button, Chip, ChipRow, Divider, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { mockOrders } from '@/data/members';
 import { clubById, formatDateHuman, formatPrice } from '@/data/mock';
-import { productById } from '@/data/shop';
-import { useApp, useI18n, useMembers, type Order, type OrderStatus } from '@/store/app-context';
+import { useApp, useCatalog, useI18n, useMembers, type Order, type OrderStatus } from '@/store/app-context';
 
 const statusColor: Record<OrderStatus, string> = { Готовится: Colors.warning, 'Готов к выдаче': Colors.success, Выдан: Colors.textSecondary };
 const statusKey = { Готовится: 'st_preparing', 'Готов к выдаче': 'st_ready', Выдан: 'st_done' } as const;
@@ -21,6 +20,7 @@ export default function StaffOrdersScreen() {
   const { staff, orders, orderStatusOverrides, setOrderStatus } = useApp();
   const { t } = useI18n();
   const { byId } = useMembers();
+  const { byId: productById } = useCatalog();
   const { focus } = useLocalSearchParams<{ focus?: string }>();
   const [filter, setFilter] = useState<'pending' | 'all'>('pending');
   const clubId = staff?.clubId ?? 'c1';

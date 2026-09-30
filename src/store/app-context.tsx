@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile } from '@/data/fitness';
 import { members, type Member } from '@/data/members';
 import { addDays, planById, toISODate } from '@/data/mock';
-import { MEMBER_DISCOUNT, PROMO_CODES, productById } from '@/data/shop';
+import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
@@ -62,8 +62,19 @@ type State = {
   staffLog: CheckinEntry[];
   attendance: Record<string, string[]>; // sessionId -> memberIds marked present
   orderStatusOverrides: Record<string, OrderStatus>;
+  customProducts: Product[]; // products created by staff
+  productOverrides: Record<string, Product>; // staff edits of base products
+  hiddenProducts: string[]; // base products removed by staff
   hydrated: boolean;
 };
+
+/** Catalog = base products with staff edits, plus staff-created ones. */
+function catalogOf(s: Pick<State, 'customProducts' | 'productOverrides' | 'hiddenProducts'>) {
+  const base = baseProducts.map((p) => s.productOverrides[p.id] ?? p);
+  const all = [...s.customProducts, ...base];
+  const visible = all.filter((p) => !s.hiddenProducts.includes(p.id));
+  return { all, visible, byId: (id: string) => all.find((p) => p.id === id) };
+}
 
 type Actions = {
   login: (phone: string, name?: string) => void;
@@ -95,6 +106,9 @@ type Actions = {
   logCheckin: (entry: Omit<CheckinEntry, 'ts'>) => void;
   toggleAttendance: (sessionId: string, memberId: string) => void;
   setOrderStatus: (orderId: string, status: OrderStatus) => void;
+  upsertProduct: (p: Product) => void;
+  deleteProduct: (id: string) => void;
+  restoreProduct: (id: string) => void;
 };
 
 const STORAGE_KEY = 'gym-project-state-v1';
@@ -116,6 +130,9 @@ const initialState: State = {
   staffLog: [],
   attendance: {},
   orderStatusOverrides: {},
+  customProducts: [],
+  productOverrides: {},
+  hiddenProducts: [],
   hydrated: false,
 };
 
@@ -225,6 +242,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const next = cur.includes(memberId) ? cur.filter((m) => m !== memberId) : [...cur, memberId];
       return { ...s, attendance: { ...s.attendance, [sessionId]: next } };
     });
+  }, []);
+
+  /* ---------- catalog management (staff) ---------- */
+
+  const upsertProduct = useCallback((p: Product) => {
+    setState((s) => {
+      const isBase = baseProducts.some((b) => b.id === p.id);
+      if (isBase) return { ...s, productOverrides: { ...s.productOverrides, [p.id]: p }, hiddenProducts: s.hiddenProducts.filter((id) => id !== p.id) };
+      const exists = s.customProducts.some((c) => c.id === p.id);
+      return { ...s, customProducts: exists ? s.customProducts.map((c) => (c.id === p.id ? p : c)) : [p, ...s.customProducts] };
+    });
+  }, []);
+
+  const deleteProduct = useCallback((id: string) => {
+    setState((s) => {
+      const isBase = baseProducts.some((b) => b.id === id);
+      if (isBase) return { ...s, hiddenProducts: s.hiddenProducts.includes(id) ? s.hiddenProducts : [...s.hiddenProducts, id] };
+      return { ...s, customProducts: s.customProducts.filter((c) => c.id !== id) };
+    });
+  }, []);
+
+  const restoreProduct = useCallback((id: string) => {
+    setState((s) => ({ ...s, hiddenProducts: s.hiddenProducts.filter((h) => h !== id) }));
   }, []);
 
   const setOrderStatus = useCallback((orderId: string, status: OrderStatus) => {
@@ -360,7 +400,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const placeOrder = useCallback(
     (clubId: string, promo?: string): Order | null => {
       if (state.cart.length === 0) return null;
-      const subtotal = state.cart.reduce((sum, c) => sum + (productById(c.productId)?.price ?? 0) * c.qty, 0);
+      const catalog = catalogOf({ customProducts: state.customProducts, productOverrides: state.productOverrides, hiddenProducts: state.hiddenProducts });
+      const subtotal = state.cart.reduce((sum, c) => sum + (catalog.byId(c.productId)?.price ?? 0) * c.qty, 0);
       const today = toISODate(new Date());
       const memberActive = !!state.membership && state.membership.endDate >= today;
       const promoRate = promo ? PROMO_CODES[promo.trim().toUpperCase()] ?? 0 : 0;
@@ -380,7 +421,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setState((s) => ({ ...s, cart: [], orders: [order, ...s.orders] }));
       return order;
     },
-    [state.cart, state.membership, state.user?.id]
+    [state.cart, state.membership, state.user?.id, state.customProducts, state.productOverrides, state.hiddenProducts]
   );
 
   const value = useMemo<State & Actions>(
@@ -415,8 +456,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       logCheckin,
       toggleAttendance,
       setOrderStatus,
+      upsertProduct,
+      deleteProduct,
+      restoreProduct,
     }),
-    [state, login, logout, updateUser, completeOnboarding, buyPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, setStaffClub, logCheckin, toggleAttendance, setOrderStatus]
+    [state, login, logout, updateUser, completeOnboarding, buyPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, setStaffClub, logCheckin, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -607,13 +651,23 @@ export function useCoachContext() {
   }, [user, weightLog, visits, bookings]);
 }
 
+/** Shop catalog as members see it, with staff edits applied. */
+export function useCatalog() {
+  const { customProducts, productOverrides, hiddenProducts } = useApp();
+  return useMemo(() => {
+    const c = catalogOf({ customProducts, productOverrides, hiddenProducts });
+    return { products: c.visible, all: c.all, hidden: hiddenProducts, byId: c.byId, isCustom: (id: string) => customProducts.some((p) => p.id === id) };
+  }, [customProducts, productOverrides, hiddenProducts]);
+}
+
 /** Cart totals with member / promo discount. */
 export function useCartSummary(promo?: string) {
   const { cart } = useApp();
   const membership = useMembershipInfo();
+  const { byId } = useCatalog();
   return useMemo(() => {
     const lines = cart
-      .map((c) => ({ ...c, product: productById(c.productId) }))
+      .map((c) => ({ ...c, product: byId(c.productId) }))
       .filter((l): l is typeof l & { product: NonNullable<typeof l.product> } => !!l.product);
     const subtotal = lines.reduce((sum, l) => sum + l.product.price * l.qty, 0);
     const promoRate = promo ? PROMO_CODES[promo.trim().toUpperCase()] ?? 0 : 0;
@@ -629,5 +683,5 @@ export function useCartSummary(promo?: string) {
       discountSource: rate === 0 ? null : promoRate > memberRate ? ('promo' as const) : ('member' as const),
       promoValid: promoRate > 0,
     };
-  }, [cart, membership.active, promo]);
+  }, [cart, membership.active, promo, byId]);
 }
