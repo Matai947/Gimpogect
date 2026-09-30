@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { exercises, findExercise, type Exercise } from '@/data/exercises';
 import { dailyTargets, goalByKey, levels, type FitnessProfile } from '@/data/fitness';
 import { classTemplates, clubById, trainers } from '@/data/mock';
-import { getLang, languageName } from '@/i18n';
+import { getLang, languageName, pluralForm } from '@/i18n';
 
 /* ---------- types ---------- */
 
@@ -317,13 +317,13 @@ function formatTechnique(e: Exercise): string {
 export type BodyArea = 'back' | 'legs' | 'glutes' | 'abs' | 'chest' | 'shoulders' | 'arms';
 
 const areaPatterns: Record<BodyArea, RegExp> = {
-  back: /спин|поясниц|осанк|сутул|широчайш|back|posture|арқа|бел(і|ім)/,
-  legs: /ног(а|и|у|ам|ах)?\b|бедр|икр|квадрицепс|legs?\b|аяқ/,
+  back: /спин|поясниц|осанк|сутул|широчайш|back|posture|арқа/,
+  legs: /(^|[^а-яё])ног(и|у|ам|ах|ами)?([^а-яё]|$)|бедр|икр|квадрицепс|legs?([^a-z]|$)|аяқ/,
   glutes: /ягодиц|попу|попа|glute|бөксе/,
-  abs: /пресс|живот|кор\b|кубик|abs\b|core|іш/,
-  chest: /груд|chest|кеуде/,
+  abs: /пресс|живот|(^|[^а-яё])кор([^а-яё]|$)|кубик|abs([^a-z]|$)|core/,
+  chest: /(^|[^а-яё])груд|chest|кеуде/,
   shoulders: /плеч|дельт|shoulder|иық/,
-  arms: /рук(и|у|ам)?\b|бицепс|трицепс|arms?\b|қол/,
+  arms: /(^|[^а-яё])рук(и|у|ам|ами)?([^а-яё]|$)|бицепс|трицепс|arms?([^a-z]|$)|қол/,
 };
 
 const areaTitles: Record<BodyArea, string> = {
@@ -365,7 +365,7 @@ function normalize(text: string) {
 }
 
 const PAIN = /бол(ь|и|ит|ят|ело)|травм|ноет|ныть|защемл|грыж|протруз|сколиоз|hurt|pain|injur|ауыр/;
-const PLAN = /план|программ|расписан|тренировки?\s+на\s+недел|plan\b|program|жоспар|бағдарлама/;
+const PLAN = /план|программ|расписан|тренировки?\s+на\s+недел|plan|program|жоспар|бағдарлама/;
 const STRENGTHEN = /укреп|накач|прокач|развить|развивать|сильн|подтян|нарастить|strengthen|build|tone|нығайт/;
 const TECHNIQUE = /как (делать|правильно|выполнять)|техник|how to|қалай/;
 
@@ -403,52 +403,166 @@ function levelName(l: FitnessProfile['level']) {
   return levels.find((x) => x.key === l)?.title ?? l;
 }
 
-export function localAnswer(ctx: CoachContext, question: string, history: ChatMessage[] = []): string {
-  const q = normalize(question);
+/* ---------- offline "thinking" answers ---------- */
+
+type Topic = 'nutrition' | 'protein' | 'supplements' | 'recovery' | 'cardio' | 'progress' | 'frequency' | 'water' | 'motivation' | 'dry' | 'warmup' | 'greeting';
+
+// JS `\b` treats Cyrillic as non-word characters, so stems are matched without it.
+const topicPatterns: Record<Topic, RegExp> = {
+  protein: /белк|белок|протеин(?!ов)|protein|ақуыз/,
+  nutrition: /(^|[^а-яё])есть([^а-яё]|$)|ем |съесть|кушать|питани|рацион|еда|еды|меню|калори|диет|завтрак|обед|ужин|перекус|продукт|nutrition|diet|meal|food|eat|тамақ/,
+  supplements: /креатин|bcaa|добавк|витамин|омега|гейнер|предтрен|спортпит|supplement|creatine/,
+  recovery: /сон|спать|высып|восстанов|отдых|крепатур|болят мышцы|мышцы болят|устал|recover|sleep|rest day|демалыс|ұйқы/,
+  cardio: /кардио|бег|бегать|дорожк|велосипед|сжечь|жир|пульс|cardio|run/,
+  progress: /прогресс|плато|стоит вес|не расту|не худею|не уходит|результат|progress|plateau|stuck/,
+  frequency: /сколько раз|как часто|сколько трен|каждый день|частота|how often|times a week/,
+  water: /вод[аыу]|пить|water|hydrat|су ішу/,
+  motivation: /мотивац|лень|не хочу|бросил|сорвал|motivat|lazy/,
+  dry: /сух|рельеф|lean|cut|shred/,
+  warmup: /разминк|заминк|растяж|warm.?up|stretch/,
+  greeting: /^(привет|здравств|салем|сәлем|hi|hello)/,
+};
+
+function gramsFor(proteinG: number, per100: number) {
+  return Math.max(50, Math.round(((proteinG / per100) * 100) / 10) * 10);
+}
+
+function proteinWhy(ctx: CoachContext) {
+  const targets = dailyTargets({ ...ctx.profile, weightKg: ctx.currentWeightKg });
+  const perKg = Math.round((targets.protein / ctx.currentWeightKg) * 10) / 10;
+  return { targets, perKg };
+}
+
+/** A day of food that actually adds up to the user's protein target. */
+function proteinDay(ctx: CoachContext): string {
+  const { targets, perKg } = proteinWhy(ctx);
+  const P = targets.protein;
+  const b = Math.round(P * 0.25);
+  const l = Math.round(P * 0.3);
+  const s = Math.round(P * 0.15);
+  const d = P - b - l - s;
+  const eggs = Math.min(4, Math.max(2, Math.round((b * 0.5) / 6.3)));
+  const cottage = gramsFor(b - eggs * 6.3, 17);
+  const chicken = gramsFor(l, 23);
+  const yogurt = gramsFor(s, 10);
+  const fish = gramsFor(d, 20);
+  const g = goalByKey(ctx.profile.goal);
+  return [
+    `Считаю под вас: ${ctx.currentWeightKg} кг × ${perKg} г/кг при цели «${g.title}» = около ${P} г белка в день. Проще всего набрать это за 4 приёма пищи примерно по ${Math.round(P / 4)} г:`,
+    `• Завтрак (~${b} г): ${eggs} яйца и ${cottage} г творога 5%, плюс овсянка.`,
+    `• Обед (~${l} г): ${chicken} г куриной грудки или говядины, рис или гречка, овощи.`,
+    `• Перекус (~${s} г): ${yogurt} г греческого йогурта или порция протеина (24 г).`,
+    `• Ужин (~${d} г): ${fish} г рыбы или курицы, овощи.`,
+    `Калорийность дня держите около ${targets.calories} ккал: ${ctx.profile.goal === 'lose' ? 'гарнир в ужин можно убрать' : ctx.profile.goal === 'gain' ? 'добавьте к каждому приёму крупу и орехи' : 'гарнир оставляйте в обед, в ужин меньше'}.`,
+    'Если сложно добирать едой, один шейк протеина в день закрывает 20–25% нормы.',
+  ].join('\n');
+}
+
+function nutritionAnswer(ctx: CoachContext, q: string): string {
+  const { targets } = proteinWhy(ctx);
+  if (/после трен|after/.test(q)) {
+    return `После тренировки в течение 1–2 часов нужны белок и углеводы. Для вас это примерно ${Math.round(targets.protein * 0.25)} г белка:\n• курица 150 г с рисом;\n• или творог 200 г с бананом;\n• или шейк протеина и фрукт.\nВода: выпейте 0,5 л в течение часа.`;
+  }
+  if (/до трен|перед трен|before/.test(q)) {
+    return 'За 1,5–2 часа до тренировки: сложные углеводы и немного белка, например овсянка с йогуртом или рис с курицей. За 30–40 минут, если голодны: банан. Жирное и много клетчатки перед залом лучше не есть.';
+  }
+  return proteinDay(ctx);
+}
+
+/** One proactive hint based on the user's current state. */
+function nudge(ctx: CoachContext): string | null {
+  const t = ctx.weightTrend;
+  if (ctx.visitsThisWeek < Math.min(2, ctx.profile.daysPerWeek)) return `Подсказка: на этой неделе у вас ${ctx.visitsThisWeek} из ${ctx.profile.daysPerWeek} тренировок. Запишитесь на занятие во вкладке «Занятия», так проще не пропустить.`;
+  if (t.length >= 3) {
+    const delta = t[t.length - 1].kg - t[t.length - 3].kg;
+    if (ctx.profile.goal === 'lose' && delta >= 0) return 'Подсказка: вес за последние недели не снижается. Проверьте калорийность и добавьте 2 000 шагов в день.';
+    if (ctx.profile.goal === 'gain' && delta <= 0) return 'Подсказка: вес не растёт. Добавьте 200–300 ккал в день, например орехи или второй шейк.';
+  }
+  return null;
+}
+
+function withNudge(ctx: CoachContext, text: string) {
+  const n = nudge(ctx);
+  return n ? `${text}\n\n${n}` : text;
+}
+
+function topicAnswer(ctx: CoachContext, topic: Topic, q: string): string | null {
   const g = goalByKey(ctx.profile.goal);
   const targets = dailyTargets({ ...ctx.profile, weightKg: ctx.currentWeightKg });
+  switch (topic) {
+    case 'protein':
+    case 'nutrition':
+      return nutritionAnswer(ctx, q);
+    case 'supplements':
+      return `Добавки только дополняют еду, но три действительно работают:\n• Креатин 3–5 г в день каждый день: сила и объём, безопасен для здоровых людей.\n• Протеин, если не добираете ${targets.protein} г белка едой.\n• Омега-3 и витамин D, если мало рыбы и солнца.\nBCAA при достаточном белке почти ничего не дают. Предтренировочные комплексы с кофеином не пейте после 17:00, иначе испортите сон. Всё это есть в магазине приложения.`;
+    case 'recovery':
+      return `Мышцы растут на отдыхе, а не в зале:\n• Сон 7–9 часов, это главный фактор.\n• Между тренировками одной группы мышц 48 часов.\n• Крепатура на 1–2 день нормальна: помогает лёгкая активность, прогулка, растяжка.\n• Если усталость держится неделю, сделайте разгрузочную неделю: те же упражнения с весом на 40% меньше.\nПри ${ctx.profile.daysPerWeek} тренировках в неделю оставляйте минимум один полный день отдыха подряд.`;
+    case 'cardio':
+      return `Для цели «${g.title}» кардио работает так:\n• ${ctx.profile.goal === 'lose' ? '3–4 раза по 30–45 минут, пульс 120–140, плюс 8 000+ шагов' : ctx.profile.goal === 'gain' ? '1–2 раза по 20–30 минут, чтобы не мешать набору' : '2 раза по 30 минут'}.\n• Интервалы (30 сек быстро / 90 сек спокойно) эффективнее по времени, но не чаще 2 раз в неделю.\n• Кардио лучше после силовой или в отдельный день.\nЖир уходит в первую очередь от питания: держите ${targets.calories} ккал.`;
+    case 'progress':
+      return `Разберём, почему прогресс может стоять:\n1. Нагрузка не растёт: каждую неделю +1 повтор или +2,5 кг.\n2. Питание: ${ctx.profile.goal === 'gain' ? 'для набора нужен профицит, а не норма' : `калорийность ${targets.calories} ккал и белок ${targets.protein} г`}.\n3. Сон меньше 7 часов тормозит всё.\n4. Регулярность: у вас ${ctx.visitsThisWeek} ${pluralForm('ru', ctx.visitsThisWeek, 'workouts_pl')} на этой неделе при плане ${ctx.profile.daysPerWeek}.\nНачните с того пункта, где слабее всего.`;
+    case 'frequency':
+      return `Для вашего уровня «${levelName(ctx.profile.level)}» и цели «${g.title}» оптимально ${ctx.profile.level === 'beginner' ? '3' : '3–5'} тренировок в неделю. Каждую группу мышц тренируйте 2 раза в неделю. Вы указали ${ctx.profile.daysPerWeek}, это ${ctx.profile.daysPerWeek >= 3 ? 'хорошая частота' : 'маловато для заметного результата, попробуйте 3'}.`;
+    case 'water':
+      return `Ваша норма воды около ${targets.water} л в день (33 мл на кг). В дни тренировок добавьте ещё 0,5–1 л. Признак, что пьёте достаточно: светлая моча и нет жажды во время тренировки.`;
+    case 'motivation':
+      return `Мотивация приходит после действия, а не до него. Что помогает:\n• Записаться на занятие заранее: пропускать сложнее.\n• Маленькая цель на неделю: ${ctx.profile.daysPerWeek} тренировки, не больше.\n• Смотреть на прогресс: график веса и посещений в разделе «Прогресс».\n• Правило двух дней: можно пропустить один день, но не два подряд.`;
+    case 'dry':
+      return `Сухое тело = сохраняем мышцы, убираем жир.\n• Силовые 3 раза в неделю с тяжёлыми базовыми упражнениями, повторения 6–10.\n• Дефицит 300–400 ккал: для вас около ${Math.round((targets.calories - (ctx.profile.goal === 'lose' ? 0 : 400)) / 10) * 10} ккал.\n• Белок ${Math.round(ctx.currentWeightKg * 2)} г в день.\n• 2 кардио по 30–40 минут или интервалы.\nНапишите «составь план для сухого тела», и я перестрою неделю.`;
+    case 'warmup': {
+      const m = exById('mobility')!;
+      return `Разминка: 5–7 минут лёгкого кардио и суставная гимнастика, затем 1–2 подхода первого упражнения с лёгким весом.\nЗаминка:\n${m.steps.map((s) => `• ${s}`).join('\n')}`;
+    }
+    case 'greeting':
+      return `Привет, ${ctx.name}! Вижу цель «${g.title}», вес ${ctx.currentWeightKg} кг и ${ctx.profile.daysPerWeek} тренировки в неделю. Спросите про питание, упражнения для любой зоны, технику или попросите составить план.`;
+  }
+  return null;
+}
+
+export function localAnswer(ctx: CoachContext, question: string, history: ChatMessage[] = []): string {
+  const q = normalize(question);
   const areas = areasIn(q);
   const pain = PAIN.test(q);
 
-  // 1) Body area: "укрепить спину", "болит поясница", "что делать для пресса"
-  if (areas.length) return areaRoutineText(ctx, areas, pain);
-
-  // 2) Pain without an area: ask where, don't guess
+  if (areas.length) return withNudge(ctx, areaRoutineText(ctx, areas, pain));
   if (pain) {
     return 'Через боль тренироваться нельзя. Напишите, что именно болит: спина, колено, плечо или другое, и я подберу щадящие упражнения. Если боль острая, есть онемение или она держится дольше 2–3 недель, сначала покажитесь врачу.';
   }
 
-  // 3) Technique of a known exercise
   const exercise = findExercise(q);
-  if (exercise && (TECHNIQUE.test(q) || q.length < 40)) return formatTechnique(exercise);
+  if (exercise && TECHNIQUE.test(q)) return formatTechnique(exercise);
 
-  // 4) "strengthen" without area: use the last area mentioned in the conversation
+  // Pick the topic with the earliest match in the sentence; ties resolved by list order.
+  const hits = (Object.keys(topicPatterns) as Topic[])
+    .map((tp) => ({ tp, at: q.search(topicPatterns[tp]) }))
+    .filter((h) => h.at >= 0)
+    .sort((a, b) => a.at - b.at);
+  // Protein beats generic nutrition when both appear.
+  const topic = hits.find((h) => h.tp === 'protein')?.tp ?? hits[0]?.tp;
+  if (topic) {
+    const text = topicAnswer(ctx, topic, q);
+    if (text) return topic === 'greeting' ? text : withNudge(ctx, text);
+  }
+
   if (STRENGTHEN.test(q)) {
     const recent = history.slice(-6).reverse().flatMap((m) => (m.role === 'user' ? areasIn(m.text) : []));
     if (recent.length) return areaRoutineText(ctx, [recent[0]], false);
     return 'Какую зону хотите укрепить: спину, ноги, ягодицы, пресс, грудь, плечи или руки? Подберу 4–6 упражнений под ваш уровень.';
   }
-
-  if (/калори|питани|\bесть\b|\bеда|белок|диет|ужин|завтрак|перекус|nutrition|diet|protein|тамақ/.test(q)) {
-    return `Ориентир для цели «${g.title}»: ${targets.calories} ккал и ${targets.protein} г белка в день, вода ${targets.water} л.\n• Белок в каждом приёме пищи: мясо, рыба, яйца, творог, протеин.\n• После тренировки в течение 1–2 часов: белок 25–40 г и углеводы, например курица с рисом или протеин с бананом.\n• ${g.tip}`;
-  }
-  if (/сух|рельеф|жир|lean|cut/.test(q)) {
-    return `Сухое тело = сохраняем мышцы, убираем жир.\n• Силовые 3 раза в неделю с тяжёлыми базовыми упражнениями, повторения 6–10.\n• Дефицит 300–400 ккал: для вас около ${Math.round((targets.calories - (ctx.profile.goal === 'lose' ? 0 : 400)) / 10) * 10} ккал.\n• Белок ${Math.round(ctx.currentWeightKg * 2)} г в день.\n• 2 кардио по 30–40 минут или интервалы.\nНапишите «составь план для сухого тела», и я перестрою неделю.`;
-  }
-  if (/вес|похуд|набра|прогресс|плато|weight|progress/.test(q)) {
-    const trend = ctx.weightTrend;
-    const delta = trend.length > 1 ? (trend[trend.length - 1].kg - trend[0].kg).toFixed(1) : '0';
-    return `Сейчас ${ctx.currentWeightKg} кг, за период наблюдения изменение ${delta} кг.${ctx.profile.targetWeightKg ? ` До цели ${Math.abs(ctx.currentWeightKg - ctx.profile.targetWeightKg).toFixed(1)} кг.` : ''}\n• Здоровый темп: 0,3–0,7 кг в неделю.\n• Прогресс в зале: каждую неделю +1 повторение или +2,5 кг в базовых упражнениях.\n• Сон 7–9 часов и белок ${targets.protein} г в день.\n• ${g.tip}`;
-  }
-  if (/разминк|заминк|растяж|warm|stretch/.test(q)) {
-    const m = exById('mobility')!;
-    return `Разминка: 5–7 минут лёгкого кардио и суставная гимнастика, затем 1–2 подхода первого упражнения с лёгким весом.\nЗаминка:\n${m.steps.map((s) => `• ${s}`).join('\n')}`;
-  }
-  if (/привет|здравств|салем|сәлем|\bhi\b|hello/.test(q)) {
-    return `Привет, ${ctx.name}! Вижу цель «${g.title}», вес ${ctx.currentWeightKg} кг и ${ctx.profile.daysPerWeek} тренировки в неделю. Могу составить план, подобрать упражнения для любой зоны (например «укрепить спину») или объяснить технику.`;
-  }
   if (exercise) return formatTechnique(exercise);
-  return `Уточните, что нужно, и я помогу:\n• «Составь план на неделю»\n• «Упражнения для спины» (или ног, пресса, ягодиц)\n• «Как делать становую тягу»\n• «Что есть после тренировки»\nВаша цель «${g.title}»: ${g.tip}`;
+
+  // Follow-up questions ("а сколько?", "а если...") inherit the previous topic.
+  const prevUser = [...history].reverse().find((m) => m.role === 'user' && m.text !== question);
+  if (prevUser && q.split(/\s+/).length <= 6) {
+    const prev = normalize(prevUser.text);
+    const prevTopic = (Object.keys(topicPatterns) as Topic[]).find((tp) => topicPatterns[tp].test(prev));
+    if (prevTopic) {
+      const text = topicAnswer(ctx, prevTopic, `${prev} ${q}`);
+      if (text) return text;
+    }
+  }
+
+  return `Не до конца понял вопрос. Я могу:\n• рассчитать питание и белок под ваш вес;\n• подобрать упражнения для спины, ног, пресса и других зон;\n• объяснить технику, например «как делать становую тягу»;\n• составить план на неделю.\nПереформулируйте, и я отвечу подробно.`;
 }
 
 /** Areas the user has been talking about recently, used to focus a generated plan. */
