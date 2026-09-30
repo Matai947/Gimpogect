@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile } from '@/data/fitness';
+import { members, type Member } from '@/data/members';
 import { addDays, planById, toISODate } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, productById } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
@@ -27,6 +28,8 @@ export type Visit = { date: string; clubId: string };
 
 export type CartItem = { key: string; productId: string; option?: string; qty: number };
 
+export type OrderStatus = 'Готовится' | 'Готов к выдаче' | 'Выдан';
+
 export type Order = {
   id: string;
   date: string;
@@ -35,8 +38,12 @@ export type Order = {
   discount: number;
   total: number;
   clubId: string;
-  status: 'Готовится' | 'Готов к выдаче' | 'Выдан';
+  status: OrderStatus;
+  memberId?: string;
 };
+
+export type StaffSession = { name: string; clubId: string; since: string };
+export type CheckinEntry = { ts: number; memberId: string; name: string; ok: boolean; reason?: string; clubId: string };
 
 type State = {
   user: User | null;
@@ -51,6 +58,10 @@ type State = {
   coachPlan: WeekPlan | null;
   coachApiKey: string | null;
   lang: Lang;
+  staff: StaffSession | null;
+  staffLog: CheckinEntry[];
+  attendance: Record<string, string[]>; // sessionId -> memberIds marked present
+  orderStatusOverrides: Record<string, OrderStatus>;
   hydrated: boolean;
 };
 
@@ -78,6 +89,12 @@ type Actions = {
   setCoachPlan: (plan: WeekPlan | null) => void;
   setCoachApiKey: (key: string | null) => void;
   setLang: (lang: Lang) => void;
+  staffLogin: (name: string, clubId: string) => void;
+  staffLogout: () => void;
+  setStaffClub: (clubId: string) => void;
+  logCheckin: (entry: Omit<CheckinEntry, 'ts'>) => void;
+  toggleAttendance: (sessionId: string, memberId: string) => void;
+  setOrderStatus: (orderId: string, status: OrderStatus) => void;
 };
 
 const STORAGE_KEY = 'gym-project-state-v1';
@@ -95,6 +112,10 @@ const initialState: State = {
   coachPlan: null,
   coachApiKey: null,
   lang: 'ru',
+  staff: null,
+  staffLog: [],
+  attendance: {},
+  orderStatusOverrides: {},
   hydrated: false,
 };
 
@@ -175,6 +196,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setLang = useCallback((lang: Lang) => {
     setCurrentLang(lang);
     setState((s) => ({ ...s, lang }));
+  }, []);
+
+  /* ---------- staff mode ---------- */
+
+  const staffLogin = useCallback((name: string, clubId: string) => {
+    setState((s) => ({ ...s, staff: { name, clubId, since: toISODate(new Date()) } }));
+  }, []);
+
+  const staffLogout = useCallback(() => setState((s) => ({ ...s, staff: null })), []);
+
+  const setStaffClub = useCallback((clubId: string) => setState((s) => (s.staff ? { ...s, staff: { ...s.staff, clubId } } : s)), []);
+
+  const logCheckin = useCallback((entry: Omit<CheckinEntry, 'ts'>) => {
+    const ts = Date.now();
+    const today = toISODate(new Date());
+    setState((s) => {
+      // A successful check-in of the device user also counts as their visit.
+      const isSelf = s.user && entry.memberId === s.user.id && entry.ok;
+      const visits = isSelf && !s.visits.some((v) => v.date === today) ? [{ date: today, clubId: entry.clubId }, ...s.visits] : s.visits;
+      return { ...s, visits, staffLog: [{ ...entry, ts }, ...s.staffLog].slice(0, 200) };
+    });
+  }, []);
+
+  const toggleAttendance = useCallback((sessionId: string, memberId: string) => {
+    setState((s) => {
+      const cur = s.attendance[sessionId] ?? [];
+      const next = cur.includes(memberId) ? cur.filter((m) => m !== memberId) : [...cur, memberId];
+      return { ...s, attendance: { ...s.attendance, [sessionId]: next } };
+    });
+  }, []);
+
+  const setOrderStatus = useCallback((orderId: string, status: OrderStatus) => {
+    setState((s) => ({
+      ...s,
+      orders: s.orders.map((o) => (o.id === orderId ? { ...o, status } : o)),
+      orderStatusOverrides: { ...s.orderStatusOverrides, [orderId]: status },
+    }));
   }, []);
 
   /* ---------- AI coach ---------- */
@@ -317,11 +375,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         total: subtotal - discount,
         clubId,
         status: 'Готовится',
+        memberId: state.user?.id,
       };
       setState((s) => ({ ...s, cart: [], orders: [order, ...s.orders] }));
       return order;
     },
-    [state.cart, state.membership]
+    [state.cart, state.membership, state.user?.id]
   );
 
   const value = useMemo<State & Actions>(
@@ -350,8 +409,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCoachPlan,
       setCoachApiKey,
       setLang,
+      staffLogin,
+      staffLogout,
+      setStaffClub,
+      logCheckin,
+      toggleAttendance,
+      setOrderStatus,
     }),
-    [state, login, logout, updateUser, completeOnboarding, buyPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang]
+    [state, login, logout, updateUser, completeOnboarding, buyPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, setStaffClub, logCheckin, toggleAttendance, setOrderStatus]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -431,6 +496,71 @@ export function useVisitStats() {
       dates,
     };
   }, [visits]);
+}
+
+/** A member as the reception sees them: mock roster merged with the device user. */
+export type MemberInfo = {
+  id: string;
+  name: string;
+  phone: string;
+  planId?: string;
+  planName?: string;
+  endDate?: string;
+  daysLeft: number;
+  active: boolean;
+  frozen: boolean;
+  dayOnly: boolean;
+  homeClubId: string;
+  visitsThisMonth: number;
+  note?: string;
+  isSelf: boolean;
+};
+
+export function useMembers() {
+  const { user, membership, visits } = useApp();
+  return useMemo(() => {
+    const today = new Date();
+    const todayIso = toISODate(today);
+    const build = (m: Member, isSelf: boolean): MemberInfo => {
+      const plan = m.planId ? planById(m.planId) : undefined;
+      const daysLeft = m.endDate ? Math.ceil((new Date(m.endDate).getTime() - today.getTime()) / 86400000) : 0;
+      return {
+        id: m.id,
+        name: m.name,
+        phone: m.phone,
+        planId: m.planId,
+        planName: plan?.name,
+        endDate: m.endDate,
+        daysLeft,
+        active: !!m.endDate && daysLeft > 0,
+        frozen: !!m.frozenUntil && m.frozenUntil >= todayIso,
+        dayOnly: !!plan?.dayOnly,
+        homeClubId: m.homeClubId,
+        visitsThisMonth: m.visitsThisMonth,
+        note: m.note,
+        isSelf,
+      };
+    };
+    const list = members.map((m) => build(m, false));
+    if (user) {
+      const monthAgo = toISODate(addDays(today, -30));
+      const self: Member = {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        planId: membership?.planId,
+        endDate: membership?.endDate,
+        frozenUntil: membership?.frozenUntil,
+        homeClubId: user.homeClubId,
+        visitsThisMonth: visits.filter((v) => v.date >= monthAgo).length,
+      };
+      list.unshift(build(self, true));
+    }
+    return {
+      list,
+      byId: (id: string) => list.find((m) => m.id === id),
+    };
+  }, [user, membership, visits]);
 }
 
 /** Fitness profile with derived metrics; null until onboarding is done. */

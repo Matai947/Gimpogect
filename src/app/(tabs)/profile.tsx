@@ -19,7 +19,7 @@ const achievements = [
 ] as const;
 
 export default function ProfileScreen() {
-  const { user, logout, updateUser, favorites, orders } = useApp();
+  const { user, logout, updateUser, favorites, orders, staff } = useApp();
   const { t, td, lang } = useI18n();
   const membership = useMembershipInfo();
   const stats = useVisitStats();
@@ -156,6 +156,8 @@ export default function ProfileScreen() {
           <ListRow icon="chatbubble-ellipses-outline" title={t('support')} subtitle={t('support_sub')} onPress={() => Alert.alert(t('support'), t('support_alert'))} />
           <Divider />
           <ListRow icon="document-text-outline" title={t('rules')} onPress={() => Alert.alert(t('documents'), t('rules_alert'))} />
+          <Divider />
+          <ListRow icon="id-card-outline" title={t('staff_mode_row')} subtitle={t('staff_mode_row_sub')} onPress={() => router.push(staff ? '/staff' : '/staff-login')} />
           <Divider />
           <ListRow icon="log-out-outline" title={t('logout')} onPress={confirmLogout} danger right={<View />} />
         </Card>

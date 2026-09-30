@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 
 import { Badge, Card, Divider, EmptyState, Row, Screen, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
@@ -13,7 +14,8 @@ const statusColor = { Готовится: Colors.warning, 'Готов к выд�
 const statusKey = { Готовится: 'st_preparing', 'Готов к выдаче': 'st_ready', Выдан: 'st_done' } as const;
 
 export default function OrdersScreen() {
-  const { orders } = useApp();
+  const { orders: rawOrders, orderStatusOverrides } = useApp();
+  const orders = rawOrders.map((o) => ({ ...o, status: orderStatusOverrides[o.id] ?? o.status }));
   const { t } = useI18n();
 
   if (orders.length === 0) {
@@ -68,12 +70,23 @@ export default function OrdersScreen() {
                 {formatPrice(o.total)}
               </T>
             </Row>
-            <Row gap={6}>
-              <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} />
-              <T type="small" color={Colors.textMuted}>
-                {t('show_id')}
-              </T>
-            </Row>
+            {o.status !== 'Выдан' ? (
+              <View style={{ alignItems: 'center', gap: 6, paddingVertical: Spacing.two }}>
+                <View style={{ backgroundColor: '#FFFFFF', padding: 10, borderRadius: 12 }}>
+                  <QRCode value={JSON.stringify({ v: 1, t: 'order', id: o.id })} size={120} backgroundColor="#FFFFFF" color="#0B0F14" />
+                </View>
+                <T type="small" color={Colors.textMuted}>
+                  {t('order_qr_hint')}
+                </T>
+              </View>
+            ) : (
+              <Row gap={6}>
+                <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} />
+                <T type="small" color={Colors.textMuted}>
+                  {t('show_id')}
+                </T>
+              </Row>
+            )}
           </Card>
         ))}
       </View>

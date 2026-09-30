@@ -135,6 +135,14 @@ export default function AuthScreen() {
             <T type="small" color={Colors.textMuted} style={{ textAlign: 'center', marginTop: Spacing.two }}>
               {t('auth_terms')}
             </T>
+            <Pressable onPress={() => router.push('/staff-login')} hitSlop={8} style={{ alignSelf: 'center' }}>
+              <Row gap={6}>
+                <Ionicons name="id-card-outline" size={14} color={Colors.textSecondary} />
+                <T type="small" color={Colors.textSecondary} style={{ fontWeight: '700' }}>
+                  {t('staff_entry')}
+                </T>
+              </Row>
+            </Pressable>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>

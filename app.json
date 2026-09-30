@@ -38,6 +38,13 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 120
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Gym Project использует камеру для сканирования QR-кодов участников и заказов.",
+          "barcodeScannerEnabled": true
+        }
       ]
     ],
     "experiments": {

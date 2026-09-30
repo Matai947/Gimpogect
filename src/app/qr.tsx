@@ -35,7 +35,7 @@ export default function QrScreen() {
   }, []);
 
   // Rotating nonce: a real backend would sign this payload and validate the timestamp.
-  const payload = JSON.stringify({ v: 1, uid: user?.id ?? 'guest', n: tick });
+  const payload = JSON.stringify({ v: 1, t: 'member', uid: user?.id ?? 'guest', n: tick });
 
   const simulate = () => {
     if (!membership.active || membership.frozen) return;
