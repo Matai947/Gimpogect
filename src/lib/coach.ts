@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { exercises, findExercise, type Exercise } from '@/data/exercises';
 import { dailyTargets, goalByKey, levels, type FitnessProfile } from '@/data/fitness';
 import { classTemplates, clubById, trainers } from '@/data/mock';
+import { getLang, languageName } from '@/i18n';
 
 /* ---------- types ---------- */
 
@@ -57,6 +58,8 @@ const levelTitle = (k: FitnessProfile['level']) => levels.find((l) => l.key === 
 
 export function buildSystemPrompt(ctx: CoachContext): string {
   const g = goalByKey(ctx.profile.goal);
+  const lang = getLang();
+  const langRule = lang === 'ru' ? 'Общаешься на русском' : `Клиент выбрал ${languageName(lang)} язык интерфейса: отвечай на ${languageName(lang)} языке, включая названия дней и упражнений в плане`;
   const targets = dailyTargets({ ...ctx.profile, weightKg: ctx.currentWeightKg });
   const club = clubById(ctx.homeClubId);
   const trend = ctx.weightTrend.slice(-6).map((w) => `${w.date}: ${w.kg} кг`).join(', ');
@@ -64,7 +67,7 @@ export function buildSystemPrompt(ctx: CoachContext): string {
   const coaches = trainers.map((t) => `${t.name} — ${t.specialties.join('/')}`).join('; ');
   const lib = exercises.map((e) => e.name).join(', ');
 
-  return `Ты — ИИ-тренер приложения фитнес-сети Gym Project. Общаешься на русском, дружелюбно и по делу, как опытный персональный тренер. Отвечай коротко: 3–8 предложений или компактный список. Без markdown-заголовков и таблиц; для списков используй строки, начинающиеся с «•». Жирный текст не используй.
+  return `Ты — ИИ-тренер приложения фитнес-сети Gym Project. ${langRule}, дружелюбно и по делу, как опытный персональный тренер. Отвечай коротко: 3–8 предложений или компактный список. Без markdown-заголовков и таблиц; для списков используй строки, начинающиеся с «•». Жирный текст не используй.
 
 Клиент: ${ctx.name}, ${ctx.profile.gender === 'male' ? 'мужчина' : 'женщина'}, ${ctx.profile.age} лет, рост ${ctx.profile.heightCm} см, вес ${ctx.currentWeightKg} кг${ctx.profile.targetWeightKg ? `, целевой вес ${ctx.profile.targetWeightKg} кг` : ''}.
 Цель: ${g.title} (${g.subtitle}). Уровень: ${levelTitle(ctx.profile.level)}. Готов тренироваться ${ctx.profile.daysPerWeek} раз в неделю.

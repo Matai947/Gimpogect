@@ -6,10 +6,11 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Badge, Card, EmptyState, Row, Screen, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubById, formatDateHuman, sessionById, sessionStart, trainerById } from '@/data/mock';
-import { useApp } from '@/store/app-context';
+import { useApp, useI18n } from '@/store/app-context';
 
 export default function BookingsScreen() {
   const { bookings, cancelBooking } = useApp();
+  const { t, td } = useI18n();
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
 
   const { upcoming, past } = useMemo(() => {
@@ -26,10 +27,10 @@ export default function BookingsScreen() {
   return (
     <Screen edges={[]}>
       <View style={styles.tabs}>
-        {(['upcoming', 'past'] as const).map((t) => (
-          <Pressable key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabActive]}>
-            <T type="label" color={tab === t ? Colors.onAccent : Colors.textSecondary}>
-              {t === 'upcoming' ? `Предстоящие (${upcoming.length})` : `Прошедшие (${past.length})`}
+        {(['upcoming', 'past'] as const).map((tb) => (
+          <Pressable key={tb} onPress={() => setTab(tb)} style={[styles.tab, tab === tb && styles.tabActive]}>
+            <T type="label" color={tab === tb ? Colors.onAccent : Colors.textSecondary}>
+              {tb === 'upcoming' ? t('upcoming_n', { n: upcoming.length }) : t('past_n', { n: past.length })}
             </T>
           </Pressable>
         ))}
@@ -39,9 +40,9 @@ export default function BookingsScreen() {
         {list.length === 0 ? (
           <EmptyState
             icon="calendar-outline"
-            title={tab === 'upcoming' ? 'Нет предстоящих записей' : 'История пуста'}
-            subtitle={tab === 'upcoming' ? 'Выберите групповое занятие в расписании' : 'Здесь появятся посещённые занятия'}
-            action={tab === 'upcoming' ? 'К расписанию' : undefined}
+            title={tab === 'upcoming' ? t('no_upcoming') : t('history_empty')}
+            subtitle={tab === 'upcoming' ? t('no_upcoming_sub') : t('history_sub')}
+            action={tab === 'upcoming' ? t('to_schedule') : undefined}
             onAction={() => router.push('/(tabs)/schedule')}
           />
         ) : (
@@ -53,20 +54,20 @@ export default function BookingsScreen() {
                 <Row style={{ justifyContent: 'space-between' }}>
                   <Row gap={8}>
                     <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: s.color }} />
-                    <T type="subheading">{s.title}</T>
+                    <T type="subheading">{td(s.title)}</T>
                   </Row>
-                  <Badge label={s.category} color={s.color} />
+                  <Badge label={td(s.category)} color={s.color} />
                 </Row>
                 <Row gap={6}>
                   <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
                   <T type="small" color={Colors.textSecondary}>
-                    {formatDateHuman(s.date)} • {s.time} • {s.durationMin} мин
+                    {formatDateHuman(s.date)} • {s.time} • {s.durationMin} {t('min')}
                   </T>
                 </Row>
                 <Row gap={6}>
                   <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
                   <T type="small" color={Colors.textSecondary}>
-                    {club?.name} • {s.room}
+                    {club?.name} • {td(s.room)}
                   </T>
                 </Row>
                 <Row gap={6}>
@@ -78,15 +79,15 @@ export default function BookingsScreen() {
                 {tab === 'upcoming' ? (
                   <Pressable
                     onPress={() =>
-                      Alert.alert('Отменить запись?', `${s.title}, ${formatDateHuman(s.date).toLowerCase()} в ${s.time}`, [
-                        { text: 'Оставить', style: 'cancel' },
-                        { text: 'Отменить', style: 'destructive', onPress: () => cancelBooking(s.sessionId) },
+                      Alert.alert(t('cancel_q'), `${td(s.title)}, ${formatDateHuman(s.date).toLowerCase()} ${s.time}`, [
+                        { text: t('keep'), style: 'cancel' },
+                        { text: t('cancel_booking'), style: 'destructive', onPress: () => cancelBooking(s.sessionId) },
                       ])
                     }
                     style={styles.cancel}>
                     <Ionicons name="close-circle-outline" size={16} color={Colors.danger} />
                     <T type="small" color={Colors.danger} style={{ fontWeight: '700' }}>
-                      Отменить запись
+                      {t('cancel_booking')}
                     </T>
                   </Pressable>
                 ) : null}

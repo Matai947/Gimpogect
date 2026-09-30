@@ -8,26 +8,28 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ProductCard } from '@/components/product-card';
 import { Badge, Button, Card, IconButton, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { clubById, clubs, formatDateHuman, formatDateLong, news, occupancyLabel, sessionById, sessionStart, trainerById, trainers } from '@/data/mock';
+import { goalTip, goalTitle } from '@/data/fitness';
+import { clubById, clubHours, clubs, formatDateHuman, formatDateLong, news, occupancyLabel, sessionById, sessionStart, trainerById, trainers } from '@/data/mock';
 import { products } from '@/data/shop';
-import { useApp, useFitnessProfile, useMembershipInfo, useVisitStats } from '@/store/app-context';
+import { useApp, useFitnessProfile, useI18n, useMembershipInfo, useVisitStats } from '@/store/app-context';
 
 const shopHits = products.filter((p) => p.badge === 'Хит' || p.badge === 'Новинка').slice(0, 6);
 
-const quickActions = [
-  { icon: 'calendar-outline', label: 'Записаться', href: '/(tabs)/schedule' },
-  { icon: 'sparkles-outline', label: 'ИИ-тренер', href: '/coach' },
-  { icon: 'people-outline', label: 'Тренеры', href: '/trainers' },
-  { icon: 'card-outline', label: 'Абонемент', href: '/membership' },
-] as const;
-
 export default function HomeScreen() {
   const { user, bookings, addToCart, coachPlan } = useApp();
+  const { t, tp, td } = useI18n();
   const membership = useMembershipInfo();
   const stats = useVisitStats();
   const fitness = useFitnessProfile();
   const homeClub = clubById(user?.homeClubId ?? 'c1');
-  const goalTrainer = fitness ? trainers.find((t) => t.specialties.some((s) => fitness.goalInfo.specialties.includes(s))) : undefined;
+  const goalTrainer = fitness ? trainers.find((tr) => tr.specialties.some((s) => fitness.goalInfo.specialties.includes(s))) : undefined;
+
+  const quickActions = [
+    { icon: 'calendar-outline', label: t('qa_book'), href: '/(tabs)/schedule' },
+    { icon: 'sparkles-outline', label: t('qa_coach'), href: '/(tabs)/coach' },
+    { icon: 'people-outline', label: t('qa_trainers'), href: '/trainers' },
+    { icon: 'card-outline', label: t('qa_plan'), href: '/membership' },
+  ] as const;
 
   const upcoming = useMemo(() => {
     const now = new Date();
@@ -39,7 +41,7 @@ export default function HomeScreen() {
   }, [bookings]);
 
   const hour = new Date().getHours();
-  const greeting = hour < 5 ? 'Доброй ночи' : hour < 12 ? 'Доброе утро' : hour < 18 ? 'Добрый день' : 'Добрый вечер';
+  const greeting = hour < 5 ? t('greet_night') : hour < 12 ? t('greet_morning') : hour < 18 ? t('greet_day') : t('greet_evening');
 
   return (
     <Screen>
@@ -47,12 +49,12 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <T type="caption">{greeting}</T>
-          <T type="title">{user?.name ?? 'Гость'} 👋</T>
+          <T type="title">{user?.name ?? t('guest')} 👋</T>
         </View>
         <Pressable onPress={() => router.push('/(tabs)/clubs')} style={styles.clubPill}>
           <Ionicons name="location" size={14} color={Colors.accent} />
           <T type="small" style={{ fontWeight: '600' }} numberOfLines={1}>
-            {homeClub?.name.replace('Gym Project ', '') ?? 'Клуб'}
+            {homeClub?.name.replace('Gym Project ', '') ?? ''}
           </T>
         </Pressable>
         <IconButton icon="notifications-outline" onPress={() => router.push('/news/n1')} />
@@ -61,11 +63,7 @@ export default function HomeScreen() {
       {/* Membership card */}
       <View style={styles.section}>
         <Pressable onPress={() => router.push('/membership')}>
-          <LinearGradient
-            colors={membership.active ? ['#2B3A14', '#151B23'] : ['#3A1A1A', '#151B23']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.memberCard}>
+          <LinearGradient colors={membership.active ? ['#2B3A14', '#151B23'] : ['#3A1A1A', '#151B23']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.memberCard}>
             <Row style={{ justifyContent: 'space-between' }}>
               <Row gap={8}>
                 <Ionicons name="barbell" size={18} color={Colors.accent} />
@@ -73,48 +71,44 @@ export default function HomeScreen() {
                   GYM PROJECT
                 </T>
               </Row>
-              {membership.active ? (
-                <Badge label={membership.frozen ? 'Заморожен' : 'Активен'} color={membership.frozen ? Colors.info : Colors.success} />
-              ) : (
-                <Badge label="Нет абонемента" color={Colors.danger} />
-              )}
+              {membership.active ? <Badge label={membership.frozen ? t('status_frozen') : t('status_active')} color={membership.frozen ? Colors.info : Colors.success} /> : <Badge label={t('status_none')} color={Colors.danger} />}
             </Row>
 
             {membership.active ? (
               <>
                 <View style={{ marginTop: Spacing.three }}>
-                  <T type="caption">Абонемент «{membership.plan?.name ?? '—'}»</T>
+                  <T type="caption">{t('home_plan_name', { name: td(membership.plan?.name ?? '—') })}</T>
                   <Row gap={6} style={{ alignItems: 'flex-end' }}>
                     <T type="display" style={{ fontSize: 44, lineHeight: 48 }}>
                       {membership.daysLeft}
                     </T>
                     <T type="body" color={Colors.textSecondary} style={{ marginBottom: 6 }}>
-                      {pluralDays(membership.daysLeft)} осталось
+                      {tp(membership.daysLeft, 'days_pl')} {t('home_left')}
                     </T>
                   </Row>
                 </View>
                 <View style={{ marginTop: Spacing.two, gap: 6 }}>
                   <ProgressBar value={membership.progress} />
                   <T type="small" color={Colors.textSecondary}>
-                    Действует до {membership.endDate ? formatDateLong(membership.endDate) : '—'}
+                    {t('home_valid_until', { date: membership.endDate ? formatDateLong(membership.endDate) : '—' })}
                   </T>
                 </View>
               </>
             ) : (
               <View style={{ marginTop: Spacing.three }}>
-                <T type="heading">Оформите абонемент</T>
-                <T type="caption">Доступ во все клубы сети и групповые занятия</T>
+                <T type="heading">{t('home_no_plan_title')}</T>
+                <T type="caption">{t('home_no_plan_sub')}</T>
               </View>
             )}
 
             <Row style={{ marginTop: Spacing.three }} gap={Spacing.two}>
               {membership.active ? (
                 <>
-                  <Button title="QR-пропуск" icon="qr-code-outline" onPress={() => router.push('/qr')} style={{ flex: 1 }} />
-                  <Button title="Продлить" variant="secondary" onPress={() => router.push('/membership')} style={{ flex: 1 }} />
+                  <Button title={t('home_qr')} icon="qr-code-outline" onPress={() => router.push('/qr')} style={{ flex: 1 }} />
+                  <Button title={t('home_extend')} variant="secondary" onPress={() => router.push('/membership')} style={{ flex: 1 }} />
                 </>
               ) : (
-                <Button title="Выбрать абонемент" icon="card-outline" onPress={() => router.push('/membership')} style={{ flex: 1 }} />
+                <Button title={t('home_choose_plan')} icon="card-outline" onPress={() => router.push('/membership')} style={{ flex: 1 }} />
               )}
             </Row>
           </LinearGradient>
@@ -128,7 +122,7 @@ export default function HomeScreen() {
             <View style={styles.quickIcon}>
               <Ionicons name={a.icon} size={20} color={Colors.accent} />
             </View>
-            <T type="small" style={{ fontWeight: '600' }}>
+            <T type="small" style={{ fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>
               {a.label}
             </T>
           </Pressable>
@@ -145,39 +139,39 @@ export default function HomeScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <T type="small" color={Colors.textSecondary}>
-                  Ваша цель
+                  {t('home_goal')}
                 </T>
-                <T type="heading">{fitness.goalInfo.title}</T>
+                <T type="heading">{goalTitle(fitness.goal)}</T>
               </View>
               <Pressable onPress={() => router.push('/onboarding?edit=1')} hitSlop={8}>
                 <Ionicons name="create-outline" size={20} color={Colors.textMuted} />
               </Pressable>
             </Row>
             <Row gap={Spacing.two}>
-              <MiniStat value={`${fitness.currentWeightKg}`} unit="кг" label={fitness.toTarget !== undefined ? `до цели ${Math.abs(fitness.toTarget)}` : 'вес'} />
-              <MiniStat value={`${fitness.bmi}`} label="ИМТ" unit="" color={fitness.bmiInfo.color} />
-              <MiniStat value={`${fitness.targets.calories}`} unit="ккал" label="норма в день" />
-              <MiniStat value={`${fitness.targets.protein}`} unit="г" label="белка" />
+              <MiniStat value={`${fitness.currentWeightKg}`} unit={t('kg')} label={fitness.toTarget !== undefined ? t('home_to_target', { n: Math.abs(fitness.toTarget) }) : t('home_weight')} />
+              <MiniStat value={`${fitness.bmi}`} label={t('home_bmi')} unit="" color={fitness.bmiInfo.color} />
+              <MiniStat value={`${fitness.targets.calories}`} unit={t('kcal').toLowerCase()} label={t('home_kcal_norm')} />
+              <MiniStat value={`${fitness.targets.protein}`} unit={t('g')} label={t('home_protein')} />
             </Row>
             <T type="small" color={Colors.textSecondary}>
-              {fitness.goalInfo.tip}
+              {goalTip(fitness.goal)}
             </T>
-            <Pressable onPress={() => router.push('/coach')} style={styles.coachRow}>
+            <Pressable onPress={() => router.push('/(tabs)/coach')} style={styles.coachRow}>
               <Ionicons name="sparkles" size={18} color={Colors.accent} />
               <View style={{ flex: 1 }}>
                 <T type="small" style={{ fontWeight: '700' }}>
-                  ИИ-тренер
+                  {t('qa_coach')}
                 </T>
                 <T type="small" color={Colors.textSecondary} numberOfLines={1}>
-                  {coachPlan ? `План: ${coachPlan.title}` : 'Составит план под вашу цель и объяснит технику'}
+                  {coachPlan ? t('home_coach_plan', { title: coachPlan.title }) : t('home_coach_sub')}
                 </T>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
             </Pressable>
             <Row gap={Spacing.two}>
-              <Button title="Занятия" size="sm" onPress={() => router.push(`/(tabs)/schedule?category=${encodeURIComponent(fitness.goalInfo.categories[0])}`)} style={{ flex: 1, paddingHorizontal: 8 }} />
-              {goalTrainer ? <Button title="Тренер" size="sm" variant="secondary" onPress={() => router.push(`/trainer/${goalTrainer.id}`)} style={{ flex: 1, paddingHorizontal: 8 }} /> : null}
-              <Button title="Спортпит" size="sm" variant="secondary" onPress={() => router.push('/(tabs)/shop')} style={{ flex: 1, paddingHorizontal: 8 }} />
+              <Button title={t('home_classes_btn')} size="sm" onPress={() => router.push(`/(tabs)/schedule?category=${encodeURIComponent(fitness.goalInfo.categories[0])}`)} style={{ flex: 1, paddingHorizontal: 8 }} />
+              {goalTrainer ? <Button title={t('home_trainer_btn')} size="sm" variant="secondary" onPress={() => router.push(`/trainer/${goalTrainer.id}`)} style={{ flex: 1, paddingHorizontal: 8 }} /> : null}
+              <Button title={t('home_nutrition_btn')} size="sm" variant="secondary" onPress={() => router.push('/(tabs)/shop')} style={{ flex: 1, paddingHorizontal: 8 }} />
             </Row>
           </Card>
         </View>
@@ -190,11 +184,9 @@ export default function HomeScreen() {
             <Ionicons name="flame" size={22} color={Colors.warning} />
           </View>
           <View style={{ flex: 1 }}>
-            <T type="subheading">
-              {stats.thisWeek} {pluralVisits(stats.thisWeek)} на этой неделе
-            </T>
+            <T type="subheading">{t('home_week_stat', { n: stats.thisWeek, w: tp(stats.thisWeek, 'workouts_pl') })}</T>
             <T type="small" color={Colors.textSecondary}>
-              Серия: {stats.weekStreak} {pluralWeeks(stats.weekStreak)} подряд • всего {stats.total}
+              {t('home_streak', { n: stats.weekStreak, w: tp(stats.weekStreak, 'weeks_pl'), total: stats.total })}
             </T>
           </View>
           <Pressable onPress={() => router.push('/progress')} hitSlop={8}>
@@ -205,16 +197,16 @@ export default function HomeScreen() {
 
       {/* Upcoming bookings */}
       <View style={styles.section}>
-        <SectionHeader title="Ближайшие записи" action="Все" onAction={() => router.push('/bookings')} />
+        <SectionHeader title={t('home_upcoming')} action={t('all')} onAction={() => router.push('/bookings')} />
         {upcoming.length === 0 ? (
           <Card onPress={() => router.push('/(tabs)/schedule')} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
             <View style={[styles.flame, { backgroundColor: 'rgba(198,255,61,0.12)' }]}>
               <Ionicons name="add" size={22} color={Colors.accent} />
             </View>
             <View style={{ flex: 1 }}>
-              <T type="subheading">Записей пока нет</T>
+              <T type="subheading">{t('home_no_bookings')}</T>
               <T type="small" color={Colors.textSecondary}>
-                Выберите групповое занятие в расписании
+                {t('home_no_bookings_sub')}
               </T>
             </View>
             <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
@@ -233,7 +225,7 @@ export default function HomeScreen() {
                     </T>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <T type="subheading">{s.title}</T>
+                    <T type="subheading">{td(s.title)}</T>
                     <T type="small" color={Colors.textSecondary} numberOfLines={1}>
                       {trainer?.name} • {club?.name.replace('Gym Project ', '')}
                     </T>
@@ -249,7 +241,7 @@ export default function HomeScreen() {
       {/* Club occupancy */}
       <View style={[styles.section, { paddingHorizontal: 0 }]}>
         <View style={{ paddingHorizontal: Spacing.three }}>
-          <SectionHeader title="Загруженность клубов" action="Все клубы" onAction={() => router.push('/(tabs)/clubs')} />
+          <SectionHeader title={t('home_occupancy')} action={t('home_all_clubs')} onAction={() => router.push('/(tabs)/clubs')} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }}>
           {clubs.map((c) => {
@@ -272,7 +264,7 @@ export default function HomeScreen() {
                 </Row>
                 <ProgressBar value={c.occupancy / 100} color={occ.color} />
                 <T type="small" color={Colors.textSecondary}>
-                  {c.hours}
+                  {clubHours(c)}
                 </T>
               </Card>
             );
@@ -283,7 +275,7 @@ export default function HomeScreen() {
       {/* Shop */}
       <View style={[styles.section, { paddingHorizontal: 0 }]}>
         <View style={{ paddingHorizontal: Spacing.three }}>
-          <SectionHeader title="Спортпит и аксессуары" action="В магазин" onAction={() => router.push('/(tabs)/shop')} />
+          <SectionHeader title={t('home_shop_section')} action={t('home_to_shop')} onAction={() => router.push('/(tabs)/shop')} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }}>
           {shopHits.map((p) => (
@@ -295,7 +287,7 @@ export default function HomeScreen() {
       {/* News */}
       <View style={[styles.section, { paddingHorizontal: 0 }]}>
         <View style={{ paddingHorizontal: Spacing.three }}>
-          <SectionHeader title="Новости и акции" />
+          <SectionHeader title={t('home_news')} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }}>
           {news.map((n) => (
@@ -334,28 +326,6 @@ function MiniStat({ value, unit, label, color }: { value: string; unit: string; 
       </T>
     </View>
   );
-}
-
-function pluralDays(n: number) {
-  const m10 = n % 10;
-  const m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return 'день';
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'дня';
-  return 'дней';
-}
-function pluralVisits(n: number) {
-  const m10 = n % 10;
-  const m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return 'тренировка';
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'тренировки';
-  return 'тренировок';
-}
-function pluralWeeks(n: number) {
-  const m10 = n % 10;
-  const m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return 'неделя';
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'недели';
-  return 'недель';
 }
 
 const styles = StyleSheet.create({

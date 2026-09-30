@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile } from '@/data/fitness';
 import { addDays, planById, toISODate } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, productById } from '@/data/shop';
+import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -49,6 +50,7 @@ type State = {
   coachMessages: ChatMessage[];
   coachPlan: WeekPlan | null;
   coachApiKey: string | null;
+  lang: Lang;
   hydrated: boolean;
 };
 
@@ -75,6 +77,7 @@ type Actions = {
   clearCoachChat: () => void;
   setCoachPlan: (plan: WeekPlan | null) => void;
   setCoachApiKey: (key: string | null) => void;
+  setLang: (lang: Lang) => void;
 };
 
 const STORAGE_KEY = 'gym-project-state-v1';
@@ -91,6 +94,7 @@ const initialState: State = {
   coachMessages: [],
   coachPlan: null,
   coachApiKey: null,
+  lang: 'ru',
   hydrated: false,
 };
 
@@ -128,6 +132,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (raw) {
           const saved = JSON.parse(raw) as Partial<State>;
           setRuntimeApiKey(saved.coachApiKey ?? null);
+          setCurrentLang(saved.lang ?? 'ru');
           setState({ ...initialState, ...saved, hydrated: true });
           return;
         }
@@ -162,8 +167,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     setRuntimeApiKey(null);
-    setState({ ...initialState, hydrated: true });
+    // Keep the chosen language across logout.
+    setState((s) => ({ ...initialState, lang: s.lang, hydrated: true }));
     AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+  }, []);
+
+  const setLang = useCallback((lang: Lang) => {
+    setCurrentLang(lang);
+    setState((s) => ({ ...s, lang }));
   }, []);
 
   /* ---------- AI coach ---------- */
@@ -338,8 +349,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       clearCoachChat,
       setCoachPlan,
       setCoachApiKey,
+      setLang,
     }),
-    [state, login, logout, updateUser, completeOnboarding, buyPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey]
+    [state, login, logout, updateUser, completeOnboarding, buyPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -349,6 +361,24 @@ export function useApp() {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error('useApp must be used inside AppProvider');
   return ctx;
+}
+
+/** Translation helpers bound to the current language. */
+export function useI18n() {
+  const { lang, setLang } = useApp();
+  return useMemo(
+    () => ({
+      lang,
+      setLang,
+      /** UI string by key with {var} interpolation. */
+      t: (key: TKey, vars?: Record<string, string | number>) => translate(lang, key, vars),
+      /** Plural form for n, e.g. tp(3, 'days_pl') → "дня". */
+      tp: (n: number, key: TKey) => pluralForm(lang, n, key),
+      /** Content value from mock data (category, amenity, plan name…). */
+      td: (value: string) => tData(lang, value),
+    }),
+    [lang, setLang]
+  );
 }
 
 /** Derived membership info used across screens. */
@@ -405,7 +435,7 @@ export function useVisitStats() {
 
 /** Fitness profile with derived metrics; null until onboarding is done. */
 export function useFitnessProfile() {
-  const { user, weightLog } = useApp();
+  const { user, weightLog, lang } = useApp();
   return useMemo(() => {
     const p = user?.profile;
     if (!p) return null;
@@ -422,7 +452,9 @@ export function useFitnessProfile() {
       toTarget,
       targets: dailyTargets({ ...p, weightKg: latest }),
     };
-  }, [user?.profile, weightLog]);
+    // `lang` is a dependency because bmiLabel reads the current UI language.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.profile, weightLog, lang]);
 }
 
 /** Everything the AI coach needs to know about the user; null until onboarding is done. */

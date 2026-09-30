@@ -10,7 +10,7 @@ import { Badge, Button, Card, EmptyState, IconButton, Row, Screen, SectionHeader
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice } from '@/data/mock';
 import { MEMBER_DISCOUNT, productById, products } from '@/data/shop';
-import { useApp, useCartSummary, useMembershipInfo } from '@/store/app-context';
+import { useApp, useCartSummary, useI18n, useMembershipInfo } from '@/store/app-context';
 
 const W = Dimensions.get('window').width;
 
@@ -18,6 +18,7 @@ export default function ProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const product = productById(id);
   const { addToCart } = useApp();
+  const { t, tp, td } = useI18n();
   const cart = useCartSummary();
   const membership = useMembershipInfo();
   const [option, setOption] = useState<string | undefined>(product?.options?.values[0]);
@@ -26,7 +27,7 @@ export default function ProductScreen() {
   if (!product) {
     return (
       <Screen>
-        <EmptyState icon="alert-circle-outline" title="Товар не найден" />
+        <EmptyState icon="alert-circle-outline" title={t('product_not_found')} />
       </Screen>
     );
   }
@@ -38,9 +39,9 @@ export default function ProductScreen() {
   const add = () => {
     addToCart(product.id, option, qty);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    Alert.alert('Добавлено в корзину', `${product.name}${option ? ` (${option})` : ''} × ${qty}`, [
-      { text: 'Продолжить покупки', style: 'cancel', onPress: () => router.back() },
-      { text: 'В корзину', onPress: () => router.push('/cart') },
+    Alert.alert(t('added_title'), `${product.name}${option ? ` (${option})` : ''} × ${qty}`, [
+      { text: t('continue_shopping'), style: 'cancel', onPress: () => router.back() },
+      { text: t('to_cart'), onPress: () => router.push('/cart') },
     ]);
   };
 
@@ -68,7 +69,7 @@ export default function ProductScreen() {
         <Image source={{ uri: product.image }} style={{ width: W, height: 320 }} contentFit="cover" transition={200} />
         {product.badge ? (
           <View style={{ position: 'absolute', top: 12, left: Spacing.three }}>
-            <Badge label={product.badge} color={badgeColor} />
+            <Badge label={td(product.badge)} color={badgeColor} />
           </View>
         ) : null}
       </View>
@@ -86,38 +87,34 @@ export default function ProductScreen() {
         <Row gap={Spacing.two} style={{ marginTop: Spacing.two }}>
           <Stars rating={product.rating} size={15} />
           <T type="small" color={Colors.textMuted}>
-            {product.reviews} отзывов
+            {product.reviews} {tp(product.reviews, 'reviews_pl')}
           </T>
           <View style={{ flex: 1 }} />
-          {product.inStock ? <Badge label="В наличии" color={Colors.success} /> : <Badge label="Нет в наличии" color={Colors.danger} />}
+          {product.inStock ? <Badge label={t('in_stock')} color={Colors.success} /> : <Badge label={t('out_of_stock')} color={Colors.danger} />}
         </Row>
 
         <Card style={{ marginTop: Spacing.three, gap: 6 }}>
-          <Row style={{ justifyContent: 'space-between' }}>
-            <View>
-              <Row gap={8} style={{ alignItems: 'flex-end' }}>
-                <T type="display" style={{ fontSize: 30, lineHeight: 34 }}>
-                  {formatPrice(product.price)}
-                </T>
-                {product.oldPrice ? (
-                  <T type="body" color={Colors.textMuted} style={{ textDecorationLine: 'line-through', marginBottom: 4 }}>
-                    {formatPrice(product.oldPrice)}
-                  </T>
-                ) : null}
-              </Row>
-              <Row gap={6}>
-                <Ionicons name="pricetag" size={13} color={Colors.accent} />
-                <T type="small" color={Colors.accent} style={{ fontWeight: '700' }}>
-                  {membership.active ? `Ваша цена по абонементу: ${formatPrice(memberPrice)}` : `По абонементу: ${formatPrice(memberPrice)}`}
-                </T>
-              </Row>
-            </View>
+          <Row gap={8} style={{ alignItems: 'flex-end' }}>
+            <T type="display" style={{ fontSize: 30, lineHeight: 34 }}>
+              {formatPrice(product.price)}
+            </T>
+            {product.oldPrice ? (
+              <T type="body" color={Colors.textMuted} style={{ textDecorationLine: 'line-through', marginBottom: 4 }}>
+                {formatPrice(product.oldPrice)}
+              </T>
+            ) : null}
+          </Row>
+          <Row gap={6}>
+            <Ionicons name="pricetag" size={13} color={Colors.accent} />
+            <T type="small" color={Colors.accent} style={{ fontWeight: '700' }}>
+              {membership.active ? t('member_price_yours', { p: formatPrice(memberPrice) }) : t('member_price', { p: formatPrice(memberPrice) })}
+            </T>
           </Row>
         </Card>
 
         {product.options ? (
           <View style={{ marginTop: Spacing.four }}>
-            <SectionHeader title={product.options.label} />
+            <SectionHeader title={td(product.options.label)} />
             <Row gap={Spacing.two} style={{ flexWrap: 'wrap' }}>
               {product.options.values.map((v) => (
                 <Pressable key={v} onPress={() => setOption(v)} style={[styles.opt, option === v && styles.optActive]}>
@@ -131,7 +128,7 @@ export default function ProductScreen() {
         ) : null}
 
         <View style={{ marginTop: Spacing.four }}>
-          <SectionHeader title="Описание" />
+          <SectionHeader title={t('description')} />
           <T type="body" color={Colors.textSecondary} style={{ lineHeight: 23 }}>
             {product.description}
           </T>
@@ -139,13 +136,13 @@ export default function ProductScreen() {
 
         {product.nutrition ? (
           <View style={{ marginTop: Spacing.four }}>
-            <SectionHeader title={`Пищевая ценность • порция ${product.nutrition.serving}`} />
+            <SectionHeader title={t('nutrition_serving', { s: product.nutrition.serving })} />
             <Card padded={false} style={{ flexDirection: 'row' }}>
               {[
-                ['Белки', `${product.nutrition.protein} г`],
-                ['Углеводы', `${product.nutrition.carbs} г`],
-                ['Жиры', `${product.nutrition.fat} г`],
-                ['Ккал', `${product.nutrition.calories}`],
+                [t('protein'), `${product.nutrition.protein} ${t('g')}`],
+                [t('carbs'), `${product.nutrition.carbs} ${t('g')}`],
+                [t('fat'), `${product.nutrition.fat} ${t('g')}`],
+                [t('kcal'), `${product.nutrition.calories}`],
               ].map(([k, v], i) => (
                 <View key={k} style={[styles.nut, i > 0 && { borderLeftWidth: 1, borderLeftColor: Colors.border }]}>
                   <T type="heading">{v}</T>
@@ -159,32 +156,26 @@ export default function ProductScreen() {
         ) : null}
 
         <View style={{ marginTop: Spacing.four }}>
-          <SectionHeader title="Получение" />
+          <SectionHeader title={t('pickup')} />
           <Card style={{ gap: Spacing.two }}>
-            <Row gap={10}>
-              <Ionicons name="storefront-outline" size={18} color={Colors.accent} />
-              <T type="body" style={{ flex: 1 }}>
-                Самовывоз на рецепции любого клуба сети
-              </T>
-            </Row>
-            <Row gap={10}>
-              <Ionicons name="time-outline" size={18} color={Colors.accent} />
-              <T type="body" style={{ flex: 1 }}>
-                Готов к выдаче через 2 часа, хранится 3 дня
-              </T>
-            </Row>
-            <Row gap={10}>
-              <Ionicons name="shield-checkmark-outline" size={18} color={Colors.accent} />
-              <T type="body" style={{ flex: 1 }}>
-                Оригинальная продукция, возврат 14 дней
-              </T>
-            </Row>
+            {[
+              ['storefront-outline', t('pickup_1')],
+              ['time-outline', t('pickup_2')],
+              ['shield-checkmark-outline', t('pickup_3')],
+            ].map(([icon, text]) => (
+              <Row key={text} gap={10}>
+                <Ionicons name={icon as React.ComponentProps<typeof Ionicons>['name']} size={18} color={Colors.accent} />
+                <T type="body" style={{ flex: 1 }}>
+                  {text}
+                </T>
+              </Row>
+            ))}
           </Card>
         </View>
 
         {similar.length > 0 ? (
           <View style={{ marginTop: Spacing.four }}>
-            <SectionHeader title="Похожие товары" />
+            <SectionHeader title={t('similar')} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.two }}>
               {similar.map((p) => (
                 <ProductCard key={p.id} product={p} width={160} onAdd={() => (p.options ? router.push(`/product/${p.id}`) : addToCart(p.id))} />
@@ -204,7 +195,7 @@ export default function ProductScreen() {
             <Ionicons name="add" size={18} color={Colors.text} />
           </Pressable>
         </View>
-        <Button title={product.inStock ? `В корзину • ${formatPrice(product.price * qty)}` : 'Нет в наличии'} icon="cart-outline" onPress={add} disabled={!product.inStock} style={{ flex: 1 }} />
+        <Button title={product.inStock ? t('add_cart', { p: formatPrice(product.price * qty) }) : t('out_of_stock')} icon="cart-outline" onPress={add} disabled={!product.inStock} style={{ flex: 1 }} />
       </View>
     </Screen>
   );

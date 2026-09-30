@@ -7,66 +7,68 @@ import { StyleSheet, TextInput, View } from 'react-native';
 import { Card, Chip, ChipRow, Row, Screen, Stars, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubById, formatPrice, trainers } from '@/data/mock';
+import { useI18n } from '@/store/app-context';
 
 const specialties = ['Все', 'Силовые', 'Йога', 'Похудение', 'Бокс', 'Плавание', 'Танцы', 'Кроссфит'];
 
 export default function TrainersScreen() {
+  const { t, tp, td } = useI18n();
   const [query, setQuery] = useState('');
   const [spec, setSpec] = useState('Все');
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
     return trainers
-      .filter((t) => (spec === 'Все' ? true : t.specialties.includes(spec)))
-      .filter((t) => (q ? t.name.toLowerCase().includes(q) || t.specialties.some((s) => s.toLowerCase().includes(q)) : true))
+      .filter((tr) => (spec === 'Все' ? true : tr.specialties.includes(spec)))
+      .filter((tr) => (q ? tr.name.toLowerCase().includes(q) || tr.specialties.some((s) => s.toLowerCase().includes(q) || td(s).toLowerCase().includes(q)) : true))
       .sort((a, b) => b.rating - a.rating);
-  }, [query, spec]);
+  }, [query, spec, td]);
 
   return (
     <Screen edges={[]}>
       <View style={styles.header}>
-        <T type="caption">Персональные тренировки, ведение и групповые программы</T>
+        <T type="caption">{t('trainers_sub')}</T>
       </View>
 
       <View style={styles.search}>
         <Ionicons name="search" size={18} color={Colors.textSecondary} />
-        <TextInput value={query} onChangeText={setQuery} placeholder="Имя или направление" placeholderTextColor={Colors.textMuted} style={styles.searchInput} />
+        <TextInput value={query} onChangeText={setQuery} placeholder={t('trainers_search_ph')} placeholderTextColor={Colors.textMuted} style={styles.searchInput} />
       </View>
 
       <ChipRow style={{ marginBottom: Spacing.three }}>
         {specialties.map((s) => (
-          <Chip key={s} label={s} active={spec === s} onPress={() => setSpec(s)} />
+          <Chip key={s} label={s === 'Все' ? t('all') : td(s)} active={spec === s} onPress={() => setSpec(s)} />
         ))}
       </ChipRow>
 
       <View style={{ paddingHorizontal: Spacing.three, gap: Spacing.two }}>
-        {list.map((t) => {
-          const club = clubById(t.clubId);
+        {list.map((tr) => {
+          const club = clubById(tr.clubId);
           return (
-            <Card key={t.id} onPress={() => router.push(`/trainer/${t.id}`)} style={{ flexDirection: 'row', gap: Spacing.three }}>
-              <Image source={{ uri: t.avatar }} style={styles.avatar} contentFit="cover" transition={200} />
+            <Card key={tr.id} onPress={() => router.push(`/trainer/${tr.id}`)} style={{ flexDirection: 'row', gap: Spacing.three }}>
+              <Image source={{ uri: tr.avatar }} style={styles.avatar} contentFit="cover" transition={200} />
               <View style={{ flex: 1, gap: 4 }}>
                 <Row style={{ justifyContent: 'space-between' }}>
                   <T type="subheading" style={{ flex: 1 }}>
-                    {t.name}
+                    {tr.name}
                   </T>
-                  <Stars rating={t.rating} />
+                  <Stars rating={tr.rating} />
                 </Row>
                 <T type="small" color={Colors.textSecondary} numberOfLines={1}>
-                  {t.specialties.join(' • ')}
+                  {tr.specialties.map(td).join(' • ')}
                 </T>
                 <Row gap={6}>
                   <Ionicons name="location-outline" size={13} color={Colors.textMuted} />
                   <T type="small" color={Colors.textMuted} style={{ flex: 1 }} numberOfLines={1}>
-                    {club?.name.replace('Gym Project ', '')} • опыт {t.experienceYears} лет
+                    {club?.name.replace('Gym Project ', '')} • {t('exp_years', { n: tr.experienceYears, y: tp(tr.experienceYears, 'years_pl') })}
                   </T>
                 </Row>
                 <Row style={{ justifyContent: 'space-between', marginTop: 2 }}>
                   <T type="label" color={Colors.accent}>
-                    {formatPrice(t.pricePerSession)}
+                    {formatPrice(tr.pricePerSession)}
                   </T>
                   <T type="small" color={Colors.textMuted}>
-                    за тренировку
+                    {t('per_session')}
                   </T>
                 </Row>
               </View>

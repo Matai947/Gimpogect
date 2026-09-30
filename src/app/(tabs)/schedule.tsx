@@ -6,10 +6,11 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Badge, Card, Chip, ChipRow, EmptyState, Row, Screen, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { addDays, categories, clubById, clubs, monthShort, sessionsForDate, sessionStart, toISODate, trainerById, weekdayShort } from '@/data/mock';
-import { useApp } from '@/store/app-context';
+import { useApp, useI18n } from '@/store/app-context';
 
 export default function ScheduleScreen() {
   const { isBooked, user } = useApp();
+  const { t, td } = useI18n();
   const params = useLocalSearchParams<{ category?: string }>();
   const days = useMemo(() => Array.from({ length: 14 }, (_, i) => addDays(new Date(), i)), []);
   const [date, setDate] = useState(toISODate(new Date()));
@@ -40,8 +41,8 @@ export default function ScheduleScreen() {
   return (
     <Screen scroll={false}>
       <View style={styles.header}>
-        <T type="title">Расписание</T>
-        <T type="caption">Групповые занятия по абонементу</T>
+        <T type="title">{t('tab_schedule')}</T>
+        <T type="caption">{t('sch_sub')}</T>
       </View>
 
       {/* Date strip */}
@@ -52,14 +53,14 @@ export default function ScheduleScreen() {
           const isToday = iso === today;
           return (
             <Pressable key={iso} onPress={() => setDate(iso)} style={[styles.day, active && styles.dayActive]}>
-              <T type="small" color={active ? Colors.onAccent : Colors.textSecondary} style={{ fontWeight: '600' }}>
-                {isToday ? 'Сег' : weekdayShort[d.getDay()]}
+              <T type="small" color={active ? Colors.onAccent : Colors.textSecondary} style={{ fontWeight: '600' }} numberOfLines={1}>
+                {isToday ? t('today_short') : weekdayShort.get(d.getDay())}
               </T>
               <T type="heading" color={active ? Colors.onAccent : Colors.text}>
                 {d.getDate()}
               </T>
               <T type="small" color={active ? Colors.onAccent : Colors.textMuted}>
-                {monthShort[d.getMonth()]}
+                {monthShort.get(d.getMonth())}
               </T>
             </Pressable>
           );
@@ -69,7 +70,7 @@ export default function ScheduleScreen() {
       <View style={{ height: Spacing.three }} />
 
       <ChipRow>
-        <Chip label="Все клубы" active={clubId === 'all'} onPress={() => setClubId('all')} icon="location-outline" />
+        <Chip label={t('all_clubs')} active={clubId === 'all'} onPress={() => setClubId('all')} icon="location-outline" />
         {clubs.map((c) => (
           <Chip key={c.id} label={c.name.replace('Gym Project ', '')} active={clubId === c.id} onPress={() => setClubId(c.id)} />
         ))}
@@ -77,13 +78,13 @@ export default function ScheduleScreen() {
       <View style={{ height: Spacing.two }} />
       <ChipRow>
         {categories.map((c) => (
-          <Chip key={c} label={c} active={category === c} onPress={() => setCategory(c)} />
+          <Chip key={c} label={c === 'Все' ? t('all') : td(c)} active={category === c} onPress={() => setCategory(c)} />
         ))}
       </ChipRow>
 
       <ScrollView contentContainerStyle={{ padding: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.six }} showsVerticalScrollIndicator={false}>
         {sessions.length === 0 ? (
-          <EmptyState icon="calendar-clear-outline" title="Занятий нет" subtitle="Попробуйте другой день, клуб или направление" />
+          <EmptyState icon="calendar-clear-outline" title={t('no_classes')} subtitle={t('no_classes_sub')} />
         ) : (
           sessions.map((s) => {
             const trainer = trainerById(s.trainerId);
@@ -95,27 +96,27 @@ export default function ScheduleScreen() {
                 <View style={[styles.time, { borderLeftColor: s.color }]}>
                   <T type="label">{s.time}</T>
                   <T type="small" color={Colors.textSecondary}>
-                    {s.durationMin} мин
+                    {s.durationMin} {t('min')}
                   </T>
                 </View>
                 <View style={{ flex: 1, gap: 3 }}>
                   <Row style={{ justifyContent: 'space-between' }}>
                     <T type="subheading" style={{ flex: 1 }} numberOfLines={1}>
-                      {s.title}
+                      {td(s.title)}
                     </T>
-                    {booked ? <Badge label="Вы записаны" color={Colors.success} /> : null}
+                    {booked ? <Badge label={t('you_booked')} color={Colors.success} /> : null}
                   </Row>
                   <T type="small" color={Colors.textSecondary} numberOfLines={1}>
-                    {trainer?.name} • {club?.name.replace('Gym Project ', '')} • {s.room}
+                    {trainer?.name} • {club?.name.replace('Gym Project ', '')} • {td(s.room)}
                   </T>
                   <Row gap={6}>
                     <Ionicons name="people-outline" size={13} color={left <= 3 ? Colors.warning : Colors.textMuted} />
                     <T type="small" color={left <= 3 ? Colors.warning : Colors.textMuted}>
-                      {left <= 0 ? 'Мест нет — лист ожидания' : `Свободно ${left} из ${s.capacity}`}
+                      {left <= 0 ? t('spots_none') : t('spots_left', { a: left, b: s.capacity })}
                     </T>
                     <View style={{ flex: 1 }} />
                     <T type="small" color={Colors.textMuted}>
-                      {s.level}
+                      {td(s.level)}
                     </T>
                   </Row>
                 </View>
@@ -131,7 +132,7 @@ export default function ScheduleScreen() {
 const styles = StyleSheet.create({
   header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.three },
   day: {
-    width: 58,
+    width: 62,
     paddingVertical: 10,
     borderRadius: Radius.md,
     backgroundColor: Colors.surface,

@@ -7,16 +7,18 @@ import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Badge, Button, Card, Chip, ChipRow, Divider, EmptyState, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { clubById, clubs, formatPrice } from '@/data/mock';
-import { useApp, useCartSummary, useMembershipInfo } from '@/store/app-context';
+import { clubById, clubHours, clubs, formatPrice } from '@/data/mock';
+import { useApp, useCartSummary, useI18n, useMembershipInfo } from '@/store/app-context';
 
 export default function CartScreen() {
   const { user, setCartQty, removeFromCart, clearCart, placeOrder, orders } = useApp();
+  const { t, tp } = useI18n();
   const membership = useMembershipInfo();
   const [promo, setPromo] = useState('');
   const [applied, setApplied] = useState<string | undefined>();
   const [clubId, setClubId] = useState(user?.homeClubId ?? 'c1');
   const summary = useCartSummary(applied);
+  const club = clubById(clubId);
 
   const applyPromo = () => {
     const code = promo.trim().toUpperCase();
@@ -26,17 +28,15 @@ export default function CartScreen() {
   };
 
   const checkout = () => {
-    Alert.alert('Оформить заказ?', `${summary.count} товаров на ${formatPrice(summary.total)}. Самовывоз: ${clubById(clubId)?.name}. Оплата при получении или через Kaspi.`, [
-      { text: 'Отмена', style: 'cancel' },
+    Alert.alert(t('checkout_q'), t('checkout_body', { n: summary.count, total: formatPrice(summary.total), club: club?.name ?? '' }), [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Оформить',
+        text: t('place'),
         onPress: () => {
           const order = placeOrder(clubId, applied);
           if (!order) return;
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-          Alert.alert('Заказ принят', `Номер ${order.id}. Заберите на рецепции через 2 часа. Статус — в разделе «Мои заказы».`, [
-            { text: 'К заказам', onPress: () => router.replace('/orders') },
-          ]);
+          Alert.alert(t('order_ok_title'), t('order_ok_body', { id: order.id }), [{ text: t('to_orders'), onPress: () => router.replace('/orders') }]);
         },
       },
     ]);
@@ -45,10 +45,10 @@ export default function CartScreen() {
   if (summary.lines.length === 0) {
     return (
       <Screen edges={[]}>
-        <EmptyState icon="cart-outline" title="Корзина пуста" subtitle="Добавьте спортпит, аксессуары или одежду из магазина" action="В магазин" onAction={() => router.replace('/(tabs)/shop')} />
+        <EmptyState icon="cart-outline" title={t('cart_empty')} subtitle={t('cart_empty_sub')} action={t('to_shop')} onAction={() => router.replace('/(tabs)/shop')} />
         {orders.length > 0 ? (
           <View style={{ paddingHorizontal: Spacing.three }}>
-            <Button title={`Мои заказы (${orders.length})`} variant="ghost" icon="receipt-outline" onPress={() => router.push('/orders')} />
+            <Button title={t('my_orders_n', { n: orders.length })} variant="ghost" icon="receipt-outline" onPress={() => router.push('/orders')} />
           </View>
         ) : null}
       </Screen>
@@ -59,12 +59,10 @@ export default function CartScreen() {
     <Screen edges={[]} contentStyle={{ paddingBottom: 150 }}>
       <View style={{ padding: Spacing.three, gap: Spacing.two }}>
         <Row style={{ justifyContent: 'space-between' }}>
-          <T type="heading">{summary.count} товаров</T>
-          <Pressable
-            onPress={() => Alert.alert('Очистить корзину?', undefined, [{ text: 'Отмена', style: 'cancel' }, { text: 'Очистить', style: 'destructive', onPress: clearCart }])}
-            hitSlop={8}>
+          <T type="heading">{t('items_n', { n: summary.count, i: tp(summary.count, 'items_pl') })}</T>
+          <Pressable onPress={() => Alert.alert(t('clear_cart_q'), undefined, [{ text: t('cancel'), style: 'cancel' }, { text: t('clear'), style: 'destructive', onPress: clearCart }])} hitSlop={8}>
             <T type="small" color={Colors.danger} style={{ fontWeight: '700' }}>
-              Очистить
+              {t('clear')}
             </T>
           </Pressable>
         </Row>
@@ -107,29 +105,29 @@ export default function CartScreen() {
       </View>
 
       <View style={{ paddingHorizontal: Spacing.three, marginBottom: Spacing.four }}>
-        <SectionHeader title="Где забрать" />
+        <SectionHeader title={t('where_pickup')} />
         <ChipRow style={{ paddingHorizontal: 0 }}>
           {clubs.map((c) => (
             <Chip key={c.id} label={c.name.replace('Gym Project ', '')} icon="storefront-outline" active={clubId === c.id} onPress={() => setClubId(c.id)} />
           ))}
         </ChipRow>
         <T type="small" color={Colors.textMuted} style={{ marginTop: Spacing.two }}>
-          {clubById(clubId)?.address} • {clubById(clubId)?.hours}
+          {club?.address} • {club ? clubHours(club) : ''}
         </T>
       </View>
 
       <View style={{ paddingHorizontal: Spacing.three, marginBottom: Spacing.four }}>
-        <SectionHeader title="Промокод" />
+        <SectionHeader title={t('promo')} />
         <Row gap={Spacing.two}>
           <View style={styles.promo}>
             <Ionicons name="ticket-outline" size={18} color={Colors.textSecondary} />
             <TextInput value={promo} onChangeText={setPromo} placeholder="GYM10" placeholderTextColor={Colors.textMuted} autoCapitalize="characters" style={styles.promoInput} />
           </View>
-          <Button title="Применить" variant="secondary" onPress={applyPromo} disabled={!promo.trim()} />
+          <Button title={t('apply')} variant="secondary" onPress={applyPromo} disabled={!promo.trim()} />
         </Row>
         {applied ? (
           <T type="small" color={summary.promoValid ? Colors.success : Colors.danger} style={{ marginTop: 6 }}>
-            {summary.promoValid ? `Промокод ${applied} применён` : `Промокод ${applied} не найден`}
+            {summary.promoValid ? t('promo_applied', { c: applied }) : t('promo_invalid', { c: applied })}
           </T>
         ) : null}
       </View>
@@ -138,13 +136,13 @@ export default function CartScreen() {
         <Card style={{ gap: 8 }}>
           <Row style={{ justifyContent: 'space-between' }}>
             <T type="body" color={Colors.textSecondary}>
-              Товары
+              {t('goods')}
             </T>
             <T type="body">{formatPrice(summary.subtotal)}</T>
           </Row>
           <Row style={{ justifyContent: 'space-between' }}>
             <T type="body" color={Colors.textSecondary}>
-              {summary.discountSource === 'promo' ? 'Скидка по промокоду' : summary.discountSource === 'member' ? 'Скидка члена клуба 10%' : 'Скидка'}
+              {summary.discountSource === 'promo' ? t('discount_promo') : summary.discountSource === 'member' ? t('discount_member') : t('discount')}
             </T>
             <T type="body" color={summary.discount ? Colors.success : Colors.textSecondary}>
               {summary.discount ? `− ${formatPrice(summary.discount)}` : '—'}
@@ -152,12 +150,12 @@ export default function CartScreen() {
           </Row>
           {!membership.active ? (
             <T type="small" color={Colors.textMuted}>
-              Оформите абонемент и получайте −10% на все покупки
+              {t('member_hint')}
             </T>
           ) : null}
           <Divider />
           <Row style={{ justifyContent: 'space-between' }}>
-            <T type="heading">Итого</T>
+            <T type="heading">{t('total')}</T>
             <T type="heading" color={Colors.accent}>
               {formatPrice(summary.total)}
             </T>
@@ -168,11 +166,11 @@ export default function CartScreen() {
       <View style={styles.footer}>
         <View style={{ flex: 1 }}>
           <T type="small" color={Colors.textSecondary}>
-            Итого
+            {t('total')}
           </T>
           <T type="heading">{formatPrice(summary.total)}</T>
         </View>
-        <Button title="Оформить заказ" icon="checkmark" onPress={checkout} style={{ paddingHorizontal: Spacing.four }} />
+        <Button title={t('checkout')} icon="checkmark" onPress={checkout} style={{ paddingHorizontal: Spacing.four }} />
       </View>
     </Screen>
   );

@@ -7,22 +7,24 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { ProductCard } from '@/components/product-card';
 import { Badge, IconButton, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { goalTitle } from '@/data/fitness';
 import { productById, products, shopCategories, type Product, type ShopCategory } from '@/data/shop';
-import { useApp, useCartSummary, useFitnessProfile, useMembershipInfo } from '@/store/app-context';
+import { useApp, useCartSummary, useFitnessProfile, useI18n, useMembershipInfo } from '@/store/app-context';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 type Sort = 'popular' | 'cheap' | 'expensive' | 'rating';
 
-const sortLabels: Record<Sort, string> = { popular: 'Популярные', cheap: 'Дешевле', expensive: 'Дороже', rating: 'По рейтингу' };
-
 export default function ShopScreen() {
   const { addToCart } = useApp();
+  const { t, td } = useI18n();
   const cart = useCartSummary();
   const membership = useMembershipInfo();
   const fitness = useFitnessProfile();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'Все' | ShopCategory>('Все');
   const [sort, setSort] = useState<Sort>('popular');
+
+  const sortLabels: Record<Sort, string> = { popular: t('sort_popular'), cheap: t('sort_cheap'), expensive: t('sort_expensive'), rating: t('sort_rating') };
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -42,10 +44,7 @@ export default function ShopScreen() {
   }, [query, category, sort]);
 
   const hits = useMemo(() => products.filter((p) => p.badge === 'Хит' || p.badge === 'Новинка').slice(0, 6), []);
-  const goalProducts = useMemo(
-    () => (fitness ? fitness.goalInfo.productIds.map(productById).filter((p): p is Product => !!p) : []),
-    [fitness]
-  );
+  const goalProducts = useMemo(() => (fitness ? fitness.goalInfo.productIds.map(productById).filter((p): p is Product => !!p) : []), [fitness]);
   const showHero = !query && category === 'Все';
 
   const quickAdd = (p: Product) => {
@@ -60,8 +59,8 @@ export default function ShopScreen() {
     <Screen>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <T type="title">Магазин</T>
-          <T type="caption">Спортпит, аксессуары и одежда • самовывоз в клубе</T>
+          <T type="title">{t('tab_shop')}</T>
+          <T type="caption">{t('shop_sub')}</T>
         </View>
         <View>
           <IconButton icon="cart-outline" onPress={() => router.push('/cart')} />
@@ -77,7 +76,7 @@ export default function ShopScreen() {
 
       <View style={styles.search}>
         <Ionicons name="search" size={18} color={Colors.textSecondary} />
-        <TextInput value={query} onChangeText={setQuery} placeholder="Протеин, креатин, шейкер…" placeholderTextColor={Colors.textMuted} style={styles.searchInput} />
+        <TextInput value={query} onChangeText={setQuery} placeholder={t('shop_search_ph')} placeholderTextColor={Colors.textMuted} style={styles.searchInput} />
         {query ? (
           <Pressable onPress={() => setQuery('')} hitSlop={8}>
             <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
@@ -93,7 +92,7 @@ export default function ShopScreen() {
             <Pressable key={c.key} onPress={() => setCategory(c.key)} style={[styles.cat, active && styles.catActive]}>
               <Ionicons name={c.icon as IconName} size={20} color={active ? Colors.onAccent : Colors.accent} />
               <T type="small" color={active ? Colors.onAccent : Colors.text} style={{ fontWeight: '600' }} numberOfLines={1}>
-                {c.key}
+                {c.key === 'Все' ? t('all') : td(c.key)}
               </T>
             </Pressable>
           );
@@ -106,10 +105,10 @@ export default function ShopScreen() {
           <View style={{ paddingHorizontal: Spacing.three, marginBottom: Spacing.four }}>
             <LinearGradient colors={['#2B3A14', '#151B23']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.banner}>
               <View style={{ flex: 1, gap: 4 }}>
-                <Badge label={membership.active ? 'Ваша скидка' : 'Для членов клуба'} />
-                <T type="heading">−10% на всё по абонементу</T>
+                <Badge label={membership.active ? t('your_discount') : t('for_members')} />
+                <T type="heading">{t('discount_all')}</T>
                 <T type="small" color={Colors.textSecondary}>
-                  Скидка применяется автоматически в корзине. Забирайте заказ на рецепции клуба.
+                  {t('discount_hint')}
                 </T>
               </View>
               <Ionicons name="pricetags" size={44} color={Colors.accent} style={{ opacity: 0.9 }} />
@@ -117,10 +116,10 @@ export default function ShopScreen() {
           </View>
 
           {/* For your goal */}
-          {goalProducts.length > 0 ? (
+          {goalProducts.length > 0 && fitness ? (
             <View style={{ marginBottom: Spacing.four }}>
               <View style={{ paddingHorizontal: Spacing.three }}>
-                <SectionHeader title={`Для цели «${fitness?.goalInfo.title}»`} />
+                <SectionHeader title={t('for_goal', { g: goalTitle(fitness.goal) })} />
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }}>
                 {goalProducts.map((p) => (
@@ -133,7 +132,7 @@ export default function ShopScreen() {
           {/* Hits */}
           <View style={{ marginBottom: Spacing.four }}>
             <View style={{ paddingHorizontal: Spacing.three }}>
-              <SectionHeader title="Хиты и новинки" />
+              <SectionHeader title={t('hits')} />
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }}>
               {hits.map((p) => (
@@ -147,7 +146,7 @@ export default function ShopScreen() {
       {/* Sort + grid */}
       <View style={{ paddingHorizontal: Spacing.three }}>
         <Row style={{ justifyContent: 'space-between', marginBottom: Spacing.two }}>
-          <T type="heading">{category === 'Все' ? 'Все товары' : category}</T>
+          <T type="heading">{category === 'Все' ? t('all_products') : td(category)}</T>
           <Pressable
             onPress={() => {
               const order: Sort[] = ['popular', 'cheap', 'expensive', 'rating'];
@@ -163,7 +162,7 @@ export default function ShopScreen() {
           </Pressable>
         </Row>
         <T type="small" color={Colors.textMuted} style={{ marginBottom: Spacing.two }}>
-          {list.length} товаров
+          {t('products_n', { n: list.length })}
         </T>
         <View style={styles.grid}>
           {list.map((p) => (
@@ -172,7 +171,7 @@ export default function ShopScreen() {
         </View>
         {list.length === 0 ? (
           <T type="caption" style={{ textAlign: 'center', paddingVertical: Spacing.five }}>
-            Ничего не найдено
+            {t('nothing_found')}
           </T>
         ) : null}
       </View>

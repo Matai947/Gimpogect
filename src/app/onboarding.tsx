@@ -7,14 +7,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { bmi, bmiLabel, goals, levels, type FitnessProfile, type Gender, type Goal, type Level } from '@/data/fitness';
-import { useApp } from '@/store/app-context';
+import { bmi, bmiLabel, goalSubtitle, goalTitle, goals, levelSubtitle, levelTitle, levels, type FitnessProfile, type Gender, type Goal, type Level } from '@/data/fitness';
+import { useApp, useI18n } from '@/store/app-context';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 const STEPS = 4;
 
 export default function OnboardingScreen() {
   const { user, completeOnboarding } = useApp();
+  const { t } = useI18n();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const isEdit = edit === '1' && !!user?.profile;
   const initial = user?.profile;
@@ -75,7 +76,7 @@ export default function OnboardingScreen() {
               <Ionicons name="chevron-back" size={24} color={Colors.text} />
             </Pressable>
             <T type="small" color={Colors.textSecondary}>
-              Шаг {step + 1} из {STEPS}
+              {t('ob_step', { a: step + 1, b: STEPS })}
             </T>
             {isEdit ? (
               <Pressable onPress={() => router.back()} hitSlop={10}>
@@ -91,9 +92,9 @@ export default function OnboardingScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {step === 0 && (
             <>
-              <T type="title">{isEdit ? 'Ваша цель' : `${user?.name ?? 'Привет'}, какая у вас цель?`}</T>
+              <T type="title">{isEdit ? t('ob_goal_title_edit') : t('ob_goal_title', { name: user?.name ?? '' })}</T>
               <T type="caption" style={{ marginBottom: Spacing.two }}>
-                Подберём занятия, тренера и спортпит под неё
+                {t('ob_goal_sub')}
               </T>
               {goals.map((g) => {
                 const active = goal === g.key;
@@ -103,9 +104,9 @@ export default function OnboardingScreen() {
                       <Ionicons name={g.icon as IconName} size={22} color={active ? Colors.onAccent : Colors.accent} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <T type="subheading">{g.title}</T>
+                      <T type="subheading">{goalTitle(g.key)}</T>
                       <T type="small" color={Colors.textSecondary}>
-                        {g.subtitle}
+                        {goalSubtitle(g.key)}
                       </T>
                     </View>
                     <Ionicons name={active ? 'radio-button-on' : 'radio-button-off'} size={22} color={active ? Colors.accent : Colors.textMuted} />
@@ -117,18 +118,18 @@ export default function OnboardingScreen() {
 
           {step === 1 && (
             <>
-              <T type="title">Немного о вас</T>
+              <T type="title">{t('ob_about_title')}</T>
               <T type="caption" style={{ marginBottom: Spacing.two }}>
-                Нужно для расчёта нормы калорий и нагрузки
+                {t('ob_about_sub')}
               </T>
               <T type="label" style={{ marginBottom: Spacing.two }}>
-                Пол
+                {t('ob_gender')}
               </T>
               <Row gap={Spacing.two}>
                 {(
                   [
-                    ['male', 'Мужской', 'male'],
-                    ['female', 'Женский', 'female'],
+                    ['male', t('ob_male'), 'male'],
+                    ['female', t('ob_female'), 'female'],
                   ] as [Gender, string, IconName][]
                 ).map(([key, label, icon]) => (
                   <Pressable key={key} onPress={() => setGender(key)} style={[styles.segment, gender === key && styles.segmentActive]}>
@@ -139,24 +140,24 @@ export default function OnboardingScreen() {
                   </Pressable>
                 ))}
               </Row>
-              <NumberField label="Возраст" value={age} onChange={setAge} unit="лет" step={1} min={12} max={90} autoFocus />
+              <NumberField label={t('ob_age')} value={age} onChange={setAge} unit={t('ob_years')} step={1} min={12} max={90} autoFocus />
             </>
           )}
 
           {step === 2 && (
             <>
-              <T type="title">Рост и вес</T>
+              <T type="title">{t('ob_body_title')}</T>
               <T type="caption" style={{ marginBottom: Spacing.two }}>
-                Вес будем отслеживать в разделе «Прогресс»
+                {t('ob_body_sub')}
               </T>
-              <NumberField label="Рост" value={height} onChange={setHeight} unit="см" step={1} min={120} max={230} autoFocus />
-              <NumberField label="Вес сейчас" value={weight} onChange={setWeight} unit="кг" step={0.5} min={30} max={250} decimals />
-              {needsTarget ? <NumberField label={goal === 'lose' ? 'Желаемый вес' : 'Целевой вес'} value={target} onChange={setTarget} unit="кг" step={0.5} min={30} max={250} decimals optional /> : null}
+              <NumberField label={t('ob_height')} value={height} onChange={setHeight} unit={t('cm')} step={1} min={120} max={230} autoFocus />
+              <NumberField label={t('ob_weight_now')} value={weight} onChange={setWeight} unit={t('kg')} step={0.5} min={30} max={250} decimals />
+              {needsTarget ? <NumberField label={goal === 'lose' ? t('ob_target_lose') : t('ob_target_gain')} value={target} onChange={setTarget} unit={t('kg')} step={0.5} min={30} max={250} decimals optional /> : null}
               {heightN >= 120 && weightN >= 30 ? (
                 <View style={styles.bmiCard}>
                   <View style={{ flex: 1 }}>
                     <T type="small" color={Colors.textSecondary}>
-                      Индекс массы тела
+                      {t('ob_bmi')}
                     </T>
                     <T type="heading">{bmi(weightN, heightN).toFixed(1)}</T>
                   </View>
@@ -170,18 +171,18 @@ export default function OnboardingScreen() {
 
           {step === 3 && (
             <>
-              <T type="title">Уровень и график</T>
+              <T type="title">{t('ob_level_title')}</T>
               <T type="caption" style={{ marginBottom: Spacing.two }}>
-                Чтобы расписание и нагрузка были по силам
+                {t('ob_level_sub')}
               </T>
               {levels.map((l) => {
                 const active = level === l.key;
                 return (
                   <Pressable key={l.key} onPress={() => setLevel(l.key)} style={[styles.option, active && styles.optionActive]}>
                     <View style={{ flex: 1 }}>
-                      <T type="subheading">{l.title}</T>
+                      <T type="subheading">{levelTitle(l.key)}</T>
                       <T type="small" color={Colors.textSecondary}>
-                        {l.subtitle}
+                        {levelSubtitle(l.key)}
                       </T>
                     </View>
                     <Ionicons name={active ? 'radio-button-on' : 'radio-button-off'} size={22} color={active ? Colors.accent : Colors.textMuted} />
@@ -189,7 +190,7 @@ export default function OnboardingScreen() {
                 );
               })}
               <T type="label" style={{ marginTop: Spacing.three, marginBottom: Spacing.two }}>
-                Тренировок в неделю
+                {t('ob_days_week')}
               </T>
               <Row gap={Spacing.two}>
                 {[2, 3, 4, 5, 6].map((d) => (
@@ -205,7 +206,7 @@ export default function OnboardingScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <Button title={step === STEPS - 1 ? (isEdit ? 'Сохранить' : 'Готово') : 'Далее'} icon={step === STEPS - 1 ? 'checkmark' : 'arrow-forward'} onPress={next} disabled={!valid} size="lg" />
+          <Button title={step === STEPS - 1 ? (isEdit ? t('save') : t('done')) : t('next')} icon={step === STEPS - 1 ? 'checkmark' : 'arrow-forward'} onPress={next} disabled={!valid} size="lg" />
           {!isEdit && step === 0 ? (
             <Pressable
               onPress={() => {
@@ -215,7 +216,7 @@ export default function OnboardingScreen() {
               hitSlop={8}
               style={{ alignSelf: 'center', marginTop: Spacing.two }}>
               <T type="small" color={Colors.textMuted}>
-                Заполнить позже
+                {t('ob_later')}
               </T>
             </Pressable>
           ) : null}
@@ -248,6 +249,7 @@ function NumberField({
   autoFocus?: boolean;
   optional?: boolean;
 }) {
+  const { t } = useI18n();
   const n = parseFloat(value.replace(',', '.'));
   const bump = (d: number) => {
     const base = isNaN(n) ? (min + max) / 2 : n;
@@ -260,7 +262,7 @@ function NumberField({
         <T type="label">{label}</T>
         {optional ? (
           <T type="small" color={Colors.textMuted}>
-            необязательно
+            {t('optional')}
           </T>
         ) : null}
       </Row>
@@ -278,7 +280,7 @@ function NumberField({
           autoFocus={autoFocus}
           textAlign="center"
         />
-        <T type="body" color={Colors.textSecondary} style={{ width: 36 }}>
+        <T type="body" color={Colors.textSecondary} style={{ width: 40 }}>
           {unit}
         </T>
         <Pressable onPress={() => bump(step)} hitSlop={8} style={styles.numBtn}>

@@ -1,3 +1,5 @@
+import { getLang, monthNames, translate, weekdayNames } from '@/i18n';
+
 export type Club = {
   id: string;
   name: string;
@@ -285,8 +287,13 @@ export const categories: ('Все' | Category)[] = ['Все', 'Йога', 'Си�
 
 /* ---------- helpers ---------- */
 
-export const weekdayShort = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-export const monthShort = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+/** Localized short names; read the current UI language from the i18n module. */
+export const weekdayShort = {
+  get: (i: number) => weekdayNames()[i],
+};
+export const monthShort = {
+  get: (i: number) => monthNames()[i],
+};
 
 export function toISODate(d: Date): string {
   const y = d.getFullYear();
@@ -310,14 +317,15 @@ export function formatDateHuman(iso: string): string {
   const d = parseISODate(iso);
   const today = toISODate(new Date());
   const tomorrow = toISODate(addDays(new Date(), 1));
-  if (iso === today) return 'Сегодня';
-  if (iso === tomorrow) return 'Завтра';
-  return `${weekdayShort[d.getDay()]}, ${d.getDate()} ${monthShort[d.getMonth()]}`;
+  const lang = getLang();
+  if (iso === today) return translate(lang, 'today');
+  if (iso === tomorrow) return translate(lang, 'tomorrow');
+  return `${weekdayShort.get(d.getDay())}, ${d.getDate()} ${monthShort.get(d.getMonth())}`;
 }
 
 export function formatDateLong(iso: string): string {
   const d = parseISODate(iso);
-  return `${d.getDate()} ${monthShort[d.getMonth()]} ${d.getFullYear()}`;
+  return `${d.getDate()} ${monthShort.get(d.getMonth())} ${d.getFullYear()}`;
 }
 
 export function formatPrice(n: number): string {
@@ -366,7 +374,13 @@ export function planById(id: string) {
 }
 
 export function occupancyLabel(p: number): { label: string; color: string } {
-  if (p < 45) return { label: 'Свободно', color: '#3DDC84' };
-  if (p < 70) return { label: 'Средняя загрузка', color: '#FFB347' };
-  return { label: 'Много людей', color: '#FF5C5C' };
+  const lang = getLang();
+  if (p < 45) return { label: translate(lang, 'occ_free'), color: '#3DDC84' };
+  if (p < 70) return { label: translate(lang, 'occ_mid'), color: '#FFB347' };
+  return { label: translate(lang, 'occ_busy'), color: '#FF5C5C' };
+}
+
+/** Club hours with the 24/7 label localized. */
+export function clubHours(c: Club): string {
+  return c.is24h ? translate(getLang(), 'allday') : c.hours;
 }

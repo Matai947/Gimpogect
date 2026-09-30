@@ -2,39 +2,39 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Alert, StyleSheet, View } from 'react-native';
 
+import { LangSwitch } from '@/components/lang-switch';
 import { Avatar, Badge, Card, Divider, ListRow, Row, Screen, StatTile, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
+import { goalTitle, levelTitle } from '@/data/fitness';
 import { clubById, clubs, formatDateLong } from '@/data/mock';
-import { useApp, useFitnessProfile, useMembershipInfo, useVisitStats } from '@/store/app-context';
+import { languages } from '@/i18n';
+import { useApp, useFitnessProfile, useI18n, useMembershipInfo, useVisitStats } from '@/store/app-context';
 
 const achievements = [
-  { id: 'a1', icon: 'flash', label: 'Первая тренировка', min: 1 },
-  { id: 'a2', icon: 'flame', label: '10 тренировок', min: 10 },
-  { id: 'a3', icon: 'medal', label: '25 тренировок', min: 25 },
-  { id: 'a4', icon: 'trophy', label: '50 тренировок', min: 50 },
-  { id: 'a5', icon: 'diamond', label: '100 тренировок', min: 100 },
+  { id: 'a1', icon: 'flash', min: 1 },
+  { id: 'a2', icon: 'flame', min: 10 },
+  { id: 'a3', icon: 'medal', min: 25 },
+  { id: 'a4', icon: 'trophy', min: 50 },
+  { id: 'a5', icon: 'diamond', min: 100 },
 ] as const;
 
 export default function ProfileScreen() {
   const { user, logout, updateUser, favorites, orders } = useApp();
+  const { t, td, lang } = useI18n();
   const membership = useMembershipInfo();
   const stats = useVisitStats();
   const fitness = useFitnessProfile();
   const homeClub = clubById(user?.homeClubId ?? 'c1');
 
   const changeHomeClub = () => {
-    Alert.alert(
-      'Домашний клуб',
-      'Выберите клуб по умолчанию для расписания и QR-входа',
-      [...clubs.map((c) => ({ text: c.name, onPress: () => updateUser({ homeClubId: c.id }) })), { text: 'Отмена', style: 'cancel' as const }]
-    );
+    Alert.alert(t('home_club'), t('home_club_pick_sub'), [...clubs.map((c) => ({ text: c.name, onPress: () => updateUser({ homeClubId: c.id }) })), { text: t('cancel'), style: 'cancel' as const }]);
   };
 
   const confirmLogout = () => {
-    Alert.alert('Выйти из аккаунта?', 'Данные демо-профиля будут сброшены.', [
-      { text: 'Отмена', style: 'cancel' },
+    Alert.alert(t('logout_q'), t('logout_body'), [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Выйти',
+        text: t('logout'),
         style: 'destructive',
         onPress: () => {
           logout();
@@ -52,7 +52,7 @@ export default function ProfileScreen() {
           <T type="title">{user?.name}</T>
           <T type="caption">{user?.phone}</T>
           <Row gap={6} style={{ marginTop: 6 }}>
-            {membership.active ? <Badge label={`«${membership.plan?.name}» до ${membership.endDate ? formatDateLong(membership.endDate) : ''}`} color={Colors.success} /> : <Badge label="Нет абонемента" color={Colors.danger} />}
+            {membership.active ? <Badge label={t('plan_until', { name: td(membership.plan?.name ?? ''), date: membership.endDate ? formatDateLong(membership.endDate) : '' })} color={Colors.success} /> : <Badge label={t('status_none')} color={Colors.danger} />}
           </Row>
         </View>
       </View>
@@ -61,37 +61,37 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Card onPress={() => router.push('/onboarding?edit=1')} style={{ gap: Spacing.two }}>
             <Row style={{ justifyContent: 'space-between' }}>
-              <T type="heading">Мои параметры</T>
+              <T type="heading">{t('my_params')}</T>
               <Row gap={4}>
                 <T type="small" color={Colors.accent} style={{ fontWeight: '700' }}>
-                  Изменить
+                  {t('edit')}
                 </T>
                 <Ionicons name="chevron-forward" size={14} color={Colors.accent} />
               </Row>
             </Row>
             <Row gap={Spacing.two}>
-              <Param label="Рост" value={`${fitness.heightCm} см`} />
-              <Param label="Вес" value={`${fitness.currentWeightKg} кг`} />
-              <Param label="ИМТ" value={`${fitness.bmi}`} hint={fitness.bmiInfo.label} color={fitness.bmiInfo.color} />
+              <Param label={t('height')} value={`${fitness.heightCm} ${t('cm')}`} />
+              <Param label={t('weight')} value={`${fitness.currentWeightKg} ${t('kg')}`} />
+              <Param label={t('bmi')} value={`${fitness.bmi}`} hint={fitness.bmiInfo.label} color={fitness.bmiInfo.color} />
             </Row>
             <Row gap={Spacing.two}>
-              <Param label="Цель" value={fitness.goalInfo.title} />
-              <Param label="Уровень" value={fitness.level === 'beginner' ? 'Новичок' : fitness.level === 'intermediate' ? 'Средний' : 'Продвинутый'} />
-              <Param label="В неделю" value={`${fitness.daysPerWeek} трен.`} />
+              <Param label={t('goal')} value={goalTitle(fitness.goal)} />
+              <Param label={t('level')} value={levelTitle(fitness.level)} />
+              <Param label={t('per_week')} value={t('per_week_v', { n: fitness.daysPerWeek })} />
             </Row>
           </Card>
         </View>
       ) : null}
 
       <View style={[styles.section, { flexDirection: 'row', gap: Spacing.two }]}>
-        <StatTile value={stats.total} label="всего визитов" icon="barbell-outline" />
-        <StatTile value={stats.thisMonth} label="за 30 дней" icon="calendar-outline" color={Colors.info} />
-        <StatTile value={stats.weekStreak} label="недель подряд" icon="flame-outline" color={Colors.warning} />
+        <StatTile value={stats.total} label={t('total_visits')} icon="barbell-outline" />
+        <StatTile value={stats.thisMonth} label={t('last_30')} icon="calendar-outline" color={Colors.info} />
+        <StatTile value={stats.weekStreak} label={t('weeks_streak')} icon="flame-outline" color={Colors.warning} />
       </View>
 
       <View style={styles.section}>
         <T type="heading" style={{ marginBottom: Spacing.two }}>
-          Достижения
+          {t('achievements')}
         </T>
         <Row gap={Spacing.two} style={{ flexWrap: 'wrap' }}>
           {achievements.map((a) => {
@@ -100,7 +100,7 @@ export default function ProfileScreen() {
               <View key={a.id} style={[styles.ach, done && { borderColor: Colors.accent, backgroundColor: 'rgba(198,255,61,0.08)' }]}>
                 <Ionicons name={a.icon} size={22} color={done ? Colors.accent : Colors.textMuted} />
                 <T type="small" color={done ? Colors.text : Colors.textMuted} style={{ textAlign: 'center' }}>
-                  {a.label}
+                  {a.min === 1 ? t('ach_first') : t('ach_n', { n: a.min })}
                 </T>
               </View>
             );
@@ -110,44 +110,57 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <Card padded={false}>
-          <ListRow icon="card-outline" title="Мой абонемент" subtitle={membership.active ? `${membership.daysLeft} дней осталось` : 'Оформить'} onPress={() => router.push('/membership')} />
+          <ListRow icon="card-outline" title={t('my_plan')} subtitle={membership.active ? t('days_left_n', { n: membership.daysLeft }) : t('get_plan')} onPress={() => router.push('/membership')} />
           <Divider />
-          <ListRow icon="qr-code-outline" title="QR-пропуск" subtitle="Вход в клуб без карты" onPress={() => router.push('/qr')} />
+          <ListRow icon="qr-code-outline" title={t('home_qr')} subtitle={t('qr_pass_sub')} onPress={() => router.push('/qr')} />
           <Divider />
-          <ListRow icon="calendar-outline" title="Мои записи" subtitle="Групповые и персональные" onPress={() => router.push('/bookings')} />
+          <ListRow icon="calendar-outline" title={t('my_bookings')} subtitle={t('my_bookings_sub')} onPress={() => router.push('/bookings')} />
           <Divider />
-          <ListRow icon="trending-up-outline" title="Прогресс" subtitle="Вес и посещения" onPress={() => router.push('/progress')} />
+          <ListRow icon="trending-up-outline" title={t('progress')} subtitle={t('progress_sub')} onPress={() => router.push('/progress')} />
           <Divider />
-          <ListRow icon="sparkles-outline" title="ИИ-тренер" subtitle="План на неделю и техника упражнений" onPress={() => router.push('/coach')} />
+          <ListRow icon="sparkles-outline" title={t('qa_coach')} subtitle={t('ai_coach_sub')} onPress={() => router.push('/(tabs)/coach')} />
           <Divider />
-          <ListRow icon="people-outline" title="Тренеры" subtitle="Персональные тренировки" onPress={() => router.push('/trainers')} />
+          <ListRow icon="people-outline" title={t('qa_trainers')} subtitle={t('trainers_row_sub')} onPress={() => router.push('/trainers')} />
           <Divider />
-          <ListRow icon="receipt-outline" title="Мои заказы" subtitle={orders.length ? `${orders.length} в истории` : 'Спортпит и аксессуары'} onPress={() => router.push('/orders')} />
+          <ListRow icon="receipt-outline" title={t('my_orders')} subtitle={orders.length ? t('orders_in_history', { n: orders.length }) : t('orders_sub_empty')} onPress={() => router.push('/orders')} />
         </Card>
       </View>
 
       <View style={styles.section}>
         <Card padded={false}>
-          <ListRow icon="home-outline" title="Домашний клуб" subtitle={homeClub?.name} onPress={changeHomeClub} />
+          <ListRow icon="home-outline" title={t('home_club')} subtitle={homeClub?.name} onPress={changeHomeClub} />
           <Divider />
-          <ListRow icon="heart-outline" title="Избранные клубы" subtitle={favorites.length ? `${favorites.length} в списке` : 'Пока пусто'} onPress={() => router.push('/(tabs)/clubs')} />
+          <ListRow icon="heart-outline" title={t('fav_clubs')} subtitle={favorites.length ? t('fav_count', { n: favorites.length }) : t('fav_empty')} onPress={() => router.push('/(tabs)/clubs')} />
           <Divider />
-          <ListRow icon="language-outline" title="Язык" subtitle="Русский" onPress={() => Alert.alert('Язык', 'Казахский и английский появятся в следующей версии')} />
+          <View style={styles.langRow}>
+            <View style={styles.langIcon}>
+              <Ionicons name="language-outline" size={18} color={Colors.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <T type="body" style={{ fontWeight: '600' }}>
+                {t('language')}
+              </T>
+              <T type="small" color={Colors.textSecondary}>
+                {languages.find((l) => l.key === lang)?.label}
+              </T>
+            </View>
+            <LangSwitch compact />
+          </View>
           <Divider />
-          <ListRow icon="notifications-outline" title="Уведомления" subtitle="Напоминания о записях" onPress={() => Alert.alert('Уведомления', 'Настройка появится после подключения push-сервиса')} />
+          <ListRow icon="notifications-outline" title={t('notifications')} subtitle={t('notif_sub')} onPress={() => Alert.alert(t('notifications'), t('notif_alert'))} />
         </Card>
       </View>
 
       <View style={styles.section}>
         <Card padded={false}>
-          <ListRow icon="chatbubble-ellipses-outline" title="Поддержка" subtitle="Чат с менеджером клуба" onPress={() => Alert.alert('Поддержка', 'Здесь будет чат поддержки (Intercom / WhatsApp)')} />
+          <ListRow icon="chatbubble-ellipses-outline" title={t('support')} subtitle={t('support_sub')} onPress={() => Alert.alert(t('support'), t('support_alert'))} />
           <Divider />
-          <ListRow icon="document-text-outline" title="Правила клуба и оферта" onPress={() => Alert.alert('Документы', 'Ссылка на правила клуба')} />
+          <ListRow icon="document-text-outline" title={t('rules')} onPress={() => Alert.alert(t('documents'), t('rules_alert'))} />
           <Divider />
-          <ListRow icon="log-out-outline" title="Выйти" onPress={confirmLogout} danger right={<View />} />
+          <ListRow icon="log-out-outline" title={t('logout')} onPress={confirmLogout} danger right={<View />} />
         </Card>
         <T type="small" color={Colors.textMuted} style={{ textAlign: 'center', marginTop: Spacing.three }}>
-          Gym Project • версия 1.0.0 (демо)
+          {t('version')}
         </T>
       </View>
     </Screen>
@@ -176,4 +189,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.four },
   section: { paddingHorizontal: Spacing.three, marginBottom: Spacing.four },
   ach: { width: '30%', flexGrow: 1, alignItems: 'center', gap: 6, padding: Spacing.two, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface },
+  langRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: 12, paddingHorizontal: Spacing.three },
+  langIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(198,255,61,0.12)', alignItems: 'center', justifyContent: 'center' },
 });

@@ -5,16 +5,18 @@ import { Dimensions, View } from 'react-native';
 import { Button, Card, EmptyState, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { formatDateLong, news } from '@/data/mock';
+import { useI18n } from '@/store/app-context';
 
 const W = Dimensions.get('window').width;
 
 export default function NewsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { t } = useI18n();
   const item = news.find((n) => n.id === id);
   if (!item) {
     return (
       <Screen>
-        <EmptyState icon="newspaper-outline" title="Новость не найдена" />
+        <EmptyState icon="newspaper-outline" title={t('news_not_found')} />
       </Screen>
     );
   }
@@ -22,7 +24,7 @@ export default function NewsScreen() {
 
   return (
     <Screen edges={[]}>
-      <Stack.Screen options={{ title: 'Новости' }} />
+      <Stack.Screen options={{ title: t('news') }} />
       <Image source={{ uri: item.image }} style={{ width: W, height: 220 }} contentFit="cover" transition={200} />
       <View style={{ padding: Spacing.three }}>
         <T type="caption">{formatDateLong(item.date)}</T>
@@ -32,10 +34,10 @@ export default function NewsScreen() {
         <T type="body" color={Colors.textSecondary} style={{ marginTop: Spacing.three, fontSize: 16, lineHeight: 24 }}>
           {item.body}
         </T>
-        <Button title="К расписанию" icon="calendar-outline" style={{ marginTop: Spacing.four }} onPress={() => router.push('/(tabs)/schedule')} />
+        <Button title={t('to_schedule')} icon="calendar-outline" style={{ marginTop: Spacing.four }} onPress={() => router.push('/(tabs)/schedule')} />
 
         <View style={{ marginTop: Spacing.five }}>
-          <SectionHeader title="Другие новости" />
+          <SectionHeader title={t('other_news')} />
           <View style={{ gap: Spacing.two }}>
             {others.map((n) => (
               <Card key={n.id} onPress={() => router.replace(`/news/${n.id}`)} style={{ flexDirection: 'row', gap: Spacing.three, alignItems: 'center' }}>

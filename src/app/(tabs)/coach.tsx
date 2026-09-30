@@ -1,16 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, EmptyState, IconButton, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { findExercise } from '@/data/exercises';
-import { goalByKey } from '@/data/fitness';
-import { askCoach, generatePlan, hasApiKey, newMessage, quickPrompts, type PlanDay } from '@/lib/coach';
-import { useApp, useCoachContext } from '@/store/app-context';
+import { goalTitle } from '@/data/fitness';
+import { askCoach, generatePlan, hasApiKey, newMessage, type PlanDay } from '@/lib/coach';
+import { useApp, useCoachContext, useI18n } from '@/store/app-context';
 
 type Tab = 'chat' | 'plan';
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -19,6 +20,7 @@ const promptIcons: IconName[] = ['calendar-outline', 'flash-outline', 'barbell-o
 
 export default function CoachScreen() {
   const ctx = useCoachContext();
+  const { t } = useI18n();
   const { coachMessages, coachPlan, coachApiKey, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey } = useApp();
   const [tab, setTab] = useState<Tab>(coachPlan ? 'plan' : 'chat');
   const [input, setInput] = useState('');
@@ -30,20 +32,23 @@ export default function CoachScreen() {
   const listRef = useRef<ScrollView>(null);
   const online = hasApiKey();
 
+  const quickPrompts = [t('qp_1'), t('qp_2'), t('qp_3'), t('qp_4'), t('qp_5'), t('qp_6')];
+  const wishes = [t('wish_1'), t('wish_2'), t('wish_3'), t('wish_4'), t('wish_5')];
+
   useEffect(() => {
-    const t = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 60);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 60);
+    return () => clearTimeout(timer);
   }, [coachMessages.length, busy, tab]);
 
   if (!ctx) {
     return (
-      <View style={styles.root}>
-        <EmptyState icon="sparkles-outline" title="Сначала заполните анкету" subtitle="Тренеру нужны рост, вес и цель" action="Заполнить" onAction={() => router.push('/onboarding')} />
-      </View>
+      <SafeAreaView style={styles.root}>
+        <EmptyState icon="sparkles-outline" title={t('fill_first')} subtitle={t('fill_first_sub')} action={t('fill')} onAction={() => router.push('/onboarding')} />
+      </SafeAreaView>
     );
   }
 
-  const goal = goalByKey(ctx.profile.goal);
+  const goal = goalTitle(ctx.profile.goal);
 
   const send = async (text: string) => {
     const clean = text.trim();
@@ -53,17 +58,17 @@ export default function CoachScreen() {
     setBusy(true);
     Haptics.selectionAsync().catch(() => {});
     try {
-      if (/составь план|план на неделю|новый план|перестрой план/i.test(clean)) {
+      if (/составь план|план на неделю|новый план|перестрой план|build my weekly plan|weekly plan|аптаға жоспар/i.test(clean)) {
         const plan = await generatePlan(ctx, clean);
         setCoachPlan(plan);
-        addCoachMessage(newMessage('assistant', `Готово: «${plan.title}». ${plan.summary}\nОткройте вкладку «План», там ${plan.days.length} тренировки с подходами и подсказками. Нажмите на упражнение, и я покажу технику.`));
+        addCoachMessage(newMessage('assistant', t('plan_ready', { title: plan.title, summary: plan.summary, n: plan.days.length })));
       } else {
         const answer = await askCoach(ctx, coachMessages, clean);
         addCoachMessage(newMessage('assistant', answer));
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      addCoachMessage(newMessage('assistant', `Не удалось получить ответ: ${msg.slice(0, 140)}. Проверьте интернет и ключ API или попробуйте позже.`));
+      addCoachMessage(newMessage('assistant', t('coach_error', { msg: msg.slice(0, 140) })));
     } finally {
       setBusy(false);
     }
@@ -79,7 +84,7 @@ export default function CoachScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setTab('plan');
     } catch (e) {
-      Alert.alert('Не получилось', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('failed'), e instanceof Error ? e.message : String(e));
     } finally {
       setPlanBusy(false);
     }
@@ -87,26 +92,11 @@ export default function CoachScreen() {
 
   const askTechnique = (name: string) => {
     setTab('chat');
-    void send(`Как правильно делать: ${name}?`);
+    void send(t('how_to', { name }));
   };
 
   return (
-    <View style={styles.root}>
-      <Stack.Screen
-        options={{
-          title: '',
-          headerTransparent: true,
-          headerRight: () => (
-            <Row gap={2}>
-              <IconButton icon="key-outline" bg="rgba(0,0,0,0.25)" color={online ? Colors.accent : Colors.text} onPress={() => setShowKey((v) => !v)} />
-              {tab === 'chat' && coachMessages.length > 0 ? (
-                <IconButton icon="trash-outline" bg="rgba(0,0,0,0.25)" onPress={() => Alert.alert('Очистить чат?', undefined, [{ text: 'Отмена', style: 'cancel' }, { text: 'Очистить', style: 'destructive', onPress: clearCoachChat }])} />
-              ) : null}
-            </Row>
-          ),
-        }}
-      />
-
+    <SafeAreaView style={styles.root} edges={['top']}>
       {/* Hero */}
       <LinearGradient colors={['#233317', '#141B12', Colors.background]} locations={[0, 0.7, 1]} style={styles.hero}>
         <View style={styles.heroRow}>
@@ -119,37 +109,41 @@ export default function CoachScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <T type="small" color={Colors.accent} style={{ fontWeight: '800', letterSpacing: 1.5, fontSize: 11 }}>
-              COACH AI
+              {t('coach_label')}
             </T>
             <T type="title" style={{ fontSize: 22, lineHeight: 26 }}>
-              Ваш ИИ-тренер
+              {t('coach_title')}
             </T>
             <Row gap={6} style={{ marginTop: 2 }}>
               <View style={[styles.dot, { backgroundColor: online ? Colors.success : Colors.warning }]} />
               <T type="small" color={Colors.textSecondary}>
-                {online ? 'Claude подключён' : 'Офлайн-режим'}
+                {online ? t('coach_online') : t('coach_offline')}
               </T>
             </Row>
           </View>
+          <Row gap={2}>
+            <IconButton icon="key-outline" bg="rgba(0,0,0,0.25)" color={online ? Colors.accent : Colors.text} onPress={() => setShowKey((v) => !v)} />
+            {tab === 'chat' && coachMessages.length > 0 ? <IconButton icon="trash-outline" bg="rgba(0,0,0,0.25)" onPress={() => Alert.alert(t('clear_chat_q'), undefined, [{ text: t('cancel'), style: 'cancel' }, { text: t('clear'), style: 'destructive', onPress: clearCoachChat }])} /> : null}
+          </Row>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: Spacing.three }}>
-          <Stat label="цель" value={goal.title} />
-          <Stat label="вес" value={`${ctx.currentWeightKg} кг`} />
-          {ctx.profile.targetWeightKg ? <Stat label="цель веса" value={`${ctx.profile.targetWeightKg} кг`} /> : null}
-          <Stat label="рост" value={`${ctx.profile.heightCm} см`} />
-          <Stat label="в неделю" value={`${ctx.profile.daysPerWeek} трен.`} />
+          <Stat label={t('st_goal')} value={goal} />
+          <Stat label={t('st_weight')} value={`${ctx.currentWeightKg} ${t('kg')}`} />
+          {ctx.profile.targetWeightKg ? <Stat label={t('st_target')} value={`${ctx.profile.targetWeightKg} ${t('kg')}`} /> : null}
+          <Stat label={t('st_height')} value={`${ctx.profile.heightCm} ${t('cm')}`} />
+          <Stat label={t('st_week')} value={t('st_week_v', { n: ctx.profile.daysPerWeek })} />
         </ScrollView>
       </LinearGradient>
 
       {showKey ? (
         <View style={styles.keyBox}>
           <T type="small" color={Colors.textSecondary}>
-            Ключ Anthropic API хранится только на этом устройстве. В продакшене запросы должны идти через ваш сервер.
+            {t('key_note')}
           </T>
           <Row gap={Spacing.two}>
             <TextInput value={keyDraft} onChangeText={setKeyDraft} placeholder="sk-ant-…" placeholderTextColor={Colors.textMuted} secureTextEntry autoCapitalize="none" autoCorrect={false} style={styles.keyInput} />
             <Button
-              title="Сохранить"
+              title={t('save')}
               size="sm"
               onPress={() => {
                 setCoachApiKey(keyDraft);
@@ -165,7 +159,7 @@ export default function CoachScreen() {
               }}
               hitSlop={8}>
               <T type="small" color={Colors.danger} style={{ fontWeight: '600' }}>
-                Удалить ключ
+                {t('remove_key')}
               </T>
             </Pressable>
           ) : null}
@@ -174,14 +168,14 @@ export default function CoachScreen() {
 
       {/* Underline tabs */}
       <View style={styles.tabs}>
-        {(['chat', 'plan'] as Tab[]).map((t) => {
-          const active = tab === t;
+        {(['chat', 'plan'] as Tab[]).map((tb) => {
+          const active = tab === tb;
           return (
-            <Pressable key={t} onPress={() => setTab(t)} style={styles.tab}>
+            <Pressable key={tb} onPress={() => setTab(tb)} style={styles.tab}>
               <T type="label" color={active ? Colors.text : Colors.textMuted}>
-                {t === 'chat' ? 'Диалог' : 'План недели'}
+                {tb === 'chat' ? t('tab_chat') : t('tab_plan')}
               </T>
-              {t === 'plan' && coachPlan ? <View style={styles.tabDot} /> : null}
+              {tb === 'plan' && coachPlan ? <View style={styles.tabDot} /> : null}
               <View style={[styles.tabLine, active && { backgroundColor: Colors.accent }]} />
             </Pressable>
           );
@@ -191,7 +185,7 @@ export default function CoachScreen() {
       {tab === 'chat' ? (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
           <ScrollView ref={listRef} contentContainerStyle={styles.chat} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            <AiLine text={`Привет, ${ctx.name}. Я вижу цель «${goal.title}», рост ${ctx.profile.heightCm} см и вес ${ctx.currentWeightKg} кг. Могу собрать неделю тренировок, перестроить её под сухое тело или набор, разобрать технику любого упражнения и подсказать по питанию.`} />
+            <AiLine text={t('coach_greeting', { name: ctx.name, goal, h: ctx.profile.heightCm, w: ctx.currentWeightKg })} />
             {coachMessages.length === 0 ? (
               <View style={styles.promptGrid}>
                 {quickPrompts.map((p, i) => (
@@ -210,7 +204,7 @@ export default function CoachScreen() {
                 <View style={styles.aiBar} />
                 <ActivityIndicator color={Colors.accent} size="small" />
                 <T type="small" color={Colors.textSecondary}>
-                  Тренер думает…
+                  {t('thinking')}
                 </T>
               </Row>
             ) : null}
@@ -232,7 +226,7 @@ export default function CoachScreen() {
             <TextInput
               value={input}
               onChangeText={setInput}
-              placeholder="Спросите тренера…"
+              placeholder={t('ask_ph')}
               placeholderTextColor={Colors.textMuted}
               style={styles.input}
               multiline
@@ -248,19 +242,18 @@ export default function CoachScreen() {
         </KeyboardAvoidingView>
       ) : (
         <ScrollView contentContainerStyle={styles.planBody} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          {/* Wish + regenerate */}
           <View style={styles.wishBox}>
             <T type="small" color={Colors.textSecondary}>
-              {coachPlan ? 'Перестроить план под пожелание' : 'Пожелание к плану, необязательно'}
+              {coachPlan ? t('wish_rebuild') : t('wish_label')}
             </T>
             <Row gap={Spacing.two}>
-              <TextInput value={wish} onChangeText={setWish} placeholder="сухое тело, больше ног, без прыжков…" placeholderTextColor={Colors.textMuted} style={styles.wishInput} />
+              <TextInput value={wish} onChangeText={setWish} placeholder={t('wish_ph')} placeholderTextColor={Colors.textMuted} style={styles.wishInput} />
               <Pressable onPress={() => void buildPlan(wish)} disabled={planBusy} style={[styles.wishBtn, planBusy && { opacity: 0.5 }]}>
                 {planBusy ? <ActivityIndicator color={Colors.onAccent} size="small" /> : <Ionicons name={coachPlan ? 'refresh' : 'sparkles'} size={20} color={Colors.onAccent} />}
               </Pressable>
             </Row>
             <Row gap={6} style={{ flexWrap: 'wrap' }}>
-              {['сухое тело', 'набор массы', 'больше ног', 'без прыжков', 'дома без зала'].map((w) => (
+              {wishes.map((w) => (
                 <Pressable key={w} onPress={() => setWish(w)} style={styles.wishChip}>
                   <T type="small" color={Colors.textSecondary}>
                     {w}
@@ -271,7 +264,7 @@ export default function CoachScreen() {
           </View>
 
           {!coachPlan ? (
-            <EmptyState icon="calendar-outline" title="Плана пока нет" subtitle={`Соберу ${ctx.profile.daysPerWeek} тренировки в неделю под вашу цель, уровень и вес`} action={planBusy ? 'Составляю…' : 'Составить план'} onAction={planBusy ? undefined : () => void buildPlan(wish)} />
+            <EmptyState icon="calendar-outline" title={t('no_plan_title')} subtitle={t('no_plan_sub', { n: ctx.profile.daysPerWeek })} action={planBusy ? t('making') : t('make_plan')} onAction={planBusy ? undefined : () => void buildPlan(wish)} />
           ) : (
             <>
               <View style={styles.planHead}>
@@ -281,7 +274,7 @@ export default function CoachScreen() {
                   </T>
                   <View style={[styles.sourceTag, coachPlan.source === 'ai' && { borderColor: Colors.accent }]}>
                     <T type="small" color={coachPlan.source === 'ai' ? Colors.accent : Colors.textMuted} style={{ fontWeight: '700', fontSize: 11 }}>
-                      {coachPlan.source === 'ai' ? 'CLAUDE' : 'БАЗОВЫЙ'}
+                      {coachPlan.source === 'ai' ? t('src_ai') : t('src_local')}
                     </T>
                   </View>
                 </Row>
@@ -297,7 +290,7 @@ export default function CoachScreen() {
               <View style={styles.nutrition}>
                 <Row gap={8}>
                   <Ionicons name="nutrition-outline" size={18} color={Colors.accent} />
-                  <T type="subheading">Питание под план</T>
+                  <T type="subheading">{t('nutrition_plan')}</T>
                 </Row>
                 {coachPlan.nutrition.map((n) => (
                   <Row key={n} gap={8} style={{ alignItems: 'flex-start' }}>
@@ -309,13 +302,13 @@ export default function CoachScreen() {
                 ))}
               </View>
               <T type="small" color={Colors.textMuted} style={{ textAlign: 'center', paddingHorizontal: Spacing.three }}>
-                План носит рекомендательный характер. При хронических заболеваниях проконсультируйтесь с врачом.
+                {t('disclaimer')}
               </T>
             </>
           )}
         </ScrollView>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -333,6 +326,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function AiLine({ text, onExercise }: { text: string; onExercise?: (name: string) => void }) {
+  const { t } = useI18n();
   const ex = onExercise ? findExercise(text.split('\n')[0].toLowerCase()) : undefined;
   return (
     <View style={styles.aiLine}>
@@ -344,7 +338,7 @@ function AiLine({ text, onExercise }: { text: string; onExercise?: (name: string
         {ex && onExercise ? (
           <Pressable onPress={() => onExercise(ex.name)} hitSlop={6} style={{ marginTop: 6 }}>
             <T type="small" color={Colors.accent} style={{ fontWeight: '700' }}>
-              Показать технику «{ex.name}» →
+              {t('show_technique', { name: ex.name })}
             </T>
           </Pressable>
         ) : null}
@@ -364,6 +358,7 @@ function UserLine({ text }: { text: string }) {
 }
 
 function DayBlock({ day, index, last, onExercise }: { day: PlanDay; index: number; last: boolean; onExercise: (name: string) => void }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(index === 0);
   const [wd, ...rest] = day.day.includes('·') ? [day.day.split('·')[1].trim(), day.day.split('·')[0].trim()] : [day.day, ''];
   return (
@@ -380,7 +375,7 @@ function DayBlock({ day, index, last, onExercise }: { day: PlanDay; index: numbe
         <Pressable onPress={() => setOpen((v) => !v)} style={styles.dayHead}>
           <View style={{ flex: 1 }}>
             <T type="small" color={Colors.textMuted}>
-              {rest[0] || `День ${index + 1}`} • {day.durationMin} мин
+              {rest[0] || t('day_n', { n: index + 1 })} • {day.durationMin} {t('min')}
             </T>
             <T type="subheading">{day.focus}</T>
           </View>
@@ -389,7 +384,7 @@ function DayBlock({ day, index, last, onExercise }: { day: PlanDay; index: numbe
         {open ? (
           <View style={{ gap: 6, marginTop: 6 }}>
             <T type="small" color={Colors.textMuted} style={{ lineHeight: 17 }}>
-              Разминка: {day.warmup}
+              {t('warmup')}: {day.warmup}
             </T>
             {day.exercises.map((e, i) => {
               const known = !!findExercise(e.name.toLowerCase());
@@ -422,7 +417,7 @@ function DayBlock({ day, index, last, onExercise }: { day: PlanDay; index: numbe
               );
             })}
             <T type="small" color={Colors.textMuted} style={{ lineHeight: 17 }}>
-              Заминка: {day.cooldown}
+              {t('cooldown')}: {day.cooldown}
             </T>
           </View>
         ) : null}
@@ -433,11 +428,11 @@ function DayBlock({ day, index, last, onExercise }: { day: PlanDay; index: numbe
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
-  hero: { paddingTop: Platform.OS === 'ios' ? 104 : 84, paddingHorizontal: Spacing.three, paddingBottom: Spacing.two },
+  hero: { paddingTop: Spacing.two, paddingHorizontal: Spacing.three, paddingBottom: Spacing.two },
   heroRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  orbOuter: { width: 72, height: 72, borderRadius: 36, borderWidth: 1, borderColor: 'rgba(198,255,61,0.25)', alignItems: 'center', justifyContent: 'center' },
-  orbMid: { width: 58, height: 58, borderRadius: 29, borderWidth: 1.5, borderColor: 'rgba(198,255,61,0.5)', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(198,255,61,0.08)' },
-  orbCore: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
+  orbOuter: { width: 64, height: 64, borderRadius: 32, borderWidth: 1, borderColor: 'rgba(198,255,61,0.25)', alignItems: 'center', justifyContent: 'center' },
+  orbMid: { width: 52, height: 52, borderRadius: 26, borderWidth: 1.5, borderColor: 'rgba(198,255,61,0.5)', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(198,255,61,0.08)' },
+  orbCore: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.accent },
   stat: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.md, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   keyBox: { marginHorizontal: Spacing.three, marginTop: Spacing.two, padding: Spacing.three, gap: Spacing.two, backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border },
@@ -453,7 +448,7 @@ const styles = StyleSheet.create({
   promptGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   promptCard: { width: '48%', flexGrow: 1, padding: 12, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   quick: { paddingHorizontal: 12, height: 34, borderRadius: Radius.pill, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
-  inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two, padding: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.four, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.background },
+  inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two, padding: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.background },
   input: { flex: 1, minHeight: 46, maxHeight: 120, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 12, color: Colors.text, fontSize: 15 },
   sendBtn: { width: 46, height: 46, borderRadius: 23, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
   planBody: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },

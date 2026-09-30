@@ -8,66 +8,61 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Badge, Button, Card, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatDateLong, formatPrice, plans } from '@/data/mock';
-import { useApp, useMembershipInfo } from '@/store/app-context';
+import { useApp, useI18n, useMembershipInfo } from '@/store/app-context';
 
-const payMethods = [
-  { id: 'kaspi', label: 'Kaspi Pay', icon: 'phone-portrait-outline', hint: 'Оплата в приложении Kaspi' },
-  { id: 'card', label: 'Банковская карта', icon: 'card-outline', hint: 'Visa, Mastercard' },
-  { id: 'split', label: 'Рассрочка 0-0-12', icon: 'calendar-outline', hint: 'Без переплаты через Kaspi' },
-] as const;
+type PayId = 'kaspi' | 'card' | 'split';
 
 export default function MembershipScreen() {
   const { membership, buyPlan, freezeMembership, unfreezeMembership } = useApp();
+  const { t, tp, td } = useI18n();
   const info = useMembershipInfo();
   const [selected, setSelected] = useState<string>(info.plan?.id ?? 'p6');
-  const [pay, setPay] = useState<(typeof payMethods)[number]['id']>('kaspi');
+  const [pay, setPay] = useState<PayId>('kaspi');
   const plan = plans.find((p) => p.id === selected)!;
 
+  const payMethods: { id: PayId; label: string; icon: React.ComponentProps<typeof Ionicons>['name']; hint: string }[] = [
+    { id: 'kaspi', label: t('pay_kaspi'), icon: 'phone-portrait-outline', hint: t('pay_kaspi_hint') },
+    { id: 'card', label: t('pay_card'), icon: 'card-outline', hint: t('pay_card_hint') },
+    { id: 'split', label: t('pay_split'), icon: 'calendar-outline', hint: t('pay_split_hint') },
+  ];
+
   const purchase = () => {
-    const monthly = pay === 'split' ? ` (${formatPrice(Math.round(plan.price / 12))} × 12 мес)` : '';
-    Alert.alert(
-      info.active ? 'Продлить абонемент?' : 'Оформить абонемент?',
-      `«${plan.name}» на ${plan.months} мес за ${formatPrice(plan.price)}${monthly}. Способ оплаты: ${payMethods.find((m) => m.id === pay)?.label}.`,
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Оплатить',
-          onPress: () => {
-            buyPlan(plan.id);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-            Alert.alert('Оплачено', 'Абонемент активирован. QR-пропуск уже работает.', [{ text: 'Отлично', onPress: () => router.back() }]);
-          },
+    const monthly = pay === 'split' ? ` (${formatPrice(Math.round(plan.price / 12))} × 12)` : '';
+    Alert.alert(info.active ? t('confirm_extend') : t('confirm_buy'), t('ms_confirm_body', { name: td(plan.name), m: plan.months, price: formatPrice(plan.price), monthly, method: payMethods.find((m) => m.id === pay)?.label ?? '' }), [
+      { text: t('cancel'), style: 'cancel' },
+      {
+        text: t('pay'),
+        onPress: () => {
+          buyPlan(plan.id);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          Alert.alert(t('paid_title'), t('paid_body'), [{ text: t('great'), onPress: () => router.back() }]);
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const freeze = () => {
     if (!membership) return;
     const options = [7, 14, 30].filter((d) => d <= membership.freezeDaysLeft);
     if (options.length === 0) {
-      Alert.alert('Заморозка недоступна', 'Дни заморозки по этому абонементу закончились.');
+      Alert.alert(t('freeze_na_title'), t('freeze_na_sub'));
       return;
     }
-    Alert.alert('Заморозить абонемент', `Доступно ${membership.freezeDaysLeft} дней. Срок действия продлится на выбранное количество дней.`, [
-      ...options.map((d) => ({ text: `На ${d} дней`, onPress: () => freezeMembership(d) })),
-      { text: 'Отмена', style: 'cancel' as const },
-    ]);
+    Alert.alert(t('freeze_title'), t('freeze_body', { n: membership.freezeDaysLeft }), [...options.map((d) => ({ text: t('freeze_for', { n: d }), onPress: () => freezeMembership(d) })), { text: t('cancel'), style: 'cancel' as const }]);
   };
 
   return (
     <Screen edges={[]} contentStyle={{ paddingBottom: 140 }}>
       <View style={styles.body}>
-        {/* Current */}
         <LinearGradient colors={info.active ? ['#2B3A14', Colors.surface] : ['#3A1A1A', Colors.surface]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.current}>
           <Row style={{ justifyContent: 'space-between' }}>
-            <T type="caption">Текущий абонемент</T>
-            {info.active ? <Badge label={info.frozen ? 'Заморожен' : 'Активен'} color={info.frozen ? Colors.info : Colors.success} /> : <Badge label="Не активен" color={Colors.danger} />}
+            <T type="caption">{t('ms_current')}</T>
+            {info.active ? <Badge label={info.frozen ? t('status_frozen') : t('status_active')} color={info.frozen ? Colors.info : Colors.success} /> : <Badge label={t('status_inactive')} color={Colors.danger} />}
           </Row>
           {info.active && membership ? (
             <>
               <T type="title" style={{ marginTop: 4 }}>
-                «{info.plan?.name}»
+                «{td(info.plan?.name ?? '')}»
               </T>
               <T type="body" color={Colors.textSecondary}>
                 {formatDateLong(membership.startDate)} — {formatDateLong(membership.endDate)}
@@ -76,32 +71,31 @@ export default function MembershipScreen() {
                 <ProgressBar value={info.progress} />
                 <Row style={{ justifyContent: 'space-between' }}>
                   <T type="small" color={Colors.textSecondary}>
-                    Осталось {info.daysLeft} дней
+                    {t('ms_left', { n: info.daysLeft })}
                   </T>
                   <T type="small" color={Colors.textSecondary}>
-                    Заморозка: {membership.freezeDaysLeft} дн.
+                    {t('ms_freeze_left', { n: membership.freezeDaysLeft })}
                   </T>
                 </Row>
               </View>
               <Row gap={Spacing.two} style={{ marginTop: Spacing.three }}>
                 {info.frozen ? (
-                  <Button title={`Разморозить (до ${membership.frozenUntil ? formatDateLong(membership.frozenUntil) : ''})`} variant="secondary" icon="sunny-outline" onPress={unfreezeMembership} style={{ flex: 1 }} size="sm" />
+                  <Button title={t('unfreeze_until', { date: membership.frozenUntil ? formatDateLong(membership.frozenUntil) : '' })} variant="secondary" icon="sunny-outline" onPress={unfreezeMembership} style={{ flex: 1 }} size="sm" />
                 ) : (
-                  <Button title="Заморозить" variant="secondary" icon="snow-outline" onPress={freeze} style={{ flex: 1 }} size="sm" />
+                  <Button title={t('freeze')} variant="secondary" icon="snow-outline" onPress={freeze} style={{ flex: 1 }} size="sm" />
                 )}
-                <Button title="QR-пропуск" variant="ghost" icon="qr-code-outline" onPress={() => router.push('/qr')} style={{ flex: 1 }} size="sm" />
+                <Button title={t('home_qr')} variant="ghost" icon="qr-code-outline" onPress={() => router.push('/qr')} style={{ flex: 1 }} size="sm" />
               </Row>
             </>
           ) : (
             <T type="heading" style={{ marginTop: 4 }}>
-              Выберите тариф ниже
+              {t('choose_below')}
             </T>
           )}
         </LinearGradient>
 
-        {/* Plans */}
         <View style={{ marginTop: Spacing.four }}>
-          <SectionHeader title={info.active ? 'Продлить' : 'Тарифы'} />
+          <SectionHeader title={info.active ? t('home_extend') : t('plans')} />
           <View style={{ gap: Spacing.two }}>
             {plans.map((p) => {
               const active = p.id === selected;
@@ -110,12 +104,13 @@ export default function MembershipScreen() {
                   <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <View style={{ flex: 1 }}>
                       <Row gap={8}>
-                        <T type="subheading">{p.name}</T>
-                        {p.popular ? <Badge label="Популярный" /> : null}
-                        {p.dayOnly ? <Badge label="До 17:00" color={Colors.info} /> : null}
+                        <T type="subheading">{td(p.name)}</T>
+                        {p.popular ? <Badge label={t('popular')} /> : null}
+                        {p.dayOnly ? <Badge label={t('day_only')} color={Colors.info} /> : null}
                       </Row>
                       <T type="small" color={Colors.textSecondary}>
-                        {p.months} {p.months === 1 ? 'месяц' : p.months < 5 ? 'месяца' : 'месяцев'} • {formatPrice(p.perMonth)}/мес
+                        {p.months} {tp(p.months, 'months_pl')} • {formatPrice(p.perMonth)}
+                        {t('per_month')}
                       </T>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
@@ -134,7 +129,7 @@ export default function MembershipScreen() {
                       {p.features.map((f) => (
                         <Row key={f} gap={8}>
                           <Ionicons name="checkmark-circle" size={15} color={Colors.accent} />
-                          <T type="small">{f}</T>
+                          <T type="small">{td(f)}</T>
                         </Row>
                       ))}
                     </View>
@@ -145,9 +140,8 @@ export default function MembershipScreen() {
           </View>
         </View>
 
-        {/* Payment */}
         <View style={{ marginTop: Spacing.four }}>
-          <SectionHeader title="Способ оплаты" />
+          <SectionHeader title={t('pay_method')} />
           <Card padded={false}>
             {payMethods.map((m, i) => (
               <Pressable key={m.id} onPress={() => setPay(m.id)} style={[styles.pay, i > 0 && { borderTopWidth: 1, borderTopColor: Colors.border }]}>
@@ -167,11 +161,11 @@ export default function MembershipScreen() {
         </View>
 
         <View style={{ marginTop: Spacing.four }}>
-          <SectionHeader title="Частые вопросы" />
+          <SectionHeader title={t('faq')} />
           {[
-            ['Можно ходить в любой клуб?', 'Да, абонемент действует во всех клубах сети в Алматы и Астане.'],
-            ['Как работает заморозка?', 'Абонемент ставится на паузу, срок действия продлевается на дни заморозки.'],
-            ['Групповые входят в цену?', 'Да, все групповые занятия из расписания без доплат. Персональные — отдельно.'],
+            [t('faq_1q'), t('faq_1a')],
+            [t('faq_2q'), t('faq_2a')],
+            [t('faq_3q'), t('faq_3a')],
           ].map(([q, a]) => (
             <Card key={q} style={{ marginBottom: Spacing.two, gap: 4 }}>
               <T type="subheading">{q}</T>
@@ -186,11 +180,11 @@ export default function MembershipScreen() {
       <View style={styles.footer}>
         <View style={{ flex: 1 }}>
           <T type="small" color={Colors.textSecondary}>
-            «{plan.name}» • {plan.months} мес
+            «{td(plan.name)}» • {plan.months} {t('months_short')}
           </T>
-          <T type="heading">{pay === 'split' ? `${formatPrice(Math.round(plan.price / 12))}/мес` : formatPrice(plan.price)}</T>
+          <T type="heading">{pay === 'split' ? `${formatPrice(Math.round(plan.price / 12))}${t('per_month')}` : formatPrice(plan.price)}</T>
         </View>
-        <Button title={info.active ? 'Продлить' : 'Оплатить'} icon="lock-closed-outline" onPress={purchase} style={{ paddingHorizontal: Spacing.four }} />
+        <Button title={info.active ? t('home_extend') : t('pay')} icon="lock-closed-outline" onPress={purchase} style={{ paddingHorizontal: Spacing.four }} />
       </View>
     </Screen>
   );

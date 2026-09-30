@@ -7,17 +7,19 @@ import { Badge, Card, Divider, EmptyState, Row, Screen, T } from '@/components/u
 import { Colors, Spacing } from '@/constants/theme';
 import { clubById, formatDateHuman, formatPrice } from '@/data/mock';
 import { productById } from '@/data/shop';
-import { useApp } from '@/store/app-context';
+import { useApp, useI18n } from '@/store/app-context';
 
 const statusColor = { Готовится: Colors.warning, 'Готов к выдаче': Colors.success, Выдан: Colors.textSecondary } as const;
+const statusKey = { Готовится: 'st_preparing', 'Готов к выдаче': 'st_ready', Выдан: 'st_done' } as const;
 
 export default function OrdersScreen() {
   const { orders } = useApp();
+  const { t } = useI18n();
 
   if (orders.length === 0) {
     return (
       <Screen edges={[]}>
-        <EmptyState icon="receipt-outline" title="Заказов пока нет" subtitle="Оформите первый заказ в магазине" action="В магазин" onAction={() => router.replace('/(tabs)/shop')} />
+        <EmptyState icon="receipt-outline" title={t('no_orders')} subtitle={t('no_orders_sub')} action={t('to_shop')} onAction={() => router.replace('/(tabs)/shop')} />
       </Screen>
     );
   }
@@ -29,12 +31,12 @@ export default function OrdersScreen() {
           <Card key={o.id} style={{ gap: Spacing.two }}>
             <Row style={{ justifyContent: 'space-between' }}>
               <View>
-                <T type="subheading">Заказ {o.id}</T>
+                <T type="subheading">{t('order_n', { id: o.id })}</T>
                 <T type="small" color={Colors.textSecondary}>
                   {formatDateHuman(o.date)} • {clubById(o.clubId)?.name}
                 </T>
               </View>
-              <Badge label={o.status} color={statusColor[o.status]} />
+              <Badge label={t(statusKey[o.status])} color={statusColor[o.status]} />
             </Row>
             <Divider />
             {o.items.map((it) => {
@@ -60,7 +62,7 @@ export default function OrdersScreen() {
             <Divider />
             <Row style={{ justifyContent: 'space-between' }}>
               <T type="small" color={Colors.textSecondary}>
-                Скидка {o.discount ? `− ${formatPrice(o.discount)}` : '—'}
+                {t('discount')} {o.discount ? `− ${formatPrice(o.discount)}` : '—'}
               </T>
               <T type="label" color={Colors.accent}>
                 {formatPrice(o.total)}
@@ -69,7 +71,7 @@ export default function OrdersScreen() {
             <Row gap={6}>
               <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} />
               <T type="small" color={Colors.textMuted}>
-                Покажите номер заказа на рецепции клуба
+                {t('show_id')}
               </T>
             </Row>
           </Card>

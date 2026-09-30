@@ -7,8 +7,10 @@ import { Badge, Row, Stars, T } from '@/components/ui';
 import { Colors, Radius } from '@/constants/theme';
 import { formatPrice } from '@/data/mock';
 import type { Product } from '@/data/shop';
+import { useI18n } from '@/store/app-context';
 
 export function ProductCard({ product: p, width, onAdd }: { product: Product; width?: number; onAdd?: () => void }) {
+  const { t, td } = useI18n();
   const badgeColor = p.badge === 'Хит' ? Colors.warning : p.badge === 'Новинка' ? Colors.info : Colors.danger;
   return (
     <Pressable onPress={() => router.push(`/product/${p.id}`)} style={({ pressed }) => [styles.card, width ? { width } : styles.gridCard, pressed && { opacity: 0.9 }]}>
@@ -16,13 +18,13 @@ export function ProductCard({ product: p, width, onAdd }: { product: Product; wi
         <Image source={{ uri: p.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
         {p.badge ? (
           <View style={{ position: 'absolute', top: 8, left: 8 }}>
-            <Badge label={p.badge} color={badgeColor} />
+            <Badge label={td(p.badge)} color={badgeColor} />
           </View>
         ) : null}
         {!p.inStock ? (
           <View style={styles.soldOut}>
             <T type="small" style={{ fontWeight: '700' }}>
-              Нет в наличии
+              {t('out_of_stock')}
             </T>
           </View>
         ) : null}

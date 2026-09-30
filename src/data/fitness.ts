@@ -1,4 +1,5 @@
 import type { Category } from '@/data/mock';
+import { getLang, translate, type Lang, type TKey } from '@/i18n';
 
 export type Goal = 'lose' | 'gain' | 'tone' | 'strength' | 'flex';
 export type Level = 'beginner' | 'intermediate' | 'advanced';
@@ -84,10 +85,28 @@ export function bmi(weightKg: number, heightCm: number) {
 }
 
 export function bmiLabel(v: number): { label: string; color: string } {
-  if (v < 18.5) return { label: 'Ниже нормы', color: '#4DA3FF' };
-  if (v < 25) return { label: 'Норма', color: '#3DDC84' };
-  if (v < 30) return { label: 'Избыточный вес', color: '#FFB347' };
-  return { label: 'Ожирение', color: '#FF5C5C' };
+  const lang = getLang();
+  if (v < 18.5) return { label: translate(lang, 'bmi_under'), color: '#4DA3FF' };
+  if (v < 25) return { label: translate(lang, 'bmi_normal'), color: '#3DDC84' };
+  if (v < 30) return { label: translate(lang, 'bmi_over'), color: '#FFB347' };
+  return { label: translate(lang, 'bmi_obese'), color: '#FF5C5C' };
+}
+
+/** Localized goal / level titles (the data keeps Russian originals for the AI prompt). */
+export function goalTitle(g: Goal, lang: Lang = getLang()) {
+  return translate(lang, `goal_${g}` as TKey);
+}
+export function goalSubtitle(g: Goal, lang: Lang = getLang()) {
+  return translate(lang, `goal_${g}_sub` as TKey);
+}
+export function goalTip(g: Goal, lang: Lang = getLang()) {
+  return translate(lang, `goal_${g}_tip` as TKey);
+}
+export function levelTitle(l: Level, lang: Lang = getLang()) {
+  return translate(lang, `level_${l}` as TKey);
+}
+export function levelSubtitle(l: Level, lang: Lang = getLang()) {
+  return translate(lang, `level_${l}_sub` as TKey);
 }
 
 /** Mifflin–St Jeor BMR × activity factor, adjusted for the goal. */

@@ -8,18 +8,19 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Badge, Button, Card, EmptyState, ProgressBar, Row, Screen, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubById, formatDateHuman, sessionById, sessionStart, trainerById } from '@/data/mock';
-import { useApp, useMembershipInfo } from '@/store/app-context';
+import { useApp, useI18n, useMembershipInfo } from '@/store/app-context';
 
 export default function ClassScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = sessionById(id);
   const { isBooked, book, cancelBooking } = useApp();
+  const { t, td } = useI18n();
   const membership = useMembershipInfo();
 
   if (!session) {
     return (
       <Screen>
-        <EmptyState icon="alert-circle-outline" title="Занятие не найдено" />
+        <EmptyState icon="alert-circle-outline" title={t('class_not_found')} />
       </Screen>
     );
   }
@@ -30,32 +31,33 @@ export default function ClassScreen() {
   const left = session.capacity - session.booked - (booked ? 1 : 0);
   const past = sessionStart(session) < new Date();
   const full = left <= 0 && !booked;
+  const title = td(session.title);
 
   const onBook = () => {
     if (!membership.active) {
-      Alert.alert('Нужен активный абонемент', 'Групповые занятия входят в абонемент. Оформить сейчас?', [
-        { text: 'Позже', style: 'cancel' },
-        { text: 'К абонементам', onPress: () => router.push('/membership') },
+      Alert.alert(t('need_plan_title'), t('need_plan_sub'), [
+        { text: t('later'), style: 'cancel' },
+        { text: t('to_plans'), onPress: () => router.push('/membership') },
       ]);
       return;
     }
     if (membership.frozen) {
-      Alert.alert('Абонемент заморожен', 'Разморозьте абонемент, чтобы записываться на занятия.', [
-        { text: 'Ок', style: 'cancel' },
-        { text: 'Открыть', onPress: () => router.push('/membership') },
+      Alert.alert(t('frozen_title'), t('frozen_sub'), [
+        { text: t('ok'), style: 'cancel' },
+        { text: t('open'), onPress: () => router.push('/membership') },
       ]);
       return;
     }
     book(session.sessionId);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    Alert.alert('Вы записаны!', `${session.title}, ${formatDateHuman(session.date).toLowerCase()} в ${session.time}. Напомним за 2 часа.`);
+    Alert.alert(t('booked_title'), t('booked_body', { title, date: formatDateHuman(session.date).toLowerCase(), time: session.time }));
   };
 
   const onCancel = () => {
-    Alert.alert('Отменить запись?', 'Место освободится для других участников.', [
-      { text: 'Оставить', style: 'cancel' },
+    Alert.alert(t('cancel_q'), t('cancel_q_sub'), [
+      { text: t('keep'), style: 'cancel' },
       {
-        text: 'Отменить запись',
+        text: t('cancel_booking'),
         style: 'destructive',
         onPress: () => {
           cancelBooking(session.sessionId);
@@ -67,20 +69,20 @@ export default function ClassScreen() {
 
   return (
     <Screen edges={[]} contentStyle={{ paddingBottom: 120 }}>
-      <Stack.Screen options={{ title: session.title }} />
+      <Stack.Screen options={{ title }} />
       <LinearGradient colors={[session.color + 'AA', Colors.background]} style={styles.hero}>
-        <Badge label={session.category} color={Colors.text} />
+        <Badge label={td(session.category)} color={Colors.text} />
         <T type="display" style={{ marginTop: Spacing.two }}>
-          {session.title}
+          {title}
         </T>
         <T type="body" color={Colors.textSecondary}>
-          {formatDateHuman(session.date)} • {session.time} • {session.durationMin} мин
+          {formatDateHuman(session.date)} • {session.time} • {session.durationMin} {t('min')}
         </T>
         {booked ? (
           <Row gap={6} style={{ marginTop: Spacing.two }}>
             <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
             <T type="label" color={Colors.success}>
-              Вы записаны
+              {t('you_booked')}
             </T>
           </Row>
         ) : null}
@@ -92,7 +94,7 @@ export default function ClassScreen() {
             <Image source={{ uri: trainer?.avatar }} style={styles.avatar} contentFit="cover" />
             <View style={{ flex: 1 }}>
               <T type="small" color={Colors.textSecondary}>
-                Тренер
+                {t('trainer')}
               </T>
               <T type="subheading">{trainer?.name}</T>
             </View>
@@ -104,7 +106,7 @@ export default function ClassScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <T type="small" color={Colors.textSecondary}>
-                Клуб • {session.room}
+                {t('club_room', { room: td(session.room) })}
               </T>
               <T type="subheading">{club?.name}</T>
             </View>
@@ -116,29 +118,29 @@ export default function ClassScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <T type="small" color={Colors.textSecondary}>
-                Уровень
+                {t('level')}
               </T>
-              <T type="subheading">{session.level}</T>
+              <T type="subheading">{td(session.level)}</T>
             </View>
           </View>
         </Card>
 
         <Card style={{ marginTop: Spacing.three, gap: Spacing.two }}>
           <Row style={{ justifyContent: 'space-between' }}>
-            <T type="subheading">Места</T>
+            <T type="subheading">{t('spots')}</T>
             <T type="label" color={left <= 3 ? Colors.warning : Colors.success}>
-              {left <= 0 ? 'Мест нет' : `Свободно ${left} из ${session.capacity}`}
+              {left <= 0 ? t('spots_full') : t('spots_left', { a: left, b: session.capacity })}
             </T>
           </Row>
           <ProgressBar value={(session.capacity - left) / session.capacity} color={left <= 3 ? Colors.warning : Colors.accent} />
           <T type="small" color={Colors.textMuted}>
-            Отмена записи бесплатна не позднее чем за 3 часа до начала
+            {t('cancel_policy')}
           </T>
         </Card>
 
         <View style={{ marginTop: Spacing.four }}>
           <T type="heading" style={{ marginBottom: Spacing.two }}>
-            Описание
+            {t('description')}
           </T>
           <T type="body" color={Colors.textSecondary}>
             {session.description}
@@ -147,9 +149,9 @@ export default function ClassScreen() {
 
         <View style={{ marginTop: Spacing.four }}>
           <T type="heading" style={{ marginBottom: Spacing.two }}>
-            Что взять с собой
+            {t('bring')}
           </T>
-          {['Спортивная форма и сменная обувь', 'Полотенце и вода', session.category === 'Аква' ? 'Купальник, шапочка, сланцы' : 'Хорошее настроение'].map((i) => (
+          {[t('bring_1'), t('bring_2'), session.category === 'Аква' ? t('bring_3_aqua') : t('bring_3')].map((i) => (
             <Row key={i} gap={8} style={{ marginBottom: 6 }}>
               <Ionicons name="checkmark-circle-outline" size={16} color={Colors.accent} />
               <T type="body" color={Colors.textSecondary}>
@@ -162,11 +164,11 @@ export default function ClassScreen() {
 
       <View style={styles.footer}>
         {past ? (
-          <Button title="Занятие уже прошло" disabled style={{ flex: 1 }} />
+          <Button title={t('class_past')} disabled style={{ flex: 1 }} />
         ) : booked ? (
-          <Button title="Отменить запись" variant="danger" icon="close-circle-outline" onPress={onCancel} style={{ flex: 1 }} />
+          <Button title={t('cancel_booking')} variant="danger" icon="close-circle-outline" onPress={onCancel} style={{ flex: 1 }} />
         ) : (
-          <Button title={full ? 'В лист ожидания' : 'Записаться'} icon={full ? 'hourglass-outline' : 'checkmark'} onPress={onBook} style={{ flex: 1 }} variant={full ? 'secondary' : 'primary'} />
+          <Button title={full ? t('waitlist') : t('book')} icon={full ? 'hourglass-outline' : 'checkmark'} onPress={onBook} style={{ flex: 1 }} variant={full ? 'secondary' : 'primary'} />
         )}
       </View>
     </Screen>

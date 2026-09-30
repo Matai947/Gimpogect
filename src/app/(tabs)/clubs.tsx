@@ -6,13 +6,14 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Badge, Card, Chip, ChipRow, ProgressBar, Row, Screen, Stars, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { clubs, occupancyLabel } from '@/data/mock';
-import { useApp } from '@/store/app-context';
+import { clubHours, clubs, occupancyLabel } from '@/data/mock';
+import { useApp, useI18n } from '@/store/app-context';
 
 const cities = ['Все', 'Алматы', 'Астана'];
 
 export default function ClubsScreen() {
   const { favorites, toggleFavorite, user } = useApp();
+  const { t, tp, td } = useI18n();
   const [query, setQuery] = useState('');
   const [city, setCity] = useState('Все');
   const [onlyFav, setOnlyFav] = useState(false);
@@ -29,13 +30,13 @@ export default function ClubsScreen() {
   return (
     <Screen>
       <View style={styles.header}>
-        <T type="title">Клубы</T>
-        <T type="caption">{clubs.length} клуба в 2 городах • один абонемент</T>
+        <T type="title">{t('tab_clubs')}</T>
+        <T type="caption">{t('clubs_sub', { n: clubs.length, c: tp(clubs.length, 'clubs_pl') })}</T>
       </View>
 
       <View style={styles.search}>
         <Ionicons name="search" size={18} color={Colors.textSecondary} />
-        <TextInput value={query} onChangeText={setQuery} placeholder="Название или адрес" placeholderTextColor={Colors.textMuted} style={styles.searchInput} />
+        <TextInput value={query} onChangeText={setQuery} placeholder={t('clubs_search_ph')} placeholderTextColor={Colors.textMuted} style={styles.searchInput} />
         {query ? (
           <Pressable onPress={() => setQuery('')} hitSlop={8}>
             <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
@@ -45,9 +46,9 @@ export default function ClubsScreen() {
 
       <ChipRow style={{ marginBottom: Spacing.three }}>
         {cities.map((c) => (
-          <Chip key={c} label={c} active={city === c} onPress={() => setCity(c)} />
+          <Chip key={c} label={c === 'Все' ? t('all') : td(c)} active={city === c} onPress={() => setCity(c)} />
         ))}
-        <Chip label="Избранные" icon="heart" active={onlyFav} onPress={() => setOnlyFav((v) => !v)} />
+        <Chip label={t('favorites')} icon="heart" active={onlyFav} onPress={() => setOnlyFav((v) => !v)} />
       </ChipRow>
 
       <View style={{ paddingHorizontal: Spacing.three, gap: Spacing.three }}>
@@ -61,7 +62,7 @@ export default function ClubsScreen() {
                 <Image source={{ uri: c.photos[0] }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
                 <View style={styles.imgTop}>
                   <Row gap={6}>
-                    {isHome ? <Badge label="Мой клуб" color={Colors.accent} /> : null}
+                    {isHome ? <Badge label={t('my_club')} color={Colors.accent} /> : null}
                     {c.is24h ? <Badge label="24/7" color={Colors.info} /> : null}
                   </Row>
                   <Pressable onPress={() => toggleFavorite(c.id)} hitSlop={8} style={styles.heart}>
@@ -82,13 +83,13 @@ export default function ClubsScreen() {
                     {c.address}
                   </T>
                   <T type="small" color={Colors.textSecondary}>
-                    {c.distanceKm < 100 ? `${c.distanceKm} км` : c.city}
+                    {c.distanceKm < 100 ? t('km', { n: c.distanceKm }) : td(c.city)}
                   </T>
                 </Row>
                 <Row gap={6}>
                   <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
                   <T type="small" color={Colors.textSecondary}>
-                    {c.hours}
+                    {clubHours(c)}
                   </T>
                 </Row>
                 <View style={{ gap: 6, marginTop: 4 }}>
@@ -97,7 +98,7 @@ export default function ClubsScreen() {
                       {occ.label}
                     </T>
                     <T type="small" color={Colors.textSecondary}>
-                      {c.occupancy}% сейчас
+                      {t('occ_now', { p: c.occupancy })}
                     </T>
                   </Row>
                   <ProgressBar value={c.occupancy / 100} color={occ.color} />
@@ -108,7 +109,7 @@ export default function ClubsScreen() {
         })}
         {list.length === 0 ? (
           <T type="caption" style={{ textAlign: 'center', paddingVertical: Spacing.five }}>
-            Ничего не найдено
+            {t('nothing_found')}
           </T>
         ) : null}
       </View>
