@@ -10,7 +10,7 @@ import { Button, EmptyState, IconButton, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { findExercise } from '@/data/exercises';
 import { goalTitle } from '@/data/fitness';
-import { askCoach, generatePlan, hasApiKey, newMessage, type PlanDay } from '@/lib/coach';
+import { areaWish, askCoach, generatePlan, hasApiKey, isPlanRequest, newMessage, recentAreas, type PlanDay } from '@/lib/coach';
 import { useApp, useCoachContext, useI18n } from '@/store/app-context';
 
 type Tab = 'chat' | 'plan';
@@ -58,8 +58,8 @@ export default function CoachScreen() {
     setBusy(true);
     Haptics.selectionAsync().catch(() => {});
     try {
-      if (/составь план|план на неделю|новый план|перестрой план|build my weekly plan|weekly plan|аптаға жоспар/i.test(clean)) {
-        const plan = await generatePlan(ctx, clean);
+      if (isPlanRequest(clean)) {
+        const plan = await generatePlan(ctx, [clean, areaWish(recentAreas(coachMessages, clean))].filter(Boolean).join('. '));
         setCoachPlan(plan);
         addCoachMessage(newMessage('assistant', t('plan_ready', { title: plan.title, summary: plan.summary, n: plan.days.length })));
       } else {

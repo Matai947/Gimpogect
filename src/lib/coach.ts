@@ -82,6 +82,9 @@ export function buildSystemPrompt(ctx: CoachContext): string {
 • Адаптируй советы под цель, уровень, вес и динамику. Учитывай, что «сухое тело» = снижение жира с сохранением мышц: силовые + умеренный дефицит калорий + белок.
 • Объясняя технику, давай 3–5 шагов и 1–2 типичные ошибки.
 • Не ставь диагнозов и не назначай лекарства и добавки с рисками; при боли, травмах, беременности, давлении советуй врача.
+• Упоминание части тела без слов о боли («укрепить спину», «накачать ноги») это запрос на упражнения, а не жалоба: сразу дай 4–6 упражнений с подходами и повторениями.
+• Про боль говори только если клиент сам пишет, что болит. Тогда дай щадящий вариант и посоветуй врача при острой или долгой боли.
+• Учитывай предыдущие сообщения: «план тренировки нужно» после вопроса про спину значит план с акцентом на спину.
 • Если данных не хватает, задай один уточняющий вопрос, не больше.
 • Можешь рекомендовать групповые занятия и тренеров сети из списка выше, если это уместно.`;
 }
@@ -89,7 +92,7 @@ export function buildSystemPrompt(ctx: CoachContext): string {
 /* ---------- chat ---------- */
 
 export async function askCoach(ctx: CoachContext, history: ChatMessage[], userText: string): Promise<string> {
-  if (!hasApiKey()) return localAnswer(ctx, userText);
+  if (!hasApiKey()) return localAnswer(ctx, userText, history);
 
   const messages: Anthropic.Beta.BetaMessageParam[] = [
     ...history.slice(-12).map((m) => ({ role: m.role, content: m.text }) as Anthropic.Beta.BetaMessageParam),
@@ -268,6 +271,7 @@ export function localPlan(ctx: CoachContext, wish?: string): WeekPlan {
       ];
   }
 
+  const wishAreas = areasIn(wish ?? '');
   const dayIdx = pickDays(daysPerWeek);
   const days: PlanDay[] = dayIdx.map((wd, i) => {
     const s = sequence[i];
@@ -276,7 +280,7 @@ export function localPlan(ctx: CoachContext, wish?: string): WeekPlan {
       focus: s.focus,
       durationMin: s.min,
       warmup: '5–7 минут: лёгкое кардио и суставная разминка, 1–2 разминочных подхода с лёгким весом.',
-      exercises: s.make(),
+      exercises: focusDay(s.make(), wishAreas, level, i),
       cooldown: '5 минут спокойной ходьбы и растяжка рабочих мышц.',
     };
   });
@@ -285,8 +289,8 @@ export function localPlan(ctx: CoachContext, wish?: string): WeekPlan {
   const targets = dailyTargets({ ...ctx.profile, weightKg: ctx.currentWeightKg });
   const dry = wish?.toLowerCase().includes('сух') || wish?.toLowerCase().includes('рельеф');
   return {
-    title: dry ? 'Сухое тело: сила + дефицит' : `${g.title}: ${daysPerWeek} дня в неделю`,
-    summary: `${g.tip} План рассчитан на уровень «${levelTitle(level)}» и ${daysPerWeek} тренировок в неделю. Каждую неделю добавляйте 1 повторение или 2,5 кг там, где техника уверенная.${dry ? ' Для сухого тела держим силовые тяжёлыми, а жир убираем питанием и кардио.' : ''}`,
+    title: dry ? 'Сухое тело: сила + дефицит' : wishAreas.length ? `${g.title} + акцент на ${areaFocusLabel(wishAreas)}` : `${g.title}: ${daysPerWeek} дня в неделю`,
+    summary: `${g.tip} План рассчитан на уровень «${levelTitle(level)}» и ${daysPerWeek} тренировок в неделю. Каждую неделю добавляйте 1 повторение или 2,5 кг там, где техника уверенная.${wishAreas.length ? ` В каждый день добавлены упражнения на ${areaFocusLabel(wishAreas)}.` : ''}${dry ? ' Для сухого тела держим силовые тяжёлыми, а жир убираем питанием и кардио.' : ''}`,
     days,
     nutrition: [
       `Калорийность около ${targets.calories} ккал в день, белок ${targets.protein} г.`,
@@ -308,40 +312,171 @@ function formatTechnique(e: Exercise): string {
   ].join('\n');
 }
 
-export function localAnswer(ctx: CoachContext, question: string): string {
-  const q = question.toLowerCase();
+/* ---------- offline understanding ---------- */
+
+export type BodyArea = 'back' | 'legs' | 'glutes' | 'abs' | 'chest' | 'shoulders' | 'arms';
+
+const areaPatterns: Record<BodyArea, RegExp> = {
+  back: /спин|поясниц|осанк|сутул|широчайш|back|posture|арқа|бел(і|ім)/,
+  legs: /ног(а|и|у|ам|ах)?\b|бедр|икр|квадрицепс|legs?\b|аяқ/,
+  glutes: /ягодиц|попу|попа|glute|бөксе/,
+  abs: /пресс|живот|кор\b|кубик|abs\b|core|іш/,
+  chest: /груд|chest|кеуде/,
+  shoulders: /плеч|дельт|shoulder|иық/,
+  arms: /рук(и|у|ам)?\b|бицепс|трицепс|arms?\b|қол/,
+};
+
+const areaTitles: Record<BodyArea, string> = {
+  back: 'спины',
+  legs: 'ног',
+  glutes: 'ягодиц',
+  abs: 'пресса и кора',
+  chest: 'груди',
+  shoulders: 'плеч',
+  arms: 'рук',
+};
+
+/** Exercises per area: [beginner-safe list, extra for intermediate/advanced]. */
+const areaRoutines: Record<BodyArea, { base: string[]; strong: string[] }> = {
+  back: { base: ['seated-row', 'lat-pulldown', 'hyperextension', 'bird-dog', 'face-pull'], strong: ['pullup', 'row', 'rdl'] },
+  legs: { base: ['goblet-squat', 'leg-press', 'lunge', 'rdl'], strong: ['squat', 'deadlift'] },
+  glutes: { base: ['glute-bridge', 'hip-thrust', 'rdl', 'lunge'], strong: ['squat', 'kb-swing'] },
+  abs: { base: ['plank', 'dead-bug', 'bird-dog'], strong: ['kb-swing', 'burpee'] },
+  chest: { base: ['pushup', 'db-press'], strong: ['bench'] },
+  shoulders: { base: ['ohp', 'face-pull'], strong: ['pushup'] },
+  arms: { base: ['pushup', 'row', 'seated-row'], strong: ['pullup', 'db-press'] },
+};
+
+/** Accusative form for «акцент на …». */
+const areaAcc: Record<BodyArea, string> = { back: 'спину', legs: 'ноги', glutes: 'ягодицы', abs: 'пресс и кор', chest: 'грудь', shoulders: 'плечи', arms: 'руки' };
+export function areaFocusLabel(areas: BodyArea[]) {
+  return areas.map((a) => areaAcc[a]).join(' и ');
+}
+
+const exById = (id: string) => exercises.find((e) => e.id === id);
+
+export function areasIn(text: string): BodyArea[] {
+  const q = normalize(text);
+  return (Object.keys(areaPatterns) as BodyArea[]).filter((a) => areaPatterns[a].test(q));
+}
+
+function normalize(text: string) {
+  return text.toLowerCase().replace(/ё/g, 'е');
+}
+
+const PAIN = /бол(ь|и|ит|ят|ело)|травм|ноет|ныть|защемл|грыж|протруз|сколиоз|hurt|pain|injur|ауыр/;
+const PLAN = /план|программ|расписан|тренировки?\s+на\s+недел|plan\b|program|жоспар|бағдарлама/;
+const STRENGTHEN = /укреп|накач|прокач|развить|развивать|сильн|подтян|нарастить|strengthen|build|tone|нығайт/;
+const TECHNIQUE = /как (делать|правильно|выполнять)|техник|how to|қалай/;
+
+/** A request to build a plan (not a question about an existing one). */
+export function isPlanRequest(text: string): boolean {
+  const q = normalize(text);
+  if (!PLAN.test(q)) return false;
+  // "что в моём плане" / "где план" is a question, everything else we treat as "make one"
+  return !/где|что в|покажи мой|what'?s in|қайда/.test(q);
+}
+
+function areaRoutineText(ctx: CoachContext, areas: BodyArea[], pain: boolean): string {
+  const strong = ctx.profile.level !== 'beginner' && !pain;
+  const ids = [...new Set(areas.flatMap((a) => [...areaRoutines[a].base, ...(strong ? areaRoutines[a].strong : [])]))];
+  const safe = pain ? ids.filter((id) => !['deadlift', 'squat', 'kb-swing', 'burpee', 'bench', 'pullup'].includes(id)) : ids;
+  const list = safe.slice(0, 6).map((id) => exById(id)).filter((e): e is Exercise => !!e);
+  const reps = ctx.profile.goal === 'strength' ? '4 × 6–8' : ctx.profile.goal === 'gain' ? '3–4 × 8–12' : '3 × 12–15';
+  const title = areas.map((a) => areaTitles[a]).join(' и ');
+  const lines = list.map((e) => `• ${e.name}: ${e.id === 'plank' || e.id === 'bird-dog' || e.id === 'dead-bug' ? '3 × 30–45 сек' : reps}`);
+  const freq = ctx.profile.daysPerWeek >= 4 ? '2 раза в неделю' : '1–2 раза в неделю';
+  const parts = [
+    pain
+      ? `Если спина или сустав уже болит, начните со щадящего комплекса для ${title} и без веса. Острая боль, онемение или боль дольше 2–3 недель повод сначала показаться врачу или физиотерапевту.`
+      : `Комплекс для ${title} под ваш уровень «${levelName(ctx.profile.level)}», ${freq}:`,
+    ...lines,
+    areas.includes('back')
+      ? 'Главное для спины: сильные ягодицы и кор, ровная поясница во всех тягах, разминка 5–7 минут перед тренировкой.'
+      : 'Добавляйте вес или повторения, когда последние 2 повторения даются уверенно.',
+    'Нажмите на любое упражнение из этого списка в плане, и я покажу технику. Хотите, соберу неделю с упором на эту зону: напишите «составь план».',
+  ];
+  return parts.join('\n');
+}
+
+function levelName(l: FitnessProfile['level']) {
+  return levels.find((x) => x.key === l)?.title ?? l;
+}
+
+export function localAnswer(ctx: CoachContext, question: string, history: ChatMessage[] = []): string {
+  const q = normalize(question);
   const g = goalByKey(ctx.profile.goal);
   const targets = dailyTargets({ ...ctx.profile, weightKg: ctx.currentWeightKg });
+  const areas = areasIn(q);
+  const pain = PAIN.test(q);
 
+  // 1) Body area: "укрепить спину", "болит поясница", "что делать для пресса"
+  if (areas.length) return areaRoutineText(ctx, areas, pain);
+
+  // 2) Pain without an area: ask where, don't guess
+  if (pain) {
+    return 'Через боль тренироваться нельзя. Напишите, что именно болит: спина, колено, плечо или другое, и я подберу щадящие упражнения. Если боль острая, есть онемение или она держится дольше 2–3 недель, сначала покажитесь врачу.';
+  }
+
+  // 3) Technique of a known exercise
   const exercise = findExercise(q);
-  if (exercise && /как|техник|правильно|делать|выполн/.test(q)) return formatTechnique(exercise);
-  if (exercise) return formatTechnique(exercise);
+  if (exercise && (TECHNIQUE.test(q) || q.length < 40)) return formatTechnique(exercise);
 
-  if (/калори|питани|есть|еда|белок|диет|ужин|завтрак/.test(q)) {
-    return `Ориентир для цели «${g.title}»: ${targets.calories} ккал и ${targets.protein} г белка в день, вода ${targets.water} л.\n• Белок в каждом приёме пищи: мясо, рыба, яйца, творог, протеин.\n• Углеводы ставьте до и после тренировки.\n• ${g.tip}`;
+  // 4) "strengthen" without area: use the last area mentioned in the conversation
+  if (STRENGTHEN.test(q)) {
+    const recent = history.slice(-6).reverse().flatMap((m) => (m.role === 'user' ? areasIn(m.text) : []));
+    if (recent.length) return areaRoutineText(ctx, [recent[0]], false);
+    return 'Какую зону хотите укрепить: спину, ноги, ягодицы, пресс, грудь, плечи или руки? Подберу 4–6 упражнений под ваш уровень.';
   }
-  if (/сух|рельеф|жир/.test(q)) {
-    return `Сухое тело = сохраняем мышцы, убираем жир.\n• Силовые 3 раза в неделю с тяжёлыми базовыми упражнениями, повторения 6–10.\n• Дефицит 300–400 ккал: для вас около ${Math.round((targets.calories - (ctx.profile.goal === 'lose' ? 0 : 400)) / 10) * 10} ккал.\n• Белок ${Math.round(ctx.currentWeightKg * 2)} г в день.\n• 2 кардио по 30–40 минут или интервалы.\nНажмите «Обновить план» и напишите «сухое тело», я перестрою неделю.`;
+
+  if (/калори|питани|\bесть\b|\bеда|белок|диет|ужин|завтрак|перекус|nutrition|diet|protein|тамақ/.test(q)) {
+    return `Ориентир для цели «${g.title}»: ${targets.calories} ккал и ${targets.protein} г белка в день, вода ${targets.water} л.\n• Белок в каждом приёме пищи: мясо, рыба, яйца, творог, протеин.\n• После тренировки в течение 1–2 часов: белок 25–40 г и углеводы, например курица с рисом или протеин с бананом.\n• ${g.tip}`;
   }
-  if (/план|программ|недел/.test(q)) {
-    return `План на неделю лежит во вкладке «План»: ${ctx.profile.daysPerWeek} тренировки под цель «${g.title}». Хотите его изменить, нажмите «Обновить план» и опишите пожелание, например «больше ног» или «без прыжков».`;
+  if (/сух|рельеф|жир|lean|cut/.test(q)) {
+    return `Сухое тело = сохраняем мышцы, убираем жир.\n• Силовые 3 раза в неделю с тяжёлыми базовыми упражнениями, повторения 6–10.\n• Дефицит 300–400 ккал: для вас около ${Math.round((targets.calories - (ctx.profile.goal === 'lose' ? 0 : 400)) / 10) * 10} ккал.\n• Белок ${Math.round(ctx.currentWeightKg * 2)} г в день.\n• 2 кардио по 30–40 минут или интервалы.\nНапишите «составь план для сухого тела», и я перестрою неделю.`;
   }
-  if (/вес|похуд|набра|прогресс/.test(q)) {
+  if (/вес|похуд|набра|прогресс|плато|weight|progress/.test(q)) {
     const trend = ctx.weightTrend;
     const delta = trend.length > 1 ? (trend[trend.length - 1].kg - trend[0].kg).toFixed(1) : '0';
-    return `Сейчас ${ctx.currentWeightKg} кг, за период наблюдения изменение ${delta} кг.${ctx.profile.targetWeightKg ? ` До цели ${Math.abs(ctx.currentWeightKg - ctx.profile.targetWeightKg).toFixed(1)} кг.` : ''}\n• Здоровый темп: 0,3–0,7 кг в неделю.\n• Взвешивайтесь утром натощак 2–3 раза в неделю и смотрите на среднее.\n• ${g.tip}`;
+    return `Сейчас ${ctx.currentWeightKg} кг, за период наблюдения изменение ${delta} кг.${ctx.profile.targetWeightKg ? ` До цели ${Math.abs(ctx.currentWeightKg - ctx.profile.targetWeightKg).toFixed(1)} кг.` : ''}\n• Здоровый темп: 0,3–0,7 кг в неделю.\n• Прогресс в зале: каждую неделю +1 повторение или +2,5 кг в базовых упражнениях.\n• Сон 7–9 часов и белок ${targets.protein} г в день.\n• ${g.tip}`;
   }
-  if (/боль|болит|травм|колен|спин|поясниц/.test(q)) {
-    return 'При боли тренироваться через неё нельзя. Снизьте нагрузку, замените упражнение на безболезненный вариант и, если боль держится больше 2–3 дней, обратитесь к врачу или физиотерапевту. Я могу подобрать щадящий вариант тренировки, напишите, что именно болит.';
-  }
-  if (/разминк|заминк|растяж/.test(q)) {
-    const m = exercises.find((e) => e.id === 'mobility')!;
+  if (/разминк|заминк|растяж|warm|stretch/.test(q)) {
+    const m = exById('mobility')!;
     return `Разминка: 5–7 минут лёгкого кардио и суставная гимнастика, затем 1–2 подхода первого упражнения с лёгким весом.\nЗаминка:\n${m.steps.map((s) => `• ${s}`).join('\n')}`;
   }
-  if (/привет|здравств|hi|hello/.test(q)) {
-    return `Привет, ${ctx.name}! Я ваш ИИ-тренер. Вижу цель «${g.title}», вес ${ctx.currentWeightKg} кг и ${ctx.profile.daysPerWeek} тренировки в неделю. Спросите про план, технику упражнения или питание.`;
+  if (/привет|здравств|салем|сәлем|\bhi\b|hello/.test(q)) {
+    return `Привет, ${ctx.name}! Вижу цель «${g.title}», вес ${ctx.currentWeightKg} кг и ${ctx.profile.daysPerWeek} тренировки в неделю. Могу составить план, подобрать упражнения для любой зоны (например «укрепить спину») или объяснить технику.`;
   }
-  return `Я работаю в офлайн-режиме и лучше всего отвечаю на вопросы о технике упражнений (например «как делать присед»), питании, весе и плане на неделю. Ваша цель «${g.title}»: ${g.tip}`;
+  if (exercise) return formatTechnique(exercise);
+  return `Уточните, что нужно, и я помогу:\n• «Составь план на неделю»\n• «Упражнения для спины» (или ног, пресса, ягодиц)\n• «Как делать становую тягу»\n• «Что есть после тренировки»\nВаша цель «${g.title}»: ${g.tip}`;
+}
+
+/** Areas the user has been talking about recently, used to focus a generated plan. */
+export function recentAreas(history: ChatMessage[], current = ''): BodyArea[] {
+  const now = areasIn(current);
+  if (now.length) return now;
+  for (const m of [...history].reverse().slice(0, 8)) if (m.role === 'user') {
+    const a = areasIn(m.text);
+    if (a.length) return a;
+  }
+  return [];
+}
+
+export function areaWish(areas: BodyArea[]): string {
+  return areas.length ? `акцент на укрепление ${areas.map((a) => areaTitles[a]).join(' и ')}` : '';
+}
+
+/** Weave area-focused exercises into an existing local plan day. */
+export function focusDay(exs: PlanExercise[], areas: BodyArea[], level: FitnessProfile['level'], dayIndex: number): PlanExercise[] {
+  if (!areas.length) return exs;
+  const pool = [...new Set(areas.flatMap((a) => [...areaRoutines[a].base, ...(level !== 'beginner' ? areaRoutines[a].strong : [])]))];
+  const picks = [pool[(dayIndex * 2) % pool.length], pool[(dayIndex * 2 + 1) % pool.length]]
+    .filter((id, i, arr) => arr.indexOf(id) === i)
+    .map((id) => exById(id))
+    .filter((e): e is Exercise => !!e && !exs.some((x) => x.name === e.name));
+  const added = picks.map((e) => ({ name: e.name, sets: '3', reps: ['plank', 'bird-dog', 'dead-bug'].includes(e.id) ? '30–45 сек' : '10–12', rest: '60 сек', note: e.tip }));
+  // replace the last non-core exercise(s) so the session length stays the same
+  return [...exs.slice(0, Math.max(2, exs.length - added.length)), ...added];
 }
 
 export const quickPrompts = ['Составь план на неделю', 'Хочу сухое тело', 'Как делать присед?', 'Что есть после тренировки?', 'Как ускорить прогресс?', 'Разминка перед силовой'];
