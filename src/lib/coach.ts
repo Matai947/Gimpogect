@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 import { exercises, findExercise, type Exercise } from '@/data/exercises';
 import { dailyTargets, goalByKey, levels, type FitnessProfile } from '@/data/fitness';
+import { knowledge } from '@/data/knowledge';
 import { classTemplates, clubById, trainers } from '@/data/mock';
 import { getLang, languageName, pluralForm } from '@/i18n';
 
@@ -531,6 +532,10 @@ export function localAnswer(ctx: CoachContext, question: string, history: ChatMe
 
   const exercise = findExercise(q);
   if (exercise && TECHNIQUE.test(q)) return formatTechnique(exercise);
+
+  // Specific knowledge first, generic topics after.
+  const known = knowledge.find((k) => k.match.test(q));
+  if (known) return withNudge(ctx, known.answer(ctx));
 
   // Pick the topic with the earliest match in the sentence; ties resolved by list order.
   const hits = (Object.keys(topicPatterns) as Topic[])
