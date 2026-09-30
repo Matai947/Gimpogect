@@ -98,7 +98,7 @@ export default function CoachScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       {/* Hero */}
-      <LinearGradient colors={['#233317', '#141B12', Colors.background]} locations={[0, 0.7, 1]} style={styles.hero}>
+      <LinearGradient colors={['#1A2842', '#111A2B', Colors.background]} locations={[0, 0.7, 1]} style={styles.hero}>
         <View style={styles.heroRow}>
           <View style={styles.orbOuter}>
             <View style={styles.orbMid}>
@@ -108,9 +108,6 @@ export default function CoachScreen() {
             </View>
           </View>
           <View style={{ flex: 1 }}>
-            <T type="small" color={Colors.accent} style={{ fontWeight: '800', letterSpacing: 1.5, fontSize: 11 }}>
-              {t('coach_label')}
-            </T>
             <T type="title" style={{ fontSize: 22, lineHeight: 26 }}>
               {t('coach_title')}
             </T>
@@ -315,7 +312,7 @@ export default function CoachScreen() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.stat}>
-      <T type="small" color={Colors.textMuted} style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+      <T type="small" color={Colors.textMuted} style={{ fontSize: 11 }}>
         {label}
       </T>
       <T type="small" style={{ fontWeight: '700' }}>
@@ -430,8 +427,8 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   hero: { paddingTop: Spacing.two, paddingHorizontal: Spacing.three, paddingBottom: Spacing.two },
   heroRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  orbOuter: { width: 64, height: 64, borderRadius: 32, borderWidth: 1, borderColor: 'rgba(198,255,61,0.25)', alignItems: 'center', justifyContent: 'center' },
-  orbMid: { width: 52, height: 52, borderRadius: 26, borderWidth: 1.5, borderColor: 'rgba(198,255,61,0.5)', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(198,255,61,0.08)' },
+  orbOuter: { width: 64, height: 64, borderRadius: 32, borderWidth: 1, borderColor: 'rgba(242,182,50,0.25)', alignItems: 'center', justifyContent: 'center' },
+  orbMid: { width: 52, height: 52, borderRadius: 26, borderWidth: 1.5, borderColor: 'rgba(242,182,50,0.5)', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(242,182,50,0.08)' },
   orbCore: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.accent },
   stat: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.md, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
@@ -444,7 +441,7 @@ const styles = StyleSheet.create({
   chat: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.three },
   aiLine: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   aiBar: { width: 3, alignSelf: 'stretch', minHeight: 20, borderRadius: 2, backgroundColor: Colors.accent },
-  userLine: { alignSelf: 'flex-end', maxWidth: '85%', paddingHorizontal: 14, paddingVertical: 10, borderRadius: Radius.lg, borderBottomRightRadius: 4, backgroundColor: Colors.surface, borderWidth: 1, borderColor: 'rgba(198,255,61,0.35)' },
+  userLine: { alignSelf: 'flex-end', maxWidth: '85%', paddingHorizontal: 14, paddingVertical: 10, borderRadius: Radius.lg, borderBottomRightRadius: 4, backgroundColor: Colors.surface, borderWidth: 1, borderColor: 'rgba(242,182,50,0.35)' },
   promptGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   promptCard: { width: '48%', flexGrow: 1, padding: 12, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   quick: { paddingHorizontal: 12, height: 34, borderRadius: Radius.pill, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
@@ -464,5 +461,5 @@ const styles = StyleSheet.create({
   timelineLine: { flex: 1, width: 2, backgroundColor: Colors.border, marginTop: 4 },
   dayHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minHeight: 36 },
   exercise: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: 8, paddingHorizontal: 10, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.border },
-  nutrition: { gap: 8, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: 'rgba(198,255,61,0.06)', borderWidth: 1, borderColor: 'rgba(198,255,61,0.2)' },
+  nutrition: { gap: 8, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: 'rgba(242,182,50,0.06)', borderWidth: 1, borderColor: 'rgba(242,182,50,0.2)' },
 });

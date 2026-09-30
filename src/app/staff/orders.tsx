@@ -129,6 +129,6 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   body: { padding: Spacing.three, paddingTop: 0, gap: Spacing.three, paddingBottom: Spacing.six },
   card: { backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1.5, borderColor: Colors.border, padding: Spacing.three, gap: Spacing.two },
-  member: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: Radius.md, backgroundColor: 'rgba(51,201,220,0.08)' },
+  member: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: Radius.md, backgroundColor: 'rgba(79,182,227,0.08)' },
   thumb: { width: 40, height: 40, borderRadius: 10, backgroundColor: Colors.surfaceAlt },
 });

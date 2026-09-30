@@ -168,7 +168,7 @@ export default function ProgressScreen() {
                 </T>
               </View>
               {weights.length > 1 ? (
-                <View style={[styles.delta, { backgroundColor: delta <= 0 ? 'rgba(61,220,132,0.15)' : 'rgba(255,92,92,0.15)' }]}>
+                <View style={[styles.delta, { backgroundColor: delta <= 0 ? 'rgba(76,195,138,0.15)' : 'rgba(240,96,93,0.15)' }]}>
                   <Ionicons name={delta <= 0 ? 'trending-down' : 'trending-up'} size={16} color={delta <= 0 ? Colors.success : Colors.danger} />
                   <T type="label" color={delta <= 0 ? Colors.success : Colors.danger}>
                     {delta > 0 ? '+' : ''}
@@ -250,5 +250,5 @@ const styles = StyleSheet.create({
   input: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md, paddingHorizontal: Spacing.three, height: 48, borderWidth: 1, borderColor: Colors.border },
   inputText: { flex: 1, color: Colors.text, fontSize: 16 },
   visit: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three },
-  visitIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(198,255,61,0.12)', alignItems: 'center', justifyContent: 'center' },
+  visitIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(242,182,50,0.12)', alignItems: 'center', justifyContent: 'center' },
 });

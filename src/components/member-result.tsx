@@ -8,7 +8,7 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubById, formatDateLong } from '@/data/mock';
 import { useApp, useI18n, type MemberInfo } from '@/store/app-context';
 
-export const StaffAccent = '#33C9DC';
+export const StaffAccent = '#4FB6E3';
 
 /** Decides whether a member may enter right now and why not. */
 export function entryDecision(m: MemberInfo, t: (k: any, v?: any) => string): { ok: boolean; reason?: string } {
@@ -40,7 +40,7 @@ export function MemberResult({ member, onDone, compact }: { member: MemberInfo; 
   };
 
   return (
-    <View style={[styles.card, { borderColor: decision.ok ? 'rgba(61,220,132,0.5)' : 'rgba(255,92,92,0.5)' }]}>
+    <View style={[styles.card, { borderColor: decision.ok ? 'rgba(76,195,138,0.5)' : 'rgba(240,96,93,0.5)' }]}>
       <View style={[styles.stripe, { backgroundColor: decision.ok ? Colors.success : Colors.danger }]} />
       <View style={{ padding: Spacing.three, gap: Spacing.two }}>
         <Row gap={Spacing.three}>
@@ -56,7 +56,7 @@ export function MemberResult({ member, onDone, compact }: { member: MemberInfo; 
               {member.phone} • {club?.name.replace('Gym Project ', '')}
             </T>
           </View>
-          <View style={[styles.verdict, { backgroundColor: decision.ok ? 'rgba(61,220,132,0.15)' : 'rgba(255,92,92,0.15)' }]}>
+          <View style={[styles.verdict, { backgroundColor: decision.ok ? 'rgba(76,195,138,0.15)' : 'rgba(240,96,93,0.15)' }]}>
             <Ionicons name={decision.ok ? 'checkmark-circle' : 'close-circle'} size={26} color={decision.ok ? Colors.success : Colors.danger} />
           </View>
         </Row>
@@ -117,5 +117,5 @@ const styles = StyleSheet.create({
   stripe: { width: 6 },
   verdict: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   planBox: { backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md, padding: 12, gap: 4 },
-  logged: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: Radius.md, backgroundColor: 'rgba(61,220,132,0.12)' },
+  logged: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: Radius.md, backgroundColor: 'rgba(76,195,138,0.12)' },
 });

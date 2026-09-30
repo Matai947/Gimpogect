@@ -164,7 +164,7 @@ const CORNER = 26;
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   body: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },
-  cameraWrap: { height: 280, borderRadius: Radius.xl, overflow: 'hidden', backgroundColor: '#05090C', borderWidth: 1, borderColor: 'rgba(51,201,220,0.35)' },
+  cameraWrap: { height: 280, borderRadius: Radius.xl, overflow: 'hidden', backgroundColor: '#05090C', borderWidth: 1, borderColor: 'rgba(79,182,227,0.35)' },
   noCamera: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two, padding: Spacing.three },
   frame: { position: 'absolute', left: 40, right: 40, top: 40, bottom: 40 },
   corner: { position: 'absolute', width: CORNER, height: CORNER, borderColor: StaffAccent },
@@ -176,5 +176,5 @@ const styles = StyleSheet.create({
   manual: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, paddingLeft: Spacing.three, paddingRight: 6, height: 52 },
   manualInput: { flex: 1, color: Colors.text, fontSize: 15 },
   findBtn: { paddingHorizontal: 14, height: 38, borderRadius: Radius.sm, backgroundColor: StaffAccent, alignItems: 'center', justifyContent: 'center' },
-  notice: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: 'rgba(255,179,71,0.4)' },
+  notice: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: 'rgba(255,138,76,0.4)' },
 });

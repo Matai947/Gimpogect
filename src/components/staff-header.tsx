@@ -36,8 +36,8 @@ export function StaffHeader({ title, right }: { title: string; right?: React.Rea
         <Row style={{ justifyContent: 'space-between' }}>
           <Pressable onPress={pickClub} style={styles.club}>
             <Ionicons name="business" size={13} color={StaffAccent} />
-            <T type="small" color={StaffAccent} style={{ fontWeight: '800', fontSize: 11, letterSpacing: 0.5 }} numberOfLines={1}>
-              {club?.name.replace('Gym Project ', '').toUpperCase()}
+            <T type="small" color={StaffAccent} style={{ fontWeight: '700', fontSize: 12 }} numberOfLines={1}>
+              {club?.name.replace('Gym Project ', '')}
             </T>
             <Ionicons name="chevron-down" size={12} color={StaffAccent} />
           </Pressable>
@@ -63,8 +63,8 @@ export function StaffHeader({ title, right }: { title: string; right?: React.Rea
 }
 
 const styles = StyleSheet.create({
-  wrap: { backgroundColor: '#0E1A1D' },
-  band: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.three, borderBottomWidth: 1, borderBottomColor: 'rgba(51,201,220,0.25)' },
-  club: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 30, borderRadius: Radius.pill, backgroundColor: 'rgba(51,201,220,0.12)', borderWidth: 1, borderColor: 'rgba(51,201,220,0.35)', maxWidth: 200 },
+  wrap: { backgroundColor: '#0E1A2B' },
+  band: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.three, borderBottomWidth: 1, borderBottomColor: 'rgba(79,182,227,0.25)' },
+  club: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 30, borderRadius: Radius.pill, backgroundColor: 'rgba(79,182,227,0.12)', borderWidth: 1, borderColor: 'rgba(79,182,227,0.35)', maxWidth: 200 },
   iconBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
 });

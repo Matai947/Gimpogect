@@ -39,7 +39,7 @@ export const kk: Record<TKey, string> = {
   tab_home: 'Басты',
   tab_clubs: 'Клубтар',
   tab_schedule: 'Кесте',
-  tab_coach: 'AI коуч',
+  tab_coach: 'Коуч',
   tab_shop: 'Дүкен',
   tab_profile: 'Профиль',
 

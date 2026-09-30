@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextProps, View, ViewProps, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextProps, View, ViewProps, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Colors, fontFor, Radius, Spacing, Tint, type FontRole } from '@/constants/theme';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -60,9 +60,16 @@ export function Divider({ style }: ViewProps) {
 
 type TType = 'display' | 'title' | 'heading' | 'subheading' | 'body' | 'caption' | 'small' | 'label';
 
+const displayTypes: TType[] = ['display', 'title'];
+
 export function T({ type = 'body', color, style, children, ...rest }: TextProps & { type?: TType; color?: string }) {
+  // Custom fonts ship one file per weight: resolve the family from the effective weight
+  // and drop fontWeight so Android does not fall back to the system font.
+  const flat: TextStyle = StyleSheet.flatten([textStyles[type], style]) ?? {};
+  const role: FontRole = displayTypes.includes(type) ? 'display' : 'text';
+  const fontFamily = fontFor(role, flat.fontWeight);
   return (
-    <Text style={[styles.text, textStyles[type], color ? { color } : null, style]} {...rest}>
+    <Text style={[styles.text, textStyles[type], color ? { color } : null, style, { fontFamily, fontWeight: undefined }]} {...rest}>
       {children}
     </Text>
   );
@@ -105,7 +112,7 @@ export function Button({
   size?: 'sm' | 'md' | 'lg';
 }) {
   const bg =
-    variant === 'primary' ? Colors.accent : variant === 'secondary' ? Colors.surfaceAlt : variant === 'danger' ? 'rgba(255,92,92,0.15)' : 'transparent';
+    variant === 'primary' ? Colors.accent : variant === 'secondary' ? Colors.surfaceAlt : variant === 'danger' ? 'rgba(240,96,93,0.15)' : 'transparent';
   const fg = variant === 'primary' ? Colors.onAccent : variant === 'danger' ? Colors.danger : Colors.text;
   const height = size === 'sm' ? 38 : size === 'lg' ? 56 : 48;
   return (
@@ -170,7 +177,7 @@ export function Chip({ label, active, onPress, icon }: { label: string; active?:
 
 export function ChipRow({ children, style }: ViewProps) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[{ gap: Spacing.two, paddingHorizontal: Spacing.three }, style]}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={[{ gap: Spacing.two, paddingHorizontal: Spacing.three }, style]}>
       {children}
     </ScrollView>
   );
@@ -243,7 +250,7 @@ export function ListRow({
 }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.listRow, pressed && { backgroundColor: Colors.surfaceAlt }]}>
-      <View style={[styles.listIcon, danger && { backgroundColor: 'rgba(255,92,92,0.15)' }]}>
+      <View style={[styles.listIcon, danger && { backgroundColor: 'rgba(240,96,93,0.15)' }]}>
         <Ionicons name={icon} size={18} color={danger ? Colors.danger : Colors.accent} />
       </View>
       <View style={{ flex: 1 }}>
@@ -336,19 +343,20 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: 'rgba(198,255,61,0.12)',
+    backgroundColor: Tint.accent12,
     alignItems: 'center',
     justifyContent: 'center',
   },
 });
 
+// Unbounded is a wide face, so display sizes sit a step below a narrow sans.
 const textStyles = StyleSheet.create({
-  display: { fontSize: 34, fontWeight: '800', letterSpacing: -0.5, lineHeight: 40 },
-  title: { fontSize: 26, fontWeight: '800', letterSpacing: -0.3, lineHeight: 32 },
-  heading: { fontSize: 19, fontWeight: '700', lineHeight: 24 },
-  subheading: { fontSize: 16, fontWeight: '700', lineHeight: 22 },
-  body: { fontSize: 15, lineHeight: 21 },
-  caption: { fontSize: 13, lineHeight: 18, color: Colors.textSecondary },
+  display: { fontSize: 30, fontWeight: '700', letterSpacing: -0.6, lineHeight: 36 },
+  title: { fontSize: 22, fontWeight: '600', letterSpacing: -0.4, lineHeight: 28 },
+  heading: { fontSize: 18, fontWeight: '700', letterSpacing: -0.2, lineHeight: 24 },
+  subheading: { fontSize: 16, fontWeight: '600', lineHeight: 22 },
+  body: { fontSize: 15, lineHeight: 22 },
+  caption: { fontSize: 13, lineHeight: 19, color: Colors.textSecondary },
   small: { fontSize: 12.5, lineHeight: 17 },
   label: { fontSize: 15, fontWeight: '700' },
 });

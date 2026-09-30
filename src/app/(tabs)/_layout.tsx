@@ -41,7 +41,8 @@ export default function TabsLayout() {
           height: Platform.OS === 'ios' ? 86 : 68,
           paddingTop: 6,
         },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 10, fontFamily: 'Onest_600SemiBold' },
+        tabBarItemStyle: { paddingHorizontal: 0 },
         tabBarAllowFontScaling: false,
         tabBarBadgeStyle: { backgroundColor: Colors.accent, color: Colors.onAccent, fontSize: 10, fontWeight: '800' },
       }}>
@@ -63,6 +64,6 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  coach: { width: 36, height: 28, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(198,255,61,0.45)', backgroundColor: 'rgba(198,255,61,0.08)' },
+  coach: { width: 36, height: 28, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(242,182,50,0.45)', backgroundColor: 'rgba(242,182,50,0.08)' },
   coachActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
 });

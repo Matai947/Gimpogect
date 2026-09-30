@@ -104,7 +104,7 @@ export default function ShopScreen() {
         <>
           {/* Promo banner */}
           <View style={{ paddingHorizontal: Spacing.three, marginBottom: Spacing.four }}>
-            <LinearGradient colors={['#2B3A14', '#151B23']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.banner}>
+            <LinearGradient colors={['#2E2610', '#151B23']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.banner}>
               <View style={{ flex: 1, gap: 4 }}>
                 <Badge label={membership.active ? t('your_discount') : t('for_members')} />
                 <T type="heading">{t('discount_all')}</T>

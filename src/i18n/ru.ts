@@ -38,8 +38,8 @@ export const ru = {
   // tabs
   tab_home: 'Главная',
   tab_clubs: 'Клубы',
-  tab_schedule: 'Расписание',
-  tab_coach: 'ИИ-тренер',
+  tab_schedule: 'Занятия',
+  tab_coach: 'Тренер',
   tab_shop: 'Магазин',
   tab_profile: 'Профиль',
 
@@ -436,7 +436,7 @@ export const ru = {
 
   // coach
   coach_label: 'COACH AI',
-  coach_title: 'Ваш ИИ-тренер',
+  coach_title: 'ИИ-тренер',
   coach_online: 'Claude подключён',
   coach_offline: 'Офлайн-режим',
   st_goal: 'цель',

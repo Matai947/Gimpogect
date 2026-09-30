@@ -5,19 +5,19 @@ import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { MemberPass } from '@/components/member-pass';
 import { ProductCard } from '@/components/product-card';
 import { Badge, Button, Card, IconButton, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTip, goalTitle } from '@/data/fitness';
-import { clubById, clubHours, clubs, formatDateHuman, formatDateLong, news, occupancyLabel, sessionById, sessionStart, trainerById, trainers } from '@/data/mock';
-import { useApp, useCatalog, useFitnessProfile, useI18n, useMembershipInfo, useVisitStats } from '@/store/app-context';
+import { clubById, clubHours, clubs, formatDateHuman, news, occupancyLabel, sessionById, sessionStart, trainerById, trainers } from '@/data/mock';
+import { useApp, useCatalog, useFitnessProfile, useI18n, useVisitStats } from '@/store/app-context';
 
 export default function HomeScreen() {
   const { user, bookings, addToCart, coachPlan } = useApp();
   const { t, tp, td } = useI18n();
   const { products } = useCatalog();
   const shopHits = useMemo(() => products.filter((p) => p.badge === 'Хит' || p.badge === 'Новинка').slice(0, 6), [products]);
-  const membership = useMembershipInfo();
   const stats = useVisitStats();
   const fitness = useFitnessProfile();
   const homeClub = clubById(user?.homeClubId ?? 'c1');
@@ -48,7 +48,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <T type="caption">{greeting}</T>
-          <T type="title">{user?.name ?? t('guest')} 👋</T>
+          <T type="title">{user?.name ?? t('guest')}</T>
         </View>
         <Pressable onPress={() => router.push('/(tabs)/clubs')} style={styles.clubPill}>
           <Ionicons name="location" size={14} color={Colors.accent} />
@@ -59,59 +59,9 @@ export default function HomeScreen() {
         <IconButton icon="notifications-outline" onPress={() => router.push('/news/n1')} />
       </View>
 
-      {/* Membership card */}
+      {/* Membership pass */}
       <View style={styles.section}>
-        <Pressable onPress={() => router.push('/membership')}>
-          <LinearGradient colors={membership.active ? ['#2B3A14', '#151B23'] : ['#3A1A1A', '#151B23']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.memberCard}>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <Row gap={8}>
-                <Ionicons name="barbell" size={18} color={Colors.accent} />
-                <T type="label" color={Colors.accent}>
-                  GYM PROJECT
-                </T>
-              </Row>
-              {membership.active ? <Badge label={membership.frozen ? t('status_frozen') : t('status_active')} color={membership.frozen ? Colors.info : Colors.success} /> : <Badge label={t('status_none')} color={Colors.danger} />}
-            </Row>
-
-            {membership.active ? (
-              <>
-                <View style={{ marginTop: Spacing.three }}>
-                  <T type="caption">{t('home_plan_name', { name: td(membership.plan?.name ?? '—') })}</T>
-                  <Row gap={6} style={{ alignItems: 'flex-end' }}>
-                    <T type="display" style={{ fontSize: 44, lineHeight: 48 }}>
-                      {membership.daysLeft}
-                    </T>
-                    <T type="body" color={Colors.textSecondary} style={{ marginBottom: 6 }}>
-                      {tp(membership.daysLeft, 'days_pl')} {t('home_left')}
-                    </T>
-                  </Row>
-                </View>
-                <View style={{ marginTop: Spacing.two, gap: 6 }}>
-                  <ProgressBar value={membership.progress} />
-                  <T type="small" color={Colors.textSecondary}>
-                    {t('home_valid_until', { date: membership.endDate ? formatDateLong(membership.endDate) : '—' })}
-                  </T>
-                </View>
-              </>
-            ) : (
-              <View style={{ marginTop: Spacing.three }}>
-                <T type="heading">{t('home_no_plan_title')}</T>
-                <T type="caption">{t('home_no_plan_sub')}</T>
-              </View>
-            )}
-
-            <Row style={{ marginTop: Spacing.three }} gap={Spacing.two}>
-              {membership.active ? (
-                <>
-                  <Button title={t('home_qr')} icon="qr-code-outline" onPress={() => router.push('/qr')} style={{ flex: 1 }} />
-                  <Button title={t('home_extend')} variant="secondary" onPress={() => router.push('/membership')} style={{ flex: 1 }} />
-                </>
-              ) : (
-                <Button title={t('home_choose_plan')} icon="card-outline" onPress={() => router.push('/membership')} style={{ flex: 1 }} />
-              )}
-            </Row>
-          </LinearGradient>
-        </Pressable>
+        <MemberPass />
       </View>
 
       {/* Quick actions */}
@@ -199,7 +149,7 @@ export default function HomeScreen() {
         <SectionHeader title={t('home_upcoming')} action={t('all')} onAction={() => router.push('/bookings')} />
         {upcoming.length === 0 ? (
           <Card onPress={() => router.push('/(tabs)/schedule')} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
-            <View style={[styles.flame, { backgroundColor: 'rgba(198,255,61,0.12)' }]}>
+            <View style={[styles.flame, { backgroundColor: 'rgba(242,182,50,0.12)' }]}>
               <Ionicons name="add" size={22} color={Colors.accent} />
             </View>
             <View style={{ flex: 1 }}>
@@ -342,12 +292,11 @@ const styles = StyleSheet.create({
     maxWidth: 150,
   },
   section: { paddingHorizontal: Spacing.three, marginBottom: Spacing.four },
-  memberCard: { borderRadius: Radius.xl, padding: Spacing.four, borderWidth: 1, borderColor: Colors.border },
   quick: { flex: 1, alignItems: 'center', gap: 8 },
   quickIcon: { width: 56, height: 56, borderRadius: 18, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
-  flame: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,179,71,0.15)', alignItems: 'center', justifyContent: 'center' },
-  goalIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(198,255,61,0.12)', alignItems: 'center', justifyContent: 'center' },
-  coachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, backgroundColor: 'rgba(198,255,61,0.08)', borderWidth: 1, borderColor: 'rgba(198,255,61,0.25)' },
+  flame: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,138,76,0.15)', alignItems: 'center', justifyContent: 'center' },
+  goalIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(242,182,50,0.12)', alignItems: 'center', justifyContent: 'center' },
+  coachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, backgroundColor: 'rgba(242,182,50,0.08)', borderWidth: 1, borderColor: 'rgba(242,182,50,0.25)' },
   timeBox: { borderLeftWidth: 3, paddingLeft: 10, minWidth: 82 },
   newsCard: { width: 280, height: 160, borderRadius: Radius.lg, overflow: 'hidden', justifyContent: 'flex-end', backgroundColor: Colors.surface },
 });

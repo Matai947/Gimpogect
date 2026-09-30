@@ -39,7 +39,7 @@ export const en: Record<TKey, string> = {
   tab_home: 'Home',
   tab_clubs: 'Clubs',
   tab_schedule: 'Schedule',
-  tab_coach: 'AI Coach',
+  tab_coach: 'Coach',
   tab_shop: 'Shop',
   tab_profile: 'Profile',
 
@@ -418,7 +418,7 @@ export const en: Record<TKey, string> = {
   other_news: 'More news',
 
   coach_label: 'COACH AI',
-  coach_title: 'Your AI coach',
+  coach_title: 'AI coach',
   coach_online: 'Claude connected',
   coach_offline: 'Offline mode',
   st_goal: 'goal',

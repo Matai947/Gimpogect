@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   body: { padding: Spacing.three },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.surfaceAlt },
-  iconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(198,255,61,0.12)', alignItems: 'center', justifyContent: 'center' },
+  iconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(242,182,50,0.12)', alignItems: 'center', justifyContent: 'center' },
   footer: {
     position: 'absolute',
     left: 0,

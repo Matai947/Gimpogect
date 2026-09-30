@@ -51,7 +51,7 @@ export default function AuthScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#1B2A12', Colors.background]} style={StyleSheet.absoluteFill} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} />
+      <LinearGradient colors={['#172440', Colors.background]} style={StyleSheet.absoluteFill} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <View style={styles.topBar}>
@@ -61,7 +61,7 @@ export default function AuthScreen() {
             <View style={styles.logo}>
               <Ionicons name="barbell" size={34} color={Colors.onAccent} />
             </View>
-            <T type="display">GYM PROJECT</T>
+            <T type="display" style={{ fontSize: 34, lineHeight: 40 }}>Gym Project</T>
             <T type="body" color={Colors.textSecondary} style={{ textAlign: 'center', maxWidth: 280 }}>
               {t('auth_tagline')}
             </T>

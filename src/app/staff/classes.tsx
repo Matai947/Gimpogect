@@ -45,7 +45,7 @@ export default function StaffClassesScreen() {
           const isOpen = open === s.sessionId;
           const presentCount = roster.filter((m) => marked.includes(m.id)).length;
           return (
-            <View key={s.sessionId} style={[styles.card, isOpen && { borderColor: 'rgba(51,201,220,0.5)' }]}>
+            <View key={s.sessionId} style={[styles.card, isOpen && { borderColor: 'rgba(79,182,227,0.5)' }]}>
               <Pressable onPress={() => setOpen(isOpen ? null : s.sessionId)} style={styles.head}>
                 <View style={[styles.time, { borderLeftColor: s.color }]}>
                   <T type="label">{s.time}</T>
@@ -111,5 +111,5 @@ const styles = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three },
   time: { borderLeftWidth: 3, paddingLeft: 10, minWidth: 64 },
   person: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: 10, borderRadius: Radius.md, backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: 'transparent' },
-  personOn: { borderColor: 'rgba(61,220,132,0.5)', backgroundColor: 'rgba(61,220,132,0.08)' },
+  personOn: { borderColor: 'rgba(76,195,138,0.5)', backgroundColor: 'rgba(76,195,138,0.08)' },
 });

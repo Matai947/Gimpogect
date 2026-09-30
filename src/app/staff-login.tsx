@@ -32,7 +32,7 @@ export default function StaffLoginScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#0F2A2E', Colors.background]} style={StyleSheet.absoluteFill} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.7 }} />
+      <LinearGradient colors={['#10263D', Colors.background]} style={StyleSheet.absoluteFill} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.7 }} />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <Row style={{ justifyContent: 'space-between', paddingHorizontal: Spacing.three, paddingTop: Spacing.two }}>
@@ -45,9 +45,6 @@ export default function StaffLoginScreen() {
             <View style={styles.badge}>
               <Ionicons name="id-card-outline" size={30} color={Colors.onAccent} />
             </View>
-            <T type="small" color={StaffAccent} style={{ fontWeight: '800', letterSpacing: 1.5, fontSize: 11 }}>
-              GYM PROJECT • STAFF
-            </T>
             <T type="title">{t('staff_title')}</T>
             <T type="caption">{t('staff_login_sub')}</T>
 
@@ -86,7 +83,7 @@ export default function StaffLoginScreen() {
               {clubs.map((c) => {
                 const active = clubId === c.id;
                 return (
-                  <Pressable key={c.id} onPress={() => setClubId(c.id)} style={[styles.club, active && { borderColor: StaffAccent, backgroundColor: 'rgba(51,201,220,0.08)' }]}>
+                  <Pressable key={c.id} onPress={() => setClubId(c.id)} style={[styles.club, active && { borderColor: StaffAccent, backgroundColor: 'rgba(79,182,227,0.08)' }]}>
                     <Ionicons name="business-outline" size={18} color={active ? StaffAccent : Colors.textMuted} />
                     <View style={{ flex: 1 }}>
                       <T type="body" style={{ fontWeight: '600' }}>
