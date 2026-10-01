@@ -63,8 +63,8 @@ export function StaffHeader({ title, right }: { title: string; right?: React.Rea
 }
 
 const styles = StyleSheet.create({
-  wrap: { backgroundColor: '#0E1A2B' },
-  band: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.three, borderBottomWidth: 1, borderBottomColor: 'rgba(79,182,227,0.25)' },
-  club: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 30, borderRadius: Radius.pill, backgroundColor: 'rgba(79,182,227,0.12)', borderWidth: 1, borderColor: 'rgba(79,182,227,0.35)', maxWidth: 200 },
+  wrap: { backgroundColor: '#141414' },
+  band: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.three, borderBottomWidth: 1, borderBottomColor: 'rgba(255,133,98,0.25)' },
+  club: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 30, borderRadius: Radius.pill, backgroundColor: 'rgba(255,133,98,0.12)', borderWidth: 1, borderColor: 'rgba(255,133,98,0.35)', maxWidth: 200 },
   iconBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
 });

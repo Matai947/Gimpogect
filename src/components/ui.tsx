@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.two,
     paddingHorizontal: Spacing.three,
-    borderRadius: Radius.md,
+    borderRadius: Radius.pill,
   },
   chip: {
     flexDirection: 'row',
@@ -352,12 +352,12 @@ const styles = StyleSheet.create({
 
 // Unbounded is a wide face, so display sizes sit a step below a narrow sans.
 const textStyles = StyleSheet.create({
-  display: { fontSize: 30, fontWeight: '700', letterSpacing: -0.6, lineHeight: 36 },
-  title: { fontSize: 22, fontWeight: '600', letterSpacing: -0.4, lineHeight: 28 },
+  display: { fontSize: 30, fontWeight: '700', letterSpacing: -0.3, lineHeight: 36, textTransform: 'uppercase' },
+  title: { fontSize: 22, fontWeight: '700', letterSpacing: -0.2, lineHeight: 28, textTransform: 'uppercase' },
   heading: { fontSize: 18, fontWeight: '700', letterSpacing: -0.2, lineHeight: 24 },
   subheading: { fontSize: 16, fontWeight: '600', lineHeight: 22 },
   body: { fontSize: 15, lineHeight: 22 },
   caption: { fontSize: 13, lineHeight: 19, color: Colors.textSecondary },
   small: { fontSize: 12.5, lineHeight: 17 },
-  label: { fontSize: 15, fontWeight: '700' },
+  label: { fontSize: 15, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
 });

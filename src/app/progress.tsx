@@ -250,5 +250,5 @@ const styles = StyleSheet.create({
   input: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md, paddingHorizontal: Spacing.three, height: 48, borderWidth: 1, borderColor: Colors.border },
   inputText: { flex: 1, color: Colors.text, fontSize: 16 },
   visit: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three },
-  visitIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(242,182,50,0.12)', alignItems: 'center', justifyContent: 'center' },
+  visitIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(154,61,205,0.12)', alignItems: 'center', justifyContent: 'center' },
 });

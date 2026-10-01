@@ -1,32 +1,29 @@
 import { Platform } from 'react-native';
 
-/**
- * "Steppe night" palette: deep night-sky navy instead of black, steppe gold as the
- * member accent, Alatau sky blue for staff mode, chalk white for text.
- */
+/** s89-style: carbon black base, white caps headlines, violet pill buttons, coral and yellow secondary accents. */
 export const Colors = {
-  background: '#0D1320',
-  surface: '#151D2C',
-  surfaceAlt: '#1D2738',
-  border: '#263247',
-  text: '#F4F1E8',
-  textSecondary: '#98A3B6',
-  textMuted: '#5F6B80',
-  accent: '#F2B632',
-  accentDark: '#C9901A',
-  onAccent: '#1A1204',
+  background: '#0A0A0A',
+  surface: '#1F1F1F',
+  surfaceAlt: '#2A2A2A',
+  border: '#333333',
+  text: '#FFFFFF',
+  textSecondary: '#B5B5B5',
+  textMuted: '#777777',
+  accent: '#9A3DCD',
+  accentDark: '#7B2FB0',
+  onAccent: '#FFFFFF',
   success: '#4CC38A',
-  warning: '#FF8A4C',
-  danger: '#F0605D',
-  info: '#4FB6E3',
+  warning: '#FF8562',
+  danger: '#E6424F',
+  info: '#FFC736',
 } as const;
 
 /** Tints of the accent for chips, icon wells and highlighted rows. */
 export const Tint = {
-  accent08: 'rgba(242,182,50,0.08)',
-  accent12: 'rgba(242,182,50,0.12)',
-  accent25: 'rgba(242,182,50,0.25)',
-  accent45: 'rgba(242,182,50,0.45)',
+  accent08: 'rgba(154,61,205,0.08)',
+  accent12: 'rgba(154,61,205,0.14)',
+  accent25: 'rgba(154,61,205,0.3)',
+  accent45: 'rgba(154,61,205,0.5)',
 } as const;
 
 /**

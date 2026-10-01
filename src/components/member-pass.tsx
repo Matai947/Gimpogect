@@ -31,7 +31,7 @@ export function MemberPass() {
   const active = m.active && !m.frozen;
   const bg = !m.active ? '#3A2A2E' : m.frozen ? '#2A4A63' : Colors.accent;
   const ink = active ? Colors.onAccent : Colors.text;
-  const inkSoft = active ? 'rgba(26,18,4,0.62)' : Colors.textSecondary;
+  const inkSoft = active ? 'rgba(255,255,255,0.72)' : Colors.textSecondary;
 
   return (
     <Pressable onPress={() => router.push(m.active ? '/qr' : '/membership')} style={({ pressed }) => [styles.pass, { backgroundColor: bg }, pressed && { transform: [{ scale: 0.985 }] }]}>
@@ -55,7 +55,7 @@ export function MemberPass() {
             </T>
           )}
         </View>
-        <View style={[styles.qr, { borderColor: active ? 'rgba(26,18,4,0.25)' : 'rgba(255,255,255,0.2)' }]}>
+        <View style={[styles.qr, { borderColor: active ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.2)' }]}>
           <Ionicons name={m.active ? 'qr-code' : 'card-outline'} size={26} color={ink} />
         </View>
       </View>
@@ -63,7 +63,7 @@ export function MemberPass() {
       {/* tear line with side notches, like a ticket stub */}
       <View style={styles.tearRow}>
         <View style={[styles.notch, { left: -10 }]} />
-        <View style={[styles.tear, { borderColor: active ? 'rgba(26,18,4,0.25)' : 'rgba(255,255,255,0.18)' }]} />
+        <View style={[styles.tear, { borderColor: active ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.18)' }]} />
         <View style={[styles.notch, { right: -10 }]} />
       </View>
 
@@ -77,7 +77,7 @@ export function MemberPass() {
       </View>
 
       <View style={styles.ridge} pointerEvents="none">
-        <Ridge color={active ? Colors.accentDark : 'rgba(0,0,0,0.25)'} back={active ? '#DDA126' : 'rgba(0,0,0,0.12)'} />
+        <Ridge color={active ? Colors.accentDark : 'rgba(0,0,0,0.25)'} back={active ? '#B55BE0' : 'rgba(0,0,0,0.12)'} />
       </View>
     </Pressable>
   );

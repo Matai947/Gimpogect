@@ -45,7 +45,7 @@ export default function StaffClassesScreen() {
           const isOpen = open === s.sessionId;
           const presentCount = roster.filter((m) => marked.includes(m.id)).length;
           return (
-            <View key={s.sessionId} style={[styles.card, isOpen && { borderColor: 'rgba(79,182,227,0.5)' }]}>
+            <View key={s.sessionId} style={[styles.card, isOpen && { borderColor: 'rgba(255,133,98,0.5)' }]}>
               <Pressable onPress={() => setOpen(isOpen ? null : s.sessionId)} style={styles.head}>
                 <View style={[styles.time, { borderLeftColor: s.color }]}>
                   <T type="label">{s.time}</T>

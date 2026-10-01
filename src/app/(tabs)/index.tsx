@@ -149,7 +149,7 @@ export default function HomeScreen() {
         <SectionHeader title={t('home_upcoming')} action={t('all')} onAction={() => router.push('/bookings')} />
         {upcoming.length === 0 ? (
           <Card onPress={() => router.push('/(tabs)/schedule')} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
-            <View style={[styles.flame, { backgroundColor: 'rgba(242,182,50,0.12)' }]}>
+            <View style={[styles.flame, { backgroundColor: 'rgba(154,61,205,0.12)' }]}>
               <Ionicons name="add" size={22} color={Colors.accent} />
             </View>
             <View style={{ flex: 1 }}>
@@ -295,8 +295,8 @@ const styles = StyleSheet.create({
   quick: { flex: 1, alignItems: 'center', gap: 8 },
   quickIcon: { width: 56, height: 56, borderRadius: 18, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   flame: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,138,76,0.15)', alignItems: 'center', justifyContent: 'center' },
-  goalIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(242,182,50,0.12)', alignItems: 'center', justifyContent: 'center' },
-  coachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, backgroundColor: 'rgba(242,182,50,0.08)', borderWidth: 1, borderColor: 'rgba(242,182,50,0.25)' },
+  goalIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(154,61,205,0.12)', alignItems: 'center', justifyContent: 'center' },
+  coachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, backgroundColor: 'rgba(154,61,205,0.08)', borderWidth: 1, borderColor: 'rgba(154,61,205,0.25)' },
   timeBox: { borderLeftWidth: 3, paddingLeft: 10, minWidth: 82 },
   newsCard: { width: 280, height: 160, borderRadius: Radius.lg, overflow: 'hidden', justifyContent: 'flex-end', backgroundColor: Colors.surface },
 });

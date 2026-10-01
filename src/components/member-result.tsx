@@ -8,7 +8,7 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubById, formatDateLong } from '@/data/mock';
 import { useApp, useI18n, type MemberInfo } from '@/store/app-context';
 
-export const StaffAccent = '#4FB6E3';
+export const StaffAccent = '#FF8562';
 
 /** Decides whether a member may enter right now and why not. */
 export function entryDecision(m: MemberInfo, t: (k: any, v?: any) => string): { ok: boolean; reason?: string } {

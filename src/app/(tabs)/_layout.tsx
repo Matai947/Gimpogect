@@ -64,6 +64,6 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  coach: { width: 36, height: 28, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(242,182,50,0.45)', backgroundColor: 'rgba(242,182,50,0.08)' },
+  coach: { width: 36, height: 28, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(154,61,205,0.45)', backgroundColor: 'rgba(154,61,205,0.08)' },
   coachActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
 });

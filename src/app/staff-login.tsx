@@ -32,7 +32,7 @@ export default function StaffLoginScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#10263D', Colors.background]} style={StyleSheet.absoluteFill} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.7 }} />
+      <LinearGradient colors={['#2A1600', Colors.background]} style={StyleSheet.absoluteFill} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.7 }} />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <Row style={{ justifyContent: 'space-between', paddingHorizontal: Spacing.three, paddingTop: Spacing.two }}>
@@ -83,7 +83,7 @@ export default function StaffLoginScreen() {
               {clubs.map((c) => {
                 const active = clubId === c.id;
                 return (
-                  <Pressable key={c.id} onPress={() => setClubId(c.id)} style={[styles.club, active && { borderColor: StaffAccent, backgroundColor: 'rgba(79,182,227,0.08)' }]}>
+                  <Pressable key={c.id} onPress={() => setClubId(c.id)} style={[styles.club, active && { borderColor: StaffAccent, backgroundColor: 'rgba(255,133,98,0.08)' }]}>
                     <Ionicons name="business-outline" size={18} color={active ? StaffAccent : Colors.textMuted} />
                     <View style={{ flex: 1 }}>
                       <T type="body" style={{ fontWeight: '600' }}>

@@ -26,7 +26,7 @@ export default function StaffLayout() {
         headerShown: false,
         tabBarActiveTintColor: StaffAccent,
         tabBarInactiveTintColor: Colors.textMuted,
-        tabBarStyle: { backgroundColor: '#0E1A2B', borderTopColor: 'rgba(79,182,227,0.25)', height: Platform.OS === 'ios' ? 86 : 68, paddingTop: 6 },
+        tabBarStyle: { backgroundColor: '#141414', borderTopColor: 'rgba(255,133,98,0.25)', height: Platform.OS === 'ios' ? 86 : 68, paddingTop: 6 },
         tabBarLabelStyle: { fontSize: 10, fontFamily: 'Onest_600SemiBold' },
         tabBarItemStyle: { paddingHorizontal: 0 },
         tabBarAllowFontScaling: false,
