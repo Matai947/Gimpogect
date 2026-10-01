@@ -6,7 +6,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ProgressBar, Row, T } from '@/components/ui';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Colors, Radius, Spacing, Tint } from '@/constants/theme';
 import { bmi, bmiLabel, goalSubtitle, goalTitle, goals, levelSubtitle, levelTitle, levels, type FitnessProfile, type Gender, type Goal, type Level } from '@/data/fitness';
 import { useApp, useI18n } from '@/store/app-context';
 
@@ -140,7 +140,7 @@ export default function OnboardingScreen() {
                   </Pressable>
                 ))}
               </Row>
-              <NumberField label={t('ob_age')} value={age} onChange={setAge} unit={t('ob_years')} step={1} min={12} max={90} autoFocus />
+              <NumberField label={t('ob_age')} value={age} onChange={setAge} unit={t('ob_years')} hint="28" step={1} min={12} max={90} autoFocus />
             </>
           )}
 
@@ -150,9 +150,9 @@ export default function OnboardingScreen() {
               <T type="caption" style={{ marginBottom: Spacing.two }}>
                 {t('ob_body_sub')}
               </T>
-              <NumberField label={t('ob_height')} value={height} onChange={setHeight} unit={t('cm')} step={1} min={120} max={230} autoFocus />
-              <NumberField label={t('ob_weight_now')} value={weight} onChange={setWeight} unit={t('kg')} step={0.5} min={30} max={250} decimals />
-              {needsTarget ? <NumberField label={goal === 'lose' ? t('ob_target_lose') : t('ob_target_gain')} value={target} onChange={setTarget} unit={t('kg')} step={0.5} min={30} max={250} decimals optional /> : null}
+              <NumberField label={t('ob_height')} value={height} onChange={setHeight} unit={t('cm')} hint="175" step={1} min={120} max={230} autoFocus />
+              <NumberField label={t('ob_weight_now')} value={weight} onChange={setWeight} unit={t('kg')} hint="75" step={0.5} min={30} max={250} decimals />
+              {needsTarget ? <NumberField label={goal === 'lose' ? t('ob_target_lose') : t('ob_target_gain')} value={target} onChange={setTarget} unit={t('kg')} hint={weight || '70'} step={0.5} min={30} max={250} decimals optional /> : null}
               {heightN >= 120 && weightN >= 30 ? (
                 <View style={styles.bmiCard}>
                   <View style={{ flex: 1 }}>
@@ -237,6 +237,7 @@ function NumberField({
   decimals,
   autoFocus,
   optional,
+  hint,
 }: {
   label: string;
   value: string;
@@ -248,6 +249,7 @@ function NumberField({
   decimals?: boolean;
   autoFocus?: boolean;
   optional?: boolean;
+  hint: string;
 }) {
   const { t } = useI18n();
   const n = parseFloat(value.replace(',', '.'));
@@ -266,25 +268,27 @@ function NumberField({
           </T>
         ) : null}
       </Row>
-      <View style={styles.numField}>
-        <Pressable onPress={() => bump(-step)} hitSlop={8} style={styles.numBtn}>
-          <Ionicons name="remove" size={20} color={Colors.text} />
+      <View style={[styles.numField, !isNaN(n) && styles.numFieldFilled]}>
+        <Pressable onPress={() => bump(-step)} hitSlop={8} style={({ pressed }) => [styles.numBtn, pressed && { opacity: 0.6 }]}>
+          <Ionicons name="remove" size={22} color={Colors.text} />
         </Pressable>
-        <TextInput
-          value={value}
-          onChangeText={(v) => onChange(v.replace(/[^\d.,]/g, '').slice(0, 5))}
-          keyboardType={decimals ? 'decimal-pad' : 'number-pad'}
-          style={styles.numInput}
-          placeholder="—"
-          placeholderTextColor={Colors.textMuted}
-          autoFocus={autoFocus}
-          textAlign="center"
-        />
-        <T type="body" color={Colors.textSecondary} style={{ width: 40 }}>
-          {unit}
-        </T>
-        <Pressable onPress={() => bump(step)} hitSlop={8} style={styles.numBtn}>
-          <Ionicons name="add" size={20} color={Colors.text} />
+        <View style={styles.numCenter}>
+          <TextInput
+            value={value}
+            onChangeText={(v) => onChange(v.replace(/[^\d.,]/g, '').slice(0, 5))}
+            keyboardType={decimals ? 'decimal-pad' : 'number-pad'}
+            style={styles.numInput}
+            placeholder={hint}
+            placeholderTextColor={Colors.textMuted}
+            autoFocus={autoFocus}
+            textAlign="right"
+          />
+          <T type="body" color={Colors.textSecondary} style={{ fontWeight: '600' }}>
+            {unit}
+          </T>
+        </View>
+        <Pressable onPress={() => bump(step)} hitSlop={8} style={({ pressed }) => [styles.numBtn, styles.numBtnPlus, pressed && { opacity: 0.6 }]}>
+          <Ionicons name="add" size={22} color={Colors.onAccent} />
         </Pressable>
       </View>
     </View>
@@ -301,9 +305,13 @@ const styles = StyleSheet.create({
   segment: { flex: 1, height: 52, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   segmentActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   day: { flex: 1, height: 56, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
-  numField: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, height: 60, paddingHorizontal: 8 },
-  numBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: Colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  numInput: { flex: 1, color: Colors.text, fontSize: 26, fontWeight: '800' },
+  numField: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, height: 68, paddingHorizontal: 8, gap: 8 },
+  numFieldFilled: { borderColor: Tint.accent45 },
+  numCenter: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 6 },
+  numBtn: { width: 48, height: 48, borderRadius: 14, backgroundColor: Colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  numBtnPlus: { backgroundColor: Colors.accent },
+  // minWidth 0 + no flex: on web an <input> has an intrinsic width that otherwise pushes the + button off-screen.
+  numInput: { minWidth: 0, maxWidth: 110, color: Colors.text, fontSize: 30, fontWeight: '800', fontFamily: 'Unbounded_600SemiBold', padding: 0 },
   bmiCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.three, padding: Spacing.three, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   footer: { padding: Spacing.three, paddingBottom: Spacing.three, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.background },
 });

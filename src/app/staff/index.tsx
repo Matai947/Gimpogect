@@ -7,6 +7,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 're
 
 import { MemberResult, StaffAccent } from '@/components/member-result';
 import { StaffHeader } from '@/components/staff-header';
+import { WebQrScanner } from '@/components/web-qr-scanner';
 import { Button, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { mockOrders } from '@/data/members';
@@ -80,7 +81,9 @@ export default function StaffScanScreen() {
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* Camera */}
         <View style={styles.cameraWrap}>
-          {canCamera && permission?.granted ? (
+          {!canCamera ? (
+            <WebQrScanner onScan={(d) => { if (!paused) handle(d); }} paused={paused} permissionText={t('scan_permission')} allowText={t('scan_allow')} accent={StaffAccent} />
+          ) : permission?.granted ? (
             <CameraView style={StyleSheet.absoluteFill} facing="back" barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={paused ? undefined : onScan} />
           ) : (
             <View style={styles.noCamera}>

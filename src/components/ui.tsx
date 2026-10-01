@@ -177,7 +177,8 @@ export function Chip({ label, active, onPress, icon }: { label: string; active?:
 
 export function ChipRow({ children, style }: ViewProps) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={[{ gap: Spacing.two, paddingHorizontal: Spacing.three }, style]}>
+    // Fixed height: on web a horizontal ScrollView reports 0 height and the rows pile onto each other.
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, height: 44 }} contentContainerStyle={[{ gap: Spacing.two, paddingHorizontal: Spacing.three, alignItems: 'center' }, style]}>
       {children}
     </ScrollView>
   );

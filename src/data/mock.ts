@@ -180,7 +180,7 @@ export const trainers: Trainer[] = [
     reviews: 178,
     experienceYears: 10,
     pricePerSession: 10000,
-    avatar: 'https://images.unsplash.com/photo-1594381898411-846e7d193883?w=400&q=80',
+    avatar: 'https://images.unsplash.com/photo-1597076537061-a6b58163aa45?w=400&q=80',
     bio: 'Преподаватель хатха- и виньяса-йоги (RYT-500). Работаю с осанкой, мобильностью и восстановлением после травм.',
   },
   {
@@ -204,7 +204,7 @@ export const trainers: Trainer[] = [
     reviews: 264,
     experienceYears: 6,
     pricePerSession: 10000,
-    avatar: 'https://images.unsplash.com/photo-1548690312-e3b507d8c110?w=400&q=80',
+    avatar: 'https://images.unsplash.com/photo-1597076545399-91a3ff0e71b3?w=400&q=80',
     bio: 'Нутрициолог и персональный тренер. Составляю программу тренировок и питания под ваш ритм жизни, веду к результату без жёстких диет.',
   },
   {
@@ -228,7 +228,7 @@ export const trainers: Trainer[] = [
     reviews: 121,
     experienceYears: 5,
     pricePerSession: 8000,
-    avatar: 'https://images.unsplash.com/photo-1550345332-09e3ac987658?w=400&q=80',
+    avatar: 'https://images.unsplash.com/photo-1559369064-c4d65141e408?w=400&q=80',
     bio: 'Хореограф и инструктор групповых программ. Мои занятия — это кардио, которое не чувствуется как тренировка.',
   },
 ];
