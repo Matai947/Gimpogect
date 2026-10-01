@@ -58,6 +58,7 @@ type State = {
   coachPlan: WeekPlan | null;
   coachApiKey: string | null;
   lang: Lang;
+  trialUsed: boolean;
   staff: StaffSession | null;
   staffLog: CheckinEntry[];
   attendance: Record<string, string[]>; // sessionId -> memberIds marked present
@@ -82,6 +83,7 @@ type Actions = {
   updateUser: (patch: Partial<User>) => void;
   completeOnboarding: (profile: FitnessProfile) => void;
   buyPlan: (planId: string) => void;
+  activateTrial: () => boolean;
   freezeMembership: (days: number) => void;
   unfreezeMembership: () => void;
   book: (sessionId: string) => void;
@@ -126,6 +128,7 @@ const initialState: State = {
   coachPlan: null,
   coachApiKey: null,
   lang: 'ru',
+  trialUsed: false,
   staff: null,
   staffLog: [],
   attendance: {},
@@ -330,6 +333,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  /** Free 3-day trial, once per account. Returns false if already used. */
+  const activateTrial = useCallback(() => {
+    if (state.trialUsed) return false;
+    const today = toISODate(new Date());
+    setState((s) => ({ ...s, trialUsed: true, membership: { planId: 'trial', startDate: today, endDate: toISODate(addDays(new Date(), 3)), freezeDaysLeft: 0 } }));
+    return true;
+  }, [state.trialUsed]);
+
   const freezeMembership = useCallback((days: number) => {
     setState((s) => {
       if (!s.membership || days <= 0 || days > s.membership.freezeDaysLeft) return s;
@@ -432,6 +443,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateUser,
       completeOnboarding,
       buyPlan,
+      activateTrial,
       freezeMembership,
       unfreezeMembership,
       book,
@@ -460,7 +472,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, logout, updateUser, completeOnboarding, buyPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, setStaffClub, logCheckin, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, logout, updateUser, completeOnboarding, buyPlan, activateTrial, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, setStaffClub, logCheckin, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -5,7 +5,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Dimensions, Pressable, StyleSheet, View } from 'react-native';
 
-import { Button, Card, Chip, EmptyState, Row, Screen, SectionHeader, StatTile, T } from '@/components/ui';
+import { Badge, Button, Card, Chip, EmptyState, Row, Screen, SectionHeader, StatTile, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { addDays, classTemplates, clubById, formatDateHuman, formatPrice, toISODate, trainerById, weekdayShort } from '@/data/mock';
 import { useI18n } from '@/store/app-context';
@@ -45,8 +45,15 @@ export default function TrainerScreen() {
         <Image source={{ uri: trainer.avatar }} style={{ width: W, height: 320 }} contentFit="cover" transition={200} />
         <LinearGradient colors={['transparent', Colors.background]} style={[StyleSheet.absoluteFill, { top: 140 }]} />
         <View style={styles.heroText}>
-          <T type="title">{trainer.name}</T>
-          <T type="caption">{club?.name}</T>
+          <Row gap={8}>
+            <T type="title" style={{ flexShrink: 1 }}>
+              {trainer.name}
+            </T>
+            {trainer.pro ? <Badge label={t('pro_badge')} color={Colors.info} /> : null}
+          </Row>
+          <T type="caption">
+            {club?.name} • {trainer.audience}
+          </T>
         </View>
       </View>
 

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
@@ -16,7 +16,8 @@ export default function MembershipScreen() {
   const { membership, buyPlan, freezeMembership, unfreezeMembership } = useApp();
   const { t, tp, td } = useI18n();
   const info = useMembershipInfo();
-  const [selected, setSelected] = useState<string>(info.plan?.id ?? 'p6');
+  const { plan: planParam } = useLocalSearchParams<{ plan?: string }>();
+  const [selected, setSelected] = useState<string>(plans.some((p) => p.id === planParam) ? planParam! : (info.plan?.id ?? 'p6'));
   const [pay, setPay] = useState<PayId>('kaspi');
   const plan = plans.find((p) => p.id === selected)!;
 
@@ -97,7 +98,7 @@ export default function MembershipScreen() {
         <View style={{ marginTop: Spacing.four }}>
           <SectionHeader title={info.active ? t('home_extend') : t('plans')} />
           <View style={{ gap: Spacing.two }}>
-            {plans.map((p) => {
+            {plans.filter((p) => !p.trial).map((p) => {
               const active = p.id === selected;
               return (
                 <Pressable key={p.id} onPress={() => setSelected(p.id)} style={[styles.plan, active && styles.planActive]}>

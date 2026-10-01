@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
-import { Card, Chip, ChipRow, Row, Screen, Stars, T } from '@/components/ui';
+import { Badge, Card, Chip, ChipRow, Row, Screen, Stars, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubById, formatPrice, trainers } from '@/data/mock';
 import { useI18n } from '@/store/app-context';
@@ -49,9 +49,12 @@ export default function TrainersScreen() {
               <Image source={{ uri: tr.avatar }} style={styles.avatar} contentFit="cover" transition={200} />
               <View style={{ flex: 1, gap: 4 }}>
                 <Row style={{ justifyContent: 'space-between' }}>
-                  <T type="subheading" style={{ flex: 1 }}>
-                    {tr.name}
-                  </T>
+                  <Row gap={6} style={{ flex: 1 }}>
+                    <T type="subheading" style={{ flexShrink: 1 }} numberOfLines={1}>
+                      {tr.name}
+                    </T>
+                    {tr.pro ? <Badge label={t('pro_badge')} color={Colors.info} /> : null}
+                  </Row>
                   <Stars rating={tr.rating} />
                 </Row>
                 <T type="small" color={Colors.textSecondary} numberOfLines={1}>

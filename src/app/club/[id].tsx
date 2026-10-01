@@ -65,13 +65,15 @@ export default function ClubScreen() {
         </Row>
 
         <Row gap={Spacing.two} style={{ marginTop: Spacing.three }}>
-          <Button title={t('route')} icon="navigate-outline" onPress={openRoute} style={{ flex: 1 }} />
-          <Button title={t('call')} icon="call-outline" variant="secondary" onPress={call} style={{ flex: 1 }} />
+          <Button title={t('route')} onPress={openRoute} style={{ flex: 1 }} />
+          <Button title={t('call')} variant="secondary" onPress={call} style={{ flex: 1 }} />
+          <IconButton icon="logo-whatsapp" size={52} color="#25D366" bg="rgba(37,211,102,0.16)" onPress={() => Linking.openURL(`https://wa.me/${club.phone.replace(/\D/g, '')}`)} />
         </Row>
 
         <Card style={{ marginTop: Spacing.three, gap: Spacing.two }}>
           <InfoRow icon="location-outline" text={club.address} />
-          <InfoRow icon="time-outline" text={clubHours(club)} />
+          <InfoRow icon="time-outline" text={club.is24h ? clubHours(club) : `${t('weekdays_label')} ${club.hoursDetail[0]} • ${t('sat_label')} ${club.hoursDetail[1]} • ${t('sun_label')} ${club.hoursDetail[2]}`} />
+          <InfoRow icon="resize-outline" text={`${t('area_m2', { n: club.areaM2.toLocaleString('ru-RU') })} • ${t('machines_n', { n: club.machines })}`} />
           <InfoRow icon="call-outline" text={club.phone} />
           <View style={{ marginTop: 4, gap: 6 }}>
             <Row style={{ justifyContent: 'space-between' }}>
@@ -91,6 +93,57 @@ export default function ClubScreen() {
           <T type="body" color={Colors.textSecondary}>
             {club.description}
           </T>
+        </View>
+
+        <View style={{ marginTop: Spacing.four }}>
+          <SectionHeader title={t('reviews_title')} />
+          <Card style={{ gap: Spacing.three }}>
+            <Row gap={Spacing.three}>
+              <T type="display" style={{ fontSize: 44, lineHeight: 48 }}>
+                {club.rating.toFixed(1)}
+              </T>
+              <View style={{ flex: 1 }}>
+                <Row gap={2}>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Ionicons key={i} name={i <= Math.round(club.rating) ? 'star' : 'star-outline'} size={16} color={Colors.info} />
+                  ))}
+                </Row>
+                <T type="small" color={Colors.textSecondary}>
+                  {t('reviews_sub', { n: club.reviews })}
+                </T>
+              </View>
+            </Row>
+            <View>
+              <T type="small" color={Colors.textSecondary} style={{ marginBottom: 6 }}>
+                {t('liked_title')}
+              </T>
+              <Row gap={Spacing.two} style={{ flexWrap: 'wrap' }}>
+                {club.liked.map((l) => (
+                  <Chip key={l} label={l} icon="checkmark" />
+                ))}
+              </Row>
+            </View>
+            {club.reviewsList.map((r) => (
+              <View key={r.name} style={{ gap: 4, borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: Spacing.two }}>
+                <Row style={{ justifyContent: 'space-between' }}>
+                  <T type="subheading">{r.name}</T>
+                  <Row gap={6}>
+                    <Row gap={1}>
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <Ionicons key={i} name="star" size={11} color={i <= r.stars ? Colors.info : Colors.border} />
+                      ))}
+                    </Row>
+                    <T type="small" color={Colors.textMuted}>
+                      {r.when}
+                    </T>
+                  </Row>
+                </Row>
+                <T type="small" color={Colors.textSecondary} style={{ lineHeight: 18 }}>
+                  {r.text}
+                </T>
+              </View>
+            ))}
+          </Card>
         </View>
 
         <View style={{ marginTop: Spacing.four }}>

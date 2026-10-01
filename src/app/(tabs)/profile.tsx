@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, Linking, StyleSheet, View } from 'react-native';
 
 import { LangSwitch } from '@/components/lang-switch';
 import { Avatar, Badge, Card, Divider, ListRow, Row, Screen, StatTile, T } from '@/components/ui';
@@ -153,7 +153,7 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <Card padded={false}>
-          <ListRow icon="chatbubble-ellipses-outline" title={t('support')} subtitle={t('support_sub')} onPress={() => Alert.alert(t('support'), t('support_alert'))} />
+          <ListRow icon="logo-whatsapp" title={t('support')} subtitle={`${t('whatsapp')} • ${homeClub?.phone ?? ''}`} onPress={() => Linking.openURL(`https://wa.me/${(homeClub?.phone ?? '').replace(/\D/g, '')}`)} />
           <Divider />
           <ListRow icon="document-text-outline" title={t('rules')} onPress={() => Alert.alert(t('documents'), t('rules_alert'))} />
           <Divider />

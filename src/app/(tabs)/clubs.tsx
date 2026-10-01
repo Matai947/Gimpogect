@@ -89,7 +89,7 @@ export default function ClubsScreen() {
                 <Row gap={6}>
                   <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
                   <T type="small" color={Colors.textSecondary}>
-                    {clubHours(c)}
+                    {clubHours(c)} • {t('area_m2', { n: c.areaM2.toLocaleString('ru-RU') })} • {t('machines_n', { n: c.machines })}
                   </T>
                 </Row>
                 <View style={{ gap: 6, marginTop: 4 }}>

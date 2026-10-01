@@ -3,18 +3,19 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MemberPass } from '@/components/member-pass';
 import { ProductCard } from '@/components/product-card';
 import { Badge, Button, Card, IconButton, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTip, goalTitle } from '@/data/fitness';
-import { clubById, clubHours, clubs, formatDateHuman, news, occupancyLabel, sessionById, sessionStart, trainerById, trainers } from '@/data/mock';
-import { useApp, useCatalog, useFitnessProfile, useI18n, useVisitStats } from '@/store/app-context';
+import { clubById, clubHours, clubs, formatDateHuman, formatPrice, news, occupancyLabel, plans, sessionById, sessionStart, trainerById, trainers } from '@/data/mock';
+import { useApp, useCatalog, useFitnessProfile, useI18n, useMembershipInfo, useVisitStats } from '@/store/app-context';
 
 export default function HomeScreen() {
-  const { user, bookings, addToCart, coachPlan } = useApp();
+  const { user, bookings, addToCart, coachPlan, activateTrial } = useApp();
+  const membership = useMembershipInfo();
   const { t, tp, td } = useI18n();
   const { products } = useCatalog();
   const shopHits = useMemo(() => products.filter((p) => p.badge === 'Хит' || p.badge === 'Новинка').slice(0, 6), [products]);
@@ -64,6 +65,33 @@ export default function HomeScreen() {
         <MemberPass />
       </View>
 
+      {/* Free trial, like the "3 дня пробных тренировок" block on s89 */}
+      {!membership.active ? (
+        <View style={styles.section}>
+          <Pressable
+            onPress={() => {
+              if (activateTrial()) Alert.alert(t('trial_done_title'), t('trial_done_body'));
+              else Alert.alert(t('trial_used'));
+            }}
+            style={styles.trial}>
+            <View style={{ flex: 1 }}>
+              <T type="display" style={{ fontSize: 22, lineHeight: 26 }}>
+                {t('trial_title')}
+              </T>
+              <T type="small" color={Colors.textSecondary} style={{ marginTop: 4 }}>
+                {t('trial_sub')}
+              </T>
+              <View style={styles.trialBtn}>
+                <T type="label" color={Colors.onAccent} style={{ fontSize: 13 }}>
+                  {t('trial_cta')}
+                </T>
+              </View>
+            </View>
+            <Ionicons name="gift-outline" size={44} color={Colors.info} />
+          </Pressable>
+        </View>
+      ) : null}
+
       {/* Quick actions */}
       <View style={[styles.section, { flexDirection: 'row', gap: Spacing.two }]}>
         {quickActions.map((a) => (
@@ -76,6 +104,45 @@ export default function HomeScreen() {
             </T>
           </Pressable>
         ))}
+      </View>
+
+      {/* Price list, like "Галерея абонементов" on s89 */}
+      <View style={{ marginBottom: Spacing.four }}>
+        <View style={{ paddingHorizontal: Spacing.three }}>
+          <SectionHeader title={t('price_list')} action={t('to_plans')} onAction={() => router.push('/membership')} />
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }} style={{ flexGrow: 0 }}>
+          {plans
+            .filter((p) => !p.trial)
+            .map((p) => (
+              <Pressable key={p.id} onPress={() => router.push(`/membership?plan=${p.id}`)} style={[styles.price, p.popular && { borderColor: Colors.accent }]}>
+                <Row style={{ justifyContent: 'space-between' }}>
+                  <T type="label" color={Colors.textSecondary} style={{ fontSize: 11 }}>
+                    {p.months} {tp(p.months, 'months_pl')}
+                  </T>
+                  {p.popular ? <Badge label={t('popular')} /> : null}
+                  {p.dayOnly ? <Badge label={t('day_only')} color={Colors.info} /> : null}
+                </Row>
+                <T type="display" style={{ fontSize: 17, lineHeight: 21, marginTop: 6 }} numberOfLines={1}>
+                  {td(p.name)}
+                </T>
+                <T type="heading" color={Colors.accent} style={{ marginTop: 'auto' }}>
+                  {formatPrice(p.price)}
+                </T>
+                <Row gap={6}>
+                  {p.oldPrice ? (
+                    <T type="small" color={Colors.textMuted} style={{ textDecorationLine: 'line-through' }}>
+                      {formatPrice(p.oldPrice)}
+                    </T>
+                  ) : null}
+                  <T type="small" color={Colors.textSecondary}>
+                    {formatPrice(p.perMonth)}
+                    {t('per_month')}
+                  </T>
+                </Row>
+              </Pressable>
+            ))}
+        </ScrollView>
       </View>
 
       {/* Goal */}
@@ -298,5 +365,8 @@ const styles = StyleSheet.create({
   goalIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(154,61,205,0.12)', alignItems: 'center', justifyContent: 'center' },
   coachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, backgroundColor: 'rgba(154,61,205,0.08)', borderWidth: 1, borderColor: 'rgba(154,61,205,0.25)' },
   timeBox: { borderLeftWidth: 3, paddingLeft: 10, minWidth: 82 },
+  trial: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: 'rgba(255,199,54,0.45)' },
+  trialBtn: { alignSelf: 'flex-start', marginTop: Spacing.two, paddingHorizontal: 14, height: 36, borderRadius: Radius.pill, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
+  price: { width: 200, height: 150, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: Colors.border },
   newsCard: { width: 280, height: 160, borderRadius: Radius.lg, overflow: 'hidden', justifyContent: 'flex-end', backgroundColor: Colors.surface },
 });
