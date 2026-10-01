@@ -52,7 +52,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "deploy:web": "expo export --platform web && node -e \"const f=require('fs');f.copyFileSync('vercel.json','dist/vercel.json');f.writeFileSync('dist/.vercelignore','!node_modules\n')\" && vercel deploy dist --prod --yes"
+    "deploy:web": "expo export --platform web && node scripts/prepare-deploy.js && vercel deploy dist --prod --yes"
   },
   "private": true
 }
