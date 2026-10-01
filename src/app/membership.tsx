@@ -17,7 +17,7 @@ export default function MembershipScreen() {
   const { t, tp, td } = useI18n();
   const info = useMembershipInfo();
   const { plan: planParam } = useLocalSearchParams<{ plan?: string }>();
-  const [selected, setSelected] = useState<string>(plans.some((p) => p.id === planParam) ? planParam! : (info.plan?.id ?? 'p6'));
+  const [selected, setSelected] = useState<string>(plans.some((p) => p.id === planParam && !p.trial) ? planParam! : (info.plan?.id ?? 'p6'));
   const [pay, setPay] = useState<PayId>('kaspi');
   const plan = plans.find((p) => p.id === selected)!;
 
