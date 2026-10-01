@@ -7,6 +7,13 @@
       "runtimeArgs": ["/c", "set RCT_METRO_PORT=%PORT%&& npx expo start --web"],
       "port": 8081,
       "autoPort": true
+    },
+    {
+      "name": "grant-turkey-web",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd /d C:\\Users\\User\\grant-turkey && set RCT_METRO_PORT=%PORT%&& npx expo start --web"],
+      "port": 8083,
+      "autoPort": true
     }
   ]
 }
