@@ -627,6 +627,17 @@ export const ru = {
   grant_pick: 'Выберите тариф — доступ и QR-пропуск включатся сразу',
   trial_grant: '3 дня бесплатно',
   grant_done: 'Абонемент «{name}» выдан до {date}. QR-пропуск активен.',
+  fact_since: 'Клиент с',
+  fact_last_visit: 'Последний визит',
+  fact_visits_total: 'Всего визитов',
+  fact_age_goal: 'Возраст • цель',
+  fact_trainer: 'Тренер',
+  fact_no_trainer: 'Без тренера',
+  fact_freeze: 'Заморозка осталось',
+  fact_bookings_today: 'Записей на сегодня',
+  fact_orders_ready: 'Заказов к выдаче',
+  age_n: '{n} лет',
+  days_n: '{n} дн.',
 } as const;
 
 export type TKey = keyof typeof ru;

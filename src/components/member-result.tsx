@@ -5,7 +5,8 @@ import { Linking, StyleSheet, View } from 'react-native';
 
 import { Avatar, Badge, Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { clubById, formatDateLong, formatPrice, plans } from '@/data/mock';
+import { goalTitle } from '@/data/fitness';
+import { clubById, formatDateHuman, formatDateLong, formatPrice, plans, trainerById } from '@/data/mock';
 import { useApp, useI18n, type MemberInfo } from '@/store/app-context';
 
 export const StaffAccent = '#FF8562';
@@ -116,6 +117,19 @@ export function MemberResult({ member, onDone, compact }: { member: MemberInfo; 
             <Button title="" icon="call-outline" variant="ghost" onPress={() => Linking.openURL(`tel:${member.phone.replace(/\s/g, '')}`)} style={{ paddingHorizontal: 14 }} />
           </Row>
         )}
+        {/* Full client profile for the front desk */}
+        <View style={styles.grid}>
+          <Fact label={t('fact_since')} value={formatDateLong(member.since)} />
+          <Fact label={t('fact_last_visit')} value={member.lastVisit ? formatDateHuman(member.lastVisit) : '—'} />
+          <Fact label={t('fact_visits_total')} value={String(member.visitsTotal)} />
+          <Fact label={t('fact_age_goal')} value={`${member.age ? t('age_n', { n: member.age }) + ' • ' : ''}${goalTitle(member.goal)}`} />
+          <Fact label={t('fact_trainer')} value={member.trainerId ? (trainerById(member.trainerId)?.name ?? '—') : t('fact_no_trainer')} />
+          <Fact label={t('fact_freeze')} value={t('days_n', { n: member.freezeDaysLeft })} />
+          {member.params ? <Fact label={t('my_params')} value={member.params} /> : null}
+          {member.bookingsToday ? <Fact label={t('fact_bookings_today')} value={String(member.bookingsToday)} accent /> : null}
+          {member.ordersReady ? <Fact label={t('fact_orders_ready')} value={String(member.ordersReady)} accent /> : null}
+        </View>
+
         {picking ? (
           <View style={styles.picker}>
             <T type="small" color={Colors.textSecondary}>
@@ -142,7 +156,22 @@ export function MemberResult({ member, onDone, compact }: { member: MemberInfo; 
   );
 }
 
+function Fact({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <View style={styles.fact}>
+      <T type="small" color={Colors.textMuted} style={{ fontSize: 10.5 }} numberOfLines={1}>
+        {label}
+      </T>
+      <T type="small" color={accent ? StaffAccent : Colors.text} style={{ fontWeight: '700' }} numberOfLines={2}>
+        {value}
+      </T>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  fact: { width: '48%', flexGrow: 1, gap: 1, paddingVertical: 8, paddingHorizontal: 10, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.border },
   card: { backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1.5, overflow: 'hidden', flexDirection: 'row' },
   stripe: { width: 6 },
   verdict: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },

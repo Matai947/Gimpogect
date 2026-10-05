@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile } from '@/data/fitness';
-import { members, type Member } from '@/data/members';
-import { addDays, planById, toISODate } from '@/data/mock';
+import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile, type Goal } from '@/data/fitness';
+import { members, mockOrders, type Member } from '@/data/members';
+import { addDays, planById, sessionById, toISODate } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
@@ -583,10 +583,20 @@ export type MemberInfo = {
   visitsThisMonth: number;
   note?: string;
   isSelf: boolean;
+  since: string;
+  lastVisit?: string;
+  visitsTotal: number;
+  age: number;
+  goal: Goal;
+  trainerId?: string;
+  freezeDaysLeft: number;
+  bookingsToday: number;
+  ordersReady: number;
+  params?: string; // height / weight, known for the device user only
 };
 
 export function useMembers() {
-  const { user, membership, visits, memberGrants } = useApp();
+  const { user, membership, visits, memberGrants, bookings, orders } = useApp();
   return useMemo(() => {
     const today = new Date();
     const todayIso = toISODate(today);
@@ -608,6 +618,16 @@ export function useMembers() {
         visitsThisMonth: m.visitsThisMonth,
         note: m.note,
         isSelf,
+        since: m.since,
+        lastVisit: m.lastVisit,
+        visitsTotal: m.visitsTotal,
+        age: m.age,
+        goal: m.goal,
+        trainerId: m.trainerId,
+        freezeDaysLeft: m.freezeDaysLeft,
+        bookingsToday: isSelf ? bookings.filter((b) => sessionById(b)?.date === todayIso).length : 0,
+        ordersReady: (isSelf ? orders : mockOrders).filter((o) => o.status === 'Готов к выдаче' && (!isSelf ? o.memberId === m.id : true)).length,
+        params: isSelf && user?.profile ? `${user.profile.heightCm} см • ${user.profile.weightKg} кг` : undefined,
       };
     };
     const list = members.map((m) => {
@@ -625,6 +645,12 @@ export function useMembers() {
         frozenUntil: membership?.frozenUntil,
         homeClubId: user.homeClubId,
         visitsThisMonth: visits.filter((v) => v.date >= monthAgo).length,
+        since: visits.length ? [...visits].sort((a, b) => a.date.localeCompare(b.date))[0].date : membership?.startDate ?? todayIso,
+        lastVisit: visits.length ? [...visits].sort((a, b) => b.date.localeCompare(a.date))[0].date : undefined,
+        visitsTotal: visits.length,
+        age: user.profile?.age ?? 0,
+        goal: user.profile?.goal ?? 'tone',
+        freezeDaysLeft: membership?.freezeDaysLeft ?? 0,
       };
       list.unshift(build(self, true));
     }
@@ -632,7 +658,7 @@ export function useMembers() {
       list,
       byId: (id: string) => list.find((m) => m.id === id),
     };
-  }, [user, membership, visits, memberGrants]);
+  }, [user, membership, visits, memberGrants, bookings, orders]);
 }
 
 /** Fitness profile with derived metrics; null until onboarding is done. */
