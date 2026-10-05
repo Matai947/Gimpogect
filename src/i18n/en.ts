@@ -622,4 +622,11 @@ export const en: Record<TKey, string> = {
   guest_pass: 'Guest entry for today',
   expiring_title: 'Your plan ends soon',
   expiring_body: '{n} {d} left. Renew in advance to keep your access.',
+  desk_title: 'Pay at the front desk',
+  desk_info: 'The club administrator issues your plan after payment at the front desk. Your QR pass appears in the app right after. Your club: {club}, {phone}.',
+  desk_cta: 'Message the admin',
+  trial_sub_desk: 'Free • no commitment • activated by the administrator at the front desk',
+  trial_cta_desk: 'How to get it',
+  grant_confirm: 'Payment {price} received. Issue «{name}»',
+  grant_confirm_free: 'Issue «{name}»',
 };

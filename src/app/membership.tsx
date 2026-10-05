@@ -1,46 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { Badge, Button, Card, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { formatDateLong, formatPrice, plans } from '@/data/mock';
+import { clubById, formatDateLong, formatPrice, plans } from '@/data/mock';
 import { useApp, useI18n, useMembershipInfo } from '@/store/app-context';
 
-type PayId = 'kaspi' | 'card' | 'split';
-
 export default function MembershipScreen() {
-  const { membership, buyPlan, freezeMembership, unfreezeMembership } = useApp();
+  const { membership, user, freezeMembership, unfreezeMembership } = useApp();
   const { t, tp, td } = useI18n();
   const info = useMembershipInfo();
   const { plan: planParam } = useLocalSearchParams<{ plan?: string }>();
   const [selected, setSelected] = useState<string>(plans.some((p) => p.id === planParam && !p.trial) ? planParam! : (info.plan?.id ?? 'p6'));
-  const [pay, setPay] = useState<PayId>('kaspi');
   const plan = plans.find((p) => p.id === selected)!;
 
-  const payMethods: { id: PayId; label: string; icon: React.ComponentProps<typeof Ionicons>['name']; hint: string }[] = [
-    { id: 'kaspi', label: t('pay_kaspi'), icon: 'phone-portrait-outline', hint: t('pay_kaspi_hint') },
-    { id: 'card', label: t('pay_card'), icon: 'card-outline', hint: t('pay_card_hint') },
-    { id: 'split', label: t('pay_split'), icon: 'calendar-outline', hint: t('pay_split_hint') },
-  ];
-
-  const purchase = () => {
-    const monthly = pay === 'split' ? ` (${formatPrice(Math.round(plan.price / 12))} × 12)` : '';
-    Alert.alert(info.active ? t('confirm_extend') : t('confirm_buy'), t('ms_confirm_body', { name: td(plan.name), m: plan.months, price: formatPrice(plan.price), monthly, method: payMethods.find((m) => m.id === pay)?.label ?? '' }), [
-      { text: t('cancel'), style: 'cancel' },
-      {
-        text: t('pay'),
-        onPress: () => {
-          buyPlan(plan.id);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-          Alert.alert(t('paid_title'), t('paid_body'), [{ text: t('great'), onPress: () => router.back() }]);
-        },
-      },
-    ]);
-  };
+  const club = clubById(user?.homeClubId ?? 'c1');
+  const writeDesk = () => Linking.openURL(`https://wa.me/${(club?.phone ?? '').replace(/\D/g, '')}`);
 
   const freeze = () => {
     if (!membership) return;
@@ -95,6 +73,16 @@ export default function MembershipScreen() {
           )}
         </LinearGradient>
 
+        <Card style={{ marginTop: Spacing.three, gap: 6, borderColor: Colors.accent }}>
+          <Row gap={8}>
+            <Ionicons name="storefront-outline" size={20} color={Colors.accent} />
+            <T type="subheading">{t('desk_title')}</T>
+          </Row>
+          <T type="small" color={Colors.textSecondary}>
+            {t('desk_info', { club: club?.name ?? '', phone: club?.phone ?? '' })}
+          </T>
+        </Card>
+
         <View style={{ marginTop: Spacing.four }}>
           <SectionHeader title={info.active ? t('home_extend') : t('plans')} />
           <View style={{ gap: Spacing.two }}>
@@ -142,26 +130,6 @@ export default function MembershipScreen() {
         </View>
 
         <View style={{ marginTop: Spacing.four }}>
-          <SectionHeader title={t('pay_method')} />
-          <Card padded={false}>
-            {payMethods.map((m, i) => (
-              <Pressable key={m.id} onPress={() => setPay(m.id)} style={[styles.pay, i > 0 && { borderTopWidth: 1, borderTopColor: Colors.border }]}>
-                <Ionicons name={m.icon} size={20} color={Colors.accent} />
-                <View style={{ flex: 1 }}>
-                  <T type="body" style={{ fontWeight: '600' }}>
-                    {m.label}
-                  </T>
-                  <T type="small" color={Colors.textSecondary}>
-                    {m.hint}
-                  </T>
-                </View>
-                <Ionicons name={pay === m.id ? 'radio-button-on' : 'radio-button-off'} size={20} color={pay === m.id ? Colors.accent : Colors.textMuted} />
-              </Pressable>
-            ))}
-          </Card>
-        </View>
-
-        <View style={{ marginTop: Spacing.four }}>
           <SectionHeader title={t('faq')} />
           {[
             [t('faq_1q'), t('faq_1a')],
@@ -183,9 +151,9 @@ export default function MembershipScreen() {
           <T type="small" color={Colors.textSecondary}>
             «{td(plan.name)}» • {plan.months} {t('months_short')}
           </T>
-          <T type="heading">{pay === 'split' ? `${formatPrice(Math.round(plan.price / 12))}${t('per_month')}` : formatPrice(plan.price)}</T>
+          <T type="heading">{formatPrice(plan.price)}</T>
         </View>
-        <Button title={info.active ? t('home_extend') : t('pay')} icon="lock-closed-outline" onPress={purchase} style={{ paddingHorizontal: Spacing.four }} />
+        <Button title={t('desk_cta')} icon="logo-whatsapp" onPress={writeDesk} style={{ paddingHorizontal: Spacing.four }} />
       </View>
     </Screen>
   );

@@ -61,12 +61,14 @@ export default function QrScreen() {
             </T>
           </View>
         )}
-        <Row gap={6} style={{ marginTop: Spacing.three }}>
-          <Ionicons name="refresh" size={14} color="#5B6673" />
-          <T type="small" color="#5B6673">
-            {t('qr_refresh', { n: left })}
-          </T>
-        </Row>
+        {membership.active && !membership.frozen ? (
+          <Row gap={6} style={{ marginTop: Spacing.three }}>
+            <Ionicons name="refresh" size={14} color="#5B6673" />
+            <T type="small" color="#5B6673">
+              {t('qr_refresh', { n: left })}
+            </T>
+          </Row>
+        ) : null}
       </View>
 
       <Card style={{ alignSelf: 'stretch', gap: Spacing.two }}>

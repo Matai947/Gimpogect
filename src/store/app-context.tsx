@@ -83,8 +83,6 @@ type Actions = {
   logout: () => void;
   updateUser: (patch: Partial<User>) => void;
   completeOnboarding: (profile: FitnessProfile) => void;
-  buyPlan: (planId: string) => void;
-  activateTrial: () => boolean;
   grantPlan: (memberId: string, planId: string) => void;
   freezeMembership: (days: number) => void;
   unfreezeMembership: () => void;
@@ -211,13 +209,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({
       ...s,
       user: { id: `u_${phone.replace(/\D/g, '')}`, name: name?.trim() || 'Гость', phone, homeClubId: 'c1' },
-      // Demo account: a member with an active plan and history so the app looks alive.
-      membership: s.membership ?? {
-        planId: 'p6',
-        startDate: toISODate(addDays(new Date(), -52)),
-        endDate: toISODate(addDays(new Date(), 128)),
-        freezeDaysLeft: 30,
-      },
+      // A new client has no plan: the administrator issues it at the front desk after payment, and only then the QR appears.
+      membership: s.membership,
       visits: s.visits.length ? s.visits : demoVisits(),
       weightLog: s.weightLog.length ? s.weightLog : demoWeights(),
     }));
@@ -328,16 +321,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const buyPlan = useCallback((planId: string) => {
-    if (!planById(planId)) return;
-    setState((s) => ({ ...s, membership: extendMembership(s.membership, planId) }));
-  }, []);
-
   /** Staff issues a plan at the front desk: the user's own account or a mock member. */
   const grantPlan = useCallback((memberId: string, planId: string) => {
     if (!planById(planId)) return;
     setState((s) => {
-      if (s.user?.id === memberId) return { ...s, membership: extendMembership(s.membership, planId) };
+      if (s.user?.id === memberId) return { ...s, trialUsed: s.trialUsed || (!!planById(planId)?.trial && !planById(planId)?.staffOnly), membership: extendMembership(s.membership, planId) };
       const base = members.find((m) => m.id === memberId);
       if (!base) return s;
       const g = s.memberGrants[memberId];
@@ -346,14 +334,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { ...s, memberGrants: { ...s.memberGrants, [memberId]: { planId, endDate: next.endDate } } };
     });
   }, []);
-
-  /** Free 3-day trial, once per account. Returns false if already used. */
-  const activateTrial = useCallback(() => {
-    if (state.trialUsed) return false;
-    const today = toISODate(new Date());
-    setState((s) => ({ ...s, trialUsed: true, membership: { planId: 'trial', startDate: today, endDate: toISODate(addDays(new Date(), 3)), freezeDaysLeft: 0 } }));
-    return true;
-  }, [state.trialUsed]);
 
   const freezeMembership = useCallback((days: number) => {
     setState((s) => {
@@ -456,9 +436,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       logout,
       updateUser,
       completeOnboarding,
-      buyPlan,
       grantPlan,
-      activateTrial,
       freezeMembership,
       unfreezeMembership,
       book,
@@ -487,7 +465,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, logout, updateUser, completeOnboarding, buyPlan, grantPlan, activateTrial, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, setStaffClub, logCheckin, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, logout, updateUser, completeOnboarding, grantPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, setStaffClub, logCheckin, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

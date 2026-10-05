@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MemberPass } from '@/components/member-pass';
 import { ProductCard } from '@/components/product-card';
@@ -14,7 +14,7 @@ import { clubById, clubHours, clubs, formatDateHuman, formatPrice, news, occupan
 import { useApp, useCatalog, useFitnessProfile, useI18n, useMembershipInfo, useVisitStats } from '@/store/app-context';
 
 export default function HomeScreen() {
-  const { user, bookings, addToCart, coachPlan, activateTrial } = useApp();
+  const { user, bookings, addToCart, coachPlan } = useApp();
   const membership = useMembershipInfo();
   const { t, tp, td } = useI18n();
   const { products } = useCatalog();
@@ -89,21 +89,18 @@ export default function HomeScreen() {
       {!membership.active ? (
         <View style={styles.section}>
           <Pressable
-            onPress={() => {
-              if (activateTrial()) Alert.alert(t('trial_done_title'), t('trial_done_body'));
-              else Alert.alert(t('trial_used'));
-            }}
+            onPress={() => router.push('/membership')}
             style={styles.trial}>
             <View style={{ flex: 1 }}>
               <T type="display" style={{ fontSize: 22, lineHeight: 26 }}>
                 {t('trial_title')}
               </T>
               <T type="small" color={Colors.textSecondary} style={{ marginTop: 4 }}>
-                {t('trial_sub')}
+                {t('trial_sub_desk')}
               </T>
               <View style={styles.trialBtn}>
                 <T type="label" color={Colors.onAccent} style={{ fontSize: 13 }}>
-                  {t('trial_cta')}
+                  {t('trial_cta_desk')}
                 </T>
               </View>
             </View>

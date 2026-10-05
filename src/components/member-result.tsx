@@ -29,10 +29,14 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   const [picking, setPicking] = useState(false);
   const [granted, setGranted] = useState<string | null>(null);
 
+  const [choice, setChoice] = useState<string | null>(null);
+  const chosen = plans.find((p) => p.id === choice);
+
   const grant = (planId: string) => {
     grantPlan(member.id, planId);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setPicking(false);
+    setChoice(null);
     setGranted(planId);
   };
   const decision = entryDecision(member, t);
@@ -150,9 +154,16 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             </T>
             <Row gap={6} style={{ flexWrap: 'wrap' }}>
               {plans.map((p) => (
-                <Chip key={p.id} label={p.staffOnly ? t('guest_pass') : p.trial ? t('trial_grant') : `${td(p.name)} · ${formatPrice(p.price)}`} onPress={() => grant(p.id)} />
+                <Chip key={p.id} label={p.staffOnly ? t('guest_pass') : p.trial ? t('trial_grant') : `${td(p.name)} · ${formatPrice(p.price)}`} active={choice === p.id} onPress={() => setChoice(p.id)} />
               ))}
             </Row>
+            {chosen ? (
+              <Button
+                title={chosen.price > 0 ? t('grant_confirm', { price: formatPrice(chosen.price), name: td(chosen.name) }) : t('grant_confirm_free', { name: td(chosen.name) })}
+                icon="checkmark-circle-outline"
+                onPress={() => grant(chosen.id)}
+              />
+            ) : null}
           </View>
         ) : null}
         {granted && member.endDate ? (
