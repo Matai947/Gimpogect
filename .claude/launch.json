@@ -4,16 +4,31 @@
     {
       "name": "expo-web",
       "runtimeExecutable": "cmd",
-      "runtimeArgs": ["/c", "set RCT_METRO_PORT=%PORT%&& npx expo start --web"],
+      "runtimeArgs": [
+        "/c",
+        "set RCT_METRO_PORT=%PORT%&& npx expo start --web"
+      ],
       "port": 8081,
       "autoPort": true
     },
     {
       "name": "grant-turkey-web",
       "runtimeExecutable": "cmd",
-      "runtimeArgs": ["/c", "cd /d C:\\Users\\User\\grant-turkey && set RCT_METRO_PORT=%PORT%&& npx expo start --web"],
+      "runtimeArgs": [
+        "/c",
+        "cd /d C:\\Users\\User\\grant-turkey && set RCT_METRO_PORT=%PORT%&& npx expo start --web"
+      ],
       "port": 8083,
       "autoPort": true
+    },
+    {
+      "name": "bauflex-erp",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "cd /d C:\\Users\\User\\bauflex-erp && npm run dev"
+      ],
+      "port": 5180
     }
   ]
 }

@@ -529,7 +529,6 @@ export const ru = {
   entry_allowed: 'Проход разрешён',
   entry_logged: '{name} прошёл(а) в {time}',
   sell_plan: 'Продать абонемент',
-  sell_plan_alert: 'Оформление абонемента на рецепции: выберите тариф в кассе. В демо действие не выполняется.',
   unfreeze_ask: 'Разморозить',
   call_member: 'Позвонить',
   self_badge: 'Это вы',
@@ -625,6 +624,9 @@ export const ru = {
   sun_label: 'Вс',
   audience: 'Для кого',
   price_list: 'Прайс абонементов',
+  grant_pick: 'Выберите тариф — доступ и QR-пропуск включатся сразу',
+  trial_grant: '3 дня бесплатно',
+  grant_done: 'Абонемент «{name}» выдан до {date}. QR-пропуск активен.',
 } as const;
 
 export type TKey = keyof typeof ru;

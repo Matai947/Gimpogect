@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
-import { Alert, Linking, StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 
-import { Avatar, Badge, Button, Row, T } from '@/components/ui';
+import { Avatar, Badge, Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { clubById, formatDateLong } from '@/data/mock';
+import { clubById, formatDateLong, formatPrice, plans } from '@/data/mock';
 import { useApp, useI18n, type MemberInfo } from '@/store/app-context';
 
 export const StaffAccent = '#FF8562';
@@ -21,8 +21,17 @@ export function entryDecision(m: MemberInfo, t: (k: any, v?: any) => string): { 
 
 export function MemberResult({ member, onDone, compact }: { member: MemberInfo; onDone?: () => void; compact?: boolean }) {
   const { t, td } = useI18n();
-  const { staff, logCheckin } = useApp();
+  const { staff, logCheckin, grantPlan } = useApp();
   const [logged, setLogged] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [granted, setGranted] = useState<string | null>(null);
+
+  const grant = (planId: string) => {
+    grantPlan(member.id, planId);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setPicking(false);
+    setGranted(planId);
+  };
   const decision = entryDecision(member, t);
   const club = clubById(member.homeClubId);
 
@@ -42,7 +51,7 @@ export function MemberResult({ member, onDone, compact }: { member: MemberInfo; 
   return (
     <View style={[styles.card, { borderColor: decision.ok ? 'rgba(76,195,138,0.5)' : 'rgba(240,96,93,0.5)' }]}>
       <View style={[styles.stripe, { backgroundColor: decision.ok ? Colors.success : Colors.danger }]} />
-      <View style={{ padding: Spacing.three, gap: Spacing.two }}>
+      <View style={{ flex: 1, minWidth: 0, padding: Spacing.three, gap: Spacing.two }}>
         <Row gap={Spacing.three}>
           <Avatar name={member.name} size={compact ? 44 : 56} />
           <View style={{ flex: 1 }}>
@@ -100,12 +109,33 @@ export function MemberResult({ member, onDone, compact }: { member: MemberInfo; 
             ) : (
               <>
                 <Button title={t('deny_entry')} variant="danger" icon="close" onPress={deny} style={{ flex: 1 }} />
-                <Button title={t('sell_plan')} variant="secondary" icon="card-outline" onPress={() => Alert.alert(t('sell_plan'), t('sell_plan_alert'))} style={{ flex: 1 }} />
+                <Button title={t('sell_plan')} variant="secondary" icon="card-outline" onPress={() => setPicking((v) => !v)} style={{ flex: 1 }} />
               </>
             )}
+            {decision.ok ? <Button title="" icon="card-outline" variant="ghost" onPress={() => setPicking((v) => !v)} style={{ paddingHorizontal: 14 }} /> : null}
             <Button title="" icon="call-outline" variant="ghost" onPress={() => Linking.openURL(`tel:${member.phone.replace(/\s/g, '')}`)} style={{ paddingHorizontal: 14 }} />
           </Row>
         )}
+        {picking ? (
+          <View style={styles.picker}>
+            <T type="small" color={Colors.textSecondary}>
+              {t('grant_pick')}
+            </T>
+            <Row gap={6} style={{ flexWrap: 'wrap' }}>
+              {plans.map((p) => (
+                <Chip key={p.id} label={p.trial ? t('trial_grant') : `${td(p.name)} · ${formatPrice(p.price)}`} onPress={() => grant(p.id)} />
+              ))}
+            </Row>
+          </View>
+        ) : null}
+        {granted && member.endDate ? (
+          <View style={styles.logged}>
+            <Ionicons name="card" size={18} color={Colors.success} />
+            <T type="small" color={Colors.success} style={{ fontWeight: '700', flex: 1 }}>
+              {t('grant_done', { name: td(member.planName ?? ''), date: formatDateLong(member.endDate) })}
+            </T>
+          </View>
+        ) : null}
         {logged && onDone ? <Button title={t('scan_again')} variant="secondary" icon="qr-code-outline" onPress={onDone} size="sm" /> : null}
       </View>
     </View>
@@ -117,5 +147,6 @@ const styles = StyleSheet.create({
   stripe: { width: 6 },
   verdict: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   planBox: { backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md, padding: 12, gap: 4 },
+  picker: { gap: 8, padding: 12, borderRadius: Radius.md, backgroundColor: Colors.surfaceAlt },
   logged: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: Radius.md, backgroundColor: 'rgba(76,195,138,0.12)' },
 });

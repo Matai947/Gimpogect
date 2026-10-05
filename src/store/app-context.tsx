@@ -66,6 +66,7 @@ type State = {
   customProducts: Product[]; // products created by staff
   productOverrides: Record<string, Product>; // staff edits of base products
   hiddenProducts: string[]; // base products removed by staff
+  memberGrants: Record<string, { planId: string; endDate: string }>; // plans issued by staff to mock members
   hydrated: boolean;
 };
 
@@ -84,6 +85,7 @@ type Actions = {
   completeOnboarding: (profile: FitnessProfile) => void;
   buyPlan: (planId: string) => void;
   activateTrial: () => boolean;
+  grantPlan: (memberId: string, planId: string) => void;
   freezeMembership: (days: number) => void;
   unfreezeMembership: () => void;
   book: (sessionId: string) => void;
@@ -136,8 +138,21 @@ const initialState: State = {
   customProducts: [],
   productOverrides: {},
   hiddenProducts: [],
+  memberGrants: {},
   hydrated: false,
 };
+
+/** Adds a plan to the current membership: extends if still active, otherwise starts today. Trial = 3 days. */
+function extendMembership(cur: Membership | null, planId: string): Membership {
+  const plan = planById(planId)!;
+  const today = toISODate(new Date());
+  const stillActive = !!cur && cur.endDate >= today;
+  const end = stillActive ? new Date(cur!.endDate) : new Date();
+  if (plan.trial) end.setDate(end.getDate() + 3);
+  else end.setMonth(end.getMonth() + plan.months);
+  const freezeDays = plan.trial ? 0 : plan.months >= 12 ? 90 : plan.months >= 6 ? 30 : plan.months >= 3 ? 14 : 7;
+  return { planId, startDate: stillActive ? cur!.startDate : today, endDate: toISODate(end), freezeDaysLeft: (stillActive ? cur!.freezeDaysLeft : 0) + freezeDays };
+}
 
 const AppContext = createContext<(State & Actions) | null>(null);
 
@@ -312,24 +327,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const buyPlan = useCallback((planId: string) => {
-    const plan = planById(planId);
-    if (!plan) return;
+    if (!planById(planId)) return;
+    setState((s) => ({ ...s, membership: extendMembership(s.membership, planId) }));
+  }, []);
+
+  /** Staff issues a plan at the front desk: the user's own account or a mock member. */
+  const grantPlan = useCallback((memberId: string, planId: string) => {
+    if (!planById(planId)) return;
     setState((s) => {
-      const today = toISODate(new Date());
-      const stillActive = s.membership && s.membership.endDate >= today;
-      const base = stillActive ? new Date(s.membership!.endDate) : new Date();
-      const end = new Date(base);
-      end.setMonth(end.getMonth() + plan.months);
-      const freezeDays = plan.months >= 12 ? 90 : plan.months >= 6 ? 30 : plan.months >= 3 ? 14 : 7;
-      return {
-        ...s,
-        membership: {
-          planId,
-          startDate: stillActive ? s.membership!.startDate : today,
-          endDate: toISODate(end),
-          freezeDaysLeft: (stillActive ? s.membership!.freezeDaysLeft : 0) + freezeDays,
-        },
-      };
+      if (s.user?.id === memberId) return { ...s, membership: extendMembership(s.membership, planId) };
+      const base = members.find((m) => m.id === memberId);
+      if (!base) return s;
+      const g = s.memberGrants[memberId];
+      const cur: Membership | null = g ? { planId: g.planId, startDate: g.endDate, endDate: g.endDate, freezeDaysLeft: 0 } : base.endDate ? { planId: base.planId!, startDate: base.endDate, endDate: base.endDate, freezeDaysLeft: 0 } : null;
+      const next = extendMembership(cur, planId);
+      return { ...s, memberGrants: { ...s.memberGrants, [memberId]: { planId, endDate: next.endDate } } };
     });
   }, []);
 
@@ -443,6 +455,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateUser,
       completeOnboarding,
       buyPlan,
+      grantPlan,
       activateTrial,
       freezeMembership,
       unfreezeMembership,
@@ -472,7 +485,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, logout, updateUser, completeOnboarding, buyPlan, activateTrial, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, setStaffClub, logCheckin, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, logout, updateUser, completeOnboarding, buyPlan, grantPlan, activateTrial, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, setStaffClub, logCheckin, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -573,7 +586,7 @@ export type MemberInfo = {
 };
 
 export function useMembers() {
-  const { user, membership, visits } = useApp();
+  const { user, membership, visits, memberGrants } = useApp();
   return useMemo(() => {
     const today = new Date();
     const todayIso = toISODate(today);
@@ -597,7 +610,10 @@ export function useMembers() {
         isSelf,
       };
     };
-    const list = members.map((m) => build(m, false));
+    const list = members.map((m) => {
+      const g = memberGrants[m.id];
+      return build(g ? { ...m, planId: g.planId, endDate: g.endDate, frozenUntil: undefined } : m, false);
+    });
     if (user) {
       const monthAgo = toISODate(addDays(today, -30));
       const self: Member = {
@@ -616,7 +632,7 @@ export function useMembers() {
       list,
       byId: (id: string) => list.find((m) => m.id === id),
     };
-  }, [user, membership, visits]);
+  }, [user, membership, visits, memberGrants]);
 }
 
 /** Fitness profile with derived metrics; null until onboarding is done. */

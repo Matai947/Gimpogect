@@ -159,6 +159,8 @@ export default function ProfileScreen() {
           <Divider />
           <ListRow icon="id-card-outline" title={t('staff_mode_row')} subtitle={t('staff_mode_row_sub')} onPress={() => router.push(staff ? '/staff' : '/staff-login')} />
           <Divider />
+          <ListRow icon="logo-google" title="Google Диск" onPress={() => router.push('/drive')} />
+          <Divider />
           <ListRow icon="log-out-outline" title={t('logout')} onPress={confirmLogout} danger right={<View />} />
         </Card>
         <T type="small" color={Colors.textMuted} style={{ textAlign: 'center', marginTop: Spacing.three }}>

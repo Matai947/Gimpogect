@@ -510,7 +510,6 @@ export const kk: Record<TKey, string> = {
   entry_allowed: 'Кіруге рұқсат',
   entry_logged: '{name} {time} кірді',
   sell_plan: 'Абонемент сату',
-  sell_plan_alert: 'Абонемент ресепшн кассасында рәсімделеді. Демода әрекет жасалмайды.',
   unfreeze_ask: 'Қайта қосу',
   call_member: 'Қоңырау шалу',
   self_badge: 'Бұл сіз',
@@ -605,4 +604,7 @@ export const kk: Record<TKey, string> = {
   sun_label: 'Жс',
   audience: 'Кімге',
   price_list: 'Абонемент бағасы',
+  grant_pick: 'Тарифті таңдаңыз — кіру мен QR-рұқсат бірден қосылады',
+  trial_grant: '3 күн тегін',
+  grant_done: '«{name}» абонементі {date} дейін берілді. QR-рұқсат белсенді.',
 };

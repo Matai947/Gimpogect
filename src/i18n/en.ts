@@ -510,7 +510,6 @@ export const en: Record<TKey, string> = {
   entry_allowed: 'Entry allowed',
   entry_logged: '{name} checked in at {time}',
   sell_plan: 'Sell membership',
-  sell_plan_alert: 'Sell a membership at the front desk register. No action in the demo.',
   unfreeze_ask: 'Unfreeze',
   call_member: 'Call',
   self_badge: 'This is you',
@@ -605,4 +604,7 @@ export const en: Record<TKey, string> = {
   sun_label: 'Sun',
   audience: 'For whom',
   price_list: 'Membership prices',
+  grant_pick: 'Pick a plan — access and the QR pass turn on right away',
+  trial_grant: '3 days free',
+  grant_done: 'Plan «{name}» issued until {date}. QR pass is active.',
 };
