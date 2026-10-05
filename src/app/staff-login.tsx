@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,7 +26,7 @@ export default function StaffLoginScreen() {
     // The owner has a separate code and lands in the CRM instead of the front-desk tools.
     if (code === OWNER_DEMO_CODE) {
       ownerLogin();
-      router.replace('/owner');
+      router.replace('/owner' as Href); // typed-routes cache can lag behind new route folders
       return;
     }
     if (code !== STAFF_DEMO_CODE) {

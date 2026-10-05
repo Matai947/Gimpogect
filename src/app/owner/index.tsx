@@ -15,6 +15,8 @@ export default function OwnerOverview() {
   const sales = useSales();
   const { list } = useMembers();
   const [period, setPeriod] = useState<7 | 30>(30);
+  const [sel, setSel] = useState<number | null>(null); // null = latest day
+  const [chartW, setChartW] = useState(0);
 
   const d = useMemo(() => {
     const today = new Date();
@@ -43,6 +45,8 @@ export default function OwnerOverview() {
   const prevRevenue = sum(d.prev);
   const delta = prevRevenue ? Math.round(((revenue - prevRevenue) / prevRevenue) * 100) : 0;
   const maxDay = Math.max(1, ...d.days.map((x) => x.value));
+  const idx = Math.min(sel ?? d.days.length - 1, d.days.length - 1);
+  const pickDay = (x: number) => chartW && setSel(Math.min(d.days.length - 1, Math.max(0, Math.floor((x / chartW) * d.days.length))));
   const active = list.filter((m) => m.active).length;
   const expiring = list.filter((m) => m.active && m.daysLeft <= 7).length;
 
@@ -51,8 +55,8 @@ export default function OwnerOverview() {
       <OwnerHeader title={t('tab_overview')} />
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <ChipRow>
-          <Chip label={t('period_7')} active={period === 7} onPress={() => setPeriod(7)} />
-          <Chip label={t('period_30')} active={period === 30} onPress={() => setPeriod(30)} />
+          <Chip label={t('period_7')} active={period === 7} onPress={() => { setPeriod(7); setSel(null); }} />
+          <Chip label={t('period_30')} active={period === 30} onPress={() => { setPeriod(30); setSel(null); }} />
         </ChipRow>
 
         <View style={styles.hero}>
@@ -70,19 +74,29 @@ export default function OwnerOverview() {
 
         <Row gap={Spacing.two}>
           <Kpi label={t('kpi_sales')} value={String(d.cur.length)} />
-          <Kpi label={t('kpi_avg')} value={formatPrice(d.cur.length ? Math.round(revenue / d.cur.length) : 0)} />
-        </Row>
-        <Row gap={Spacing.two}>
           <Kpi label={t('kpi_active')} value={String(active)} />
           <Kpi label={t('kpi_expiring')} value={String(expiring)} warn={expiring > 0} />
         </Row>
 
         <View style={styles.card}>
           <T type="heading">{t('chart_revenue')}</T>
-          <View style={styles.chart}>
-            {d.days.map((x) => (
-              <View key={x.iso} style={{ flex: 1, justifyContent: 'flex-end' }}>
-                <View style={{ height: Math.max(3, (x.value / maxDay) * 110), backgroundColor: OwnerAccent, borderRadius: 3, opacity: 0.9 }} />
+          <Row style={{ justifyContent: 'space-between' }}>
+            <T type="label" color={OwnerAccent}>
+              {shortDate(d.days[idx].iso)}
+            </T>
+            <T type="heading">{formatPrice(d.days[idx].value)}</T>
+          </Row>
+          {/* Tap or drag across the bars to read a day. The bars ignore pointer events so this container reports the position. */}
+          <View
+            style={styles.chart}
+            onLayout={(e) => setChartW(e.nativeEvent.layout.width)}
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={() => true}
+            onResponderGrant={(e) => pickDay(e.nativeEvent.locationX)}
+            onResponderMove={(e) => pickDay(e.nativeEvent.locationX)}>
+            {d.days.map((x, k) => (
+              <View key={x.iso} style={{ flex: 1, justifyContent: 'flex-end', pointerEvents: 'none' }}>
+                <View style={{ height: Math.max(3, (x.value / maxDay) * 110), backgroundColor: OwnerAccent, borderRadius: 3, opacity: k === idx ? 1 : 0.4 }} />
               </View>
             ))}
           </View>
@@ -148,7 +162,7 @@ function Share({ label, value, total }: { label: string; value: number; total: n
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
-  body: { paddingBottom: Spacing.six, gap: Spacing.two, paddingHorizontal: Spacing.three },
+  body: { paddingBottom: Spacing.six, gap: Spacing.two, paddingHorizontal: Spacing.three, width: '100%', maxWidth: 900, alignSelf: 'center' },
   hero: { gap: 2, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: 'rgba(255,199,54,0.4)' },
   kpi: { flex: 1, gap: 2, padding: Spacing.three, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
