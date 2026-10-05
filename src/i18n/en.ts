@@ -620,4 +620,6 @@ export const en: Record<TKey, string> = {
   days_n: '{n} d.',
   give_access: 'Give access',
   guest_pass: 'Guest entry for today',
+  expiring_title: 'Your plan ends soon',
+  expiring_body: '{n} {d} left. Renew in advance to keep your access.',
 };

@@ -640,6 +640,8 @@ export const ru = {
   days_n: '{n} дн.',
   give_access: 'Дать доступ',
   guest_pass: 'Гостевой вход на сегодня',
+  expiring_title: 'Абонемент скоро закончится',
+  expiring_body: 'Осталось {n} {d}. Продлите заранее, чтобы не потерять доступ.',
 } as const;
 
 export type TKey = keyof typeof ru;

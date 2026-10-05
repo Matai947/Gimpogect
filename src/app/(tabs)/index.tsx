@@ -65,6 +65,26 @@ export default function HomeScreen() {
         <MemberPass />
       </View>
 
+      {/* Renewal reminder in the last 7 days */}
+      {membership.active && !membership.frozen && membership.daysLeft <= 7 ? (
+        <View style={styles.section}>
+          <Pressable onPress={() => router.push(`/membership?plan=${membership.plan?.id ?? ''}`)} style={styles.expiring}>
+            <Ionicons name="alarm-outline" size={28} color={Colors.warning} />
+            <View style={{ flex: 1 }}>
+              <T type="subheading">{t('expiring_title')}</T>
+              <T type="small" color={Colors.textSecondary}>
+                {t('expiring_body', { n: membership.daysLeft, d: tp(membership.daysLeft, 'days_pl') })}
+              </T>
+            </View>
+            <View style={styles.trialBtn}>
+              <T type="label" color={Colors.onAccent} style={{ fontSize: 13 }}>
+                {t('home_extend')}
+              </T>
+            </View>
+          </Pressable>
+        </View>
+      ) : null}
+
       {/* Free trial, like the "3 дня пробных тренировок" block on s89 */}
       {!membership.active ? (
         <View style={styles.section}>
@@ -365,6 +385,7 @@ const styles = StyleSheet.create({
   goalIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(154,61,205,0.12)', alignItems: 'center', justifyContent: 'center' },
   coachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, backgroundColor: 'rgba(154,61,205,0.08)', borderWidth: 1, borderColor: 'rgba(154,61,205,0.25)' },
   timeBox: { borderLeftWidth: 3, paddingLeft: 10, minWidth: 82 },
+  expiring: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: 'rgba(255,133,98,0.5)' },
   trial: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: 'rgba(255,199,54,0.45)' },
   trialBtn: { alignSelf: 'flex-start', marginTop: Spacing.two, paddingHorizontal: 14, height: 36, borderRadius: Radius.pill, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
   price: { width: 200, height: 150, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: Colors.border },

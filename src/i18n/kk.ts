@@ -620,4 +620,6 @@ export const kk: Record<TKey, string> = {
   days_n: '{n} күн',
   give_access: 'Рұқсат беру',
   guest_pass: 'Бүгінге қонақ кіруі',
+  expiring_title: 'Абонемент жақында аяқталады',
+  expiring_body: '{n} {d} қалды. Қолжетімділікті жоғалтпау үшін алдын ала ұзартыңыз.',
 };
