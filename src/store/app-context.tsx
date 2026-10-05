@@ -3,6 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 
 import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile, type Goal } from '@/data/fitness';
 import { members, mockOrders, type Member } from '@/data/members';
+import { mockSales, type Sale } from '@/data/owner';
 import { addDays, planById, sessionById, toISODate } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
@@ -60,6 +61,8 @@ type State = {
   lang: Lang;
   trialUsed: boolean;
   staff: StaffSession | null;
+  owner: boolean; // owner (CRM) session, separate code from staff
+  sales: Sale[]; // payments recorded on this device when staff issue plans
   staffLog: CheckinEntry[];
   attendance: Record<string, string[]>; // sessionId -> memberIds marked present
   orderStatusOverrides: Record<string, OrderStatus>;
@@ -104,6 +107,8 @@ type Actions = {
   setLang: (lang: Lang) => void;
   staffLogin: (name: string, clubId: string) => void;
   staffLogout: () => void;
+  ownerLogin: () => void;
+  ownerLogout: () => void;
   setStaffClub: (clubId: string) => void;
   logCheckin: (entry: Omit<CheckinEntry, 'ts'>) => void;
   toggleAttendance: (sessionId: string, memberId: string) => void;
@@ -130,6 +135,8 @@ const initialState: State = {
   lang: 'ru',
   trialUsed: false,
   staff: null,
+  owner: false,
+  sales: [],
   staffLog: [],
   attendance: {},
   orderStatusOverrides: {},
@@ -235,6 +242,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const staffLogout = useCallback(() => setState((s) => ({ ...s, staff: null })), []);
+  const ownerLogin = useCallback(() => setState((s) => ({ ...s, owner: true })), []);
+  const ownerLogout = useCallback(() => setState((s) => ({ ...s, owner: false })), []);
 
   const setStaffClub = useCallback((clubId: string) => setState((s) => (s.staff ? { ...s, staff: { ...s.staff, clubId } } : s)), []);
 
@@ -325,13 +334,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const grantPlan = useCallback((memberId: string, planId: string) => {
     if (!planById(planId)) return;
     setState((s) => {
-      if (s.user?.id === memberId) return { ...s, trialUsed: s.trialUsed || (!!planById(planId)?.trial && !planById(planId)?.staffOnly), membership: extendMembership(s.membership, planId) };
+      const plan = planById(planId)!;
+      const sold = (name: string): Sale[] => (plan.price > 0 ? [{ id: `S${Date.now()}`, ts: Date.now(), memberId, name, title: plan.name, kind: 'plan', amount: plan.price, clubId: s.staff?.clubId ?? 'c1', method: 'desk', staff: s.staff?.name ?? '' }, ...s.sales] : s.sales);
+      if (s.user?.id === memberId) return { ...s, sales: sold(s.user.name), trialUsed: s.trialUsed || (!!planById(planId)?.trial && !planById(planId)?.staffOnly), membership: extendMembership(s.membership, planId) };
       const base = members.find((m) => m.id === memberId);
       if (!base) return s;
       const g = s.memberGrants[memberId];
       const cur: Membership | null = g ? { planId: g.planId, startDate: g.endDate, endDate: g.endDate, freezeDaysLeft: 0 } : base.endDate ? { planId: base.planId!, startDate: base.endDate, endDate: base.endDate, freezeDaysLeft: 0 } : null;
       const next = extendMembership(cur, planId);
-      return { ...s, memberGrants: { ...s.memberGrants, [memberId]: { planId, endDate: next.endDate } } };
+      return { ...s, sales: sold(base.name), memberGrants: { ...s.memberGrants, [memberId]: { planId, endDate: next.endDate } } };
     });
   }, []);
 
@@ -457,6 +468,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLang,
       staffLogin,
       staffLogout,
+      ownerLogin,
+      ownerLogout,
       setStaffClub,
       logCheckin,
       toggleAttendance,
@@ -465,7 +478,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, logout, updateUser, completeOnboarding, grantPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, setStaffClub, logCheckin, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, logout, updateUser, completeOnboarding, grantPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -639,6 +652,12 @@ export function useMembers() {
       byId: (id: string) => list.find((m) => m.id === id),
     };
   }, [user, membership, visits, memberGrants, bookings, orders]);
+}
+
+/** All payments: demo history plus those recorded on this device. Newest first. */
+export function useSales() {
+  const { sales } = useApp();
+  return useMemo(() => [...sales, ...mockSales].sort((a, b) => b.ts - a.ts), [sales]);
 }
 
 /** Fitness profile with derived metrics; null until onboarding is done. */

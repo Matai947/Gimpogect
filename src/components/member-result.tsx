@@ -180,7 +180,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   );
 }
 
-function Fact({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+export function Fact({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <View style={styles.fact}>
       <T type="small" color={Colors.textMuted} style={{ fontSize: 10.5 }} numberOfLines={1}>

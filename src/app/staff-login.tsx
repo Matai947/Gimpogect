@@ -10,11 +10,12 @@ import { StaffAccent } from '@/components/member-result';
 import { Button, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { STAFF_DEMO_CODE } from '@/data/members';
+import { OWNER_DEMO_CODE } from '@/data/owner';
 import { clubs } from '@/data/mock';
 import { useApp, useI18n } from '@/store/app-context';
 
 export default function StaffLoginScreen() {
-  const { staffLogin, staff } = useApp();
+  const { staffLogin, ownerLogin, staff } = useApp();
   const { t } = useI18n();
   const [code, setCode] = useState('');
   const [name, setName] = useState(staff?.name ?? '');
@@ -22,6 +23,12 @@ export default function StaffLoginScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const enter = () => {
+    // The owner has a separate code and lands in the CRM instead of the front-desk tools.
+    if (code === OWNER_DEMO_CODE) {
+      ownerLogin();
+      router.replace('/owner');
+      return;
+    }
     if (code !== STAFF_DEMO_CODE) {
       setError(t('staff_code_wrong'));
       return;
@@ -69,6 +76,9 @@ export default function StaffLoginScreen() {
             </View>
             <T type="small" color={error ? Colors.danger : Colors.textMuted}>
               {error ?? t('staff_code_hint')}
+            </T>
+            <T type="small" color={Colors.textMuted}>
+              {t('owner_login_hint')}
             </T>
 
             <View style={[styles.input, { marginTop: Spacing.three }]}>

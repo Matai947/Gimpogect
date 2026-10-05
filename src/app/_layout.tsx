@@ -41,6 +41,7 @@ function RootStack() {
       <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="staff-login" options={{ headerShown: false }} />
       <Stack.Screen name="staff" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="owner" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="qr" options={{ presentation: 'modal', title: t('home_qr') }} />
       <Stack.Screen name="membership" options={{ title: t('qa_plan') }} />
       <Stack.Screen name="bookings" options={{ title: t('my_bookings') }} />
