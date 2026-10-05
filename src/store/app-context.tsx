@@ -147,8 +147,10 @@ function extendMembership(cur: Membership | null, planId: string): Membership {
   const plan = planById(planId)!;
   const today = toISODate(new Date());
   const stillActive = !!cur && cur.endDate >= today;
+  // A front-desk guest pass on an active (e.g. frozen) plan only lifts the freeze.
+  if (plan.staffOnly && stillActive) return { ...cur!, frozenUntil: undefined };
   const end = stillActive ? new Date(cur!.endDate) : new Date();
-  if (plan.trial) end.setDate(end.getDate() + 3);
+  if (plan.days) end.setDate(end.getDate() + plan.days);
   else end.setMonth(end.getMonth() + plan.months);
   const freezeDays = plan.trial ? 0 : plan.months >= 12 ? 90 : plan.months >= 6 ? 30 : plan.months >= 3 ? 14 : 7;
   return { planId, startDate: stillActive ? cur!.startDate : today, endDate: toISODate(end), freezeDaysLeft: (stillActive ? cur!.freezeDaysLeft : 0) + freezeDays };

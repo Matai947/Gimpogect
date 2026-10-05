@@ -7,7 +7,7 @@ import { Avatar, Badge, Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
 import { clubById, formatDateHuman, formatDateLong, formatPrice, plans, trainerById } from '@/data/mock';
-import { useApp, useI18n, type MemberInfo } from '@/store/app-context';
+import { useApp, useI18n, useMembers, type MemberInfo } from '@/store/app-context';
 
 export const StaffAccent = '#FF8562';
 
@@ -20,8 +20,10 @@ export function entryDecision(m: MemberInfo, t: (k: any, v?: any) => string): { 
   return { ok: true };
 }
 
-export function MemberResult({ member, onDone, compact }: { member: MemberInfo; onDone?: () => void; compact?: boolean }) {
+export function MemberResult({ member: snapshot, onDone, compact }: { member: MemberInfo; onDone?: () => void; compact?: boolean }) {
   const { t, td } = useI18n();
+  // The scanner passes a snapshot; re-read so the card updates right after a plan is issued.
+  const member = useMembers().byId(snapshot.id) ?? snapshot;
   const { staff, logCheckin, grantPlan } = useApp();
   const [logged, setLogged] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
@@ -41,6 +43,12 @@ export function MemberResult({ member, onDone, compact }: { member: MemberInfo; 
     logCheckin({ memberId: member.id, name: member.name, ok: true, clubId: staff?.clubId ?? member.homeClubId });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setLogged(t('entry_logged', { name: member.name, time }));
+  };
+
+  const giveAccess = () => {
+    grantPlan(member.id, 'guest');
+    setGranted('guest');
+    allow();
   };
 
   const deny = () => {
@@ -104,18 +112,23 @@ export function MemberResult({ member, onDone, compact }: { member: MemberInfo; 
             </T>
           </View>
         ) : (
-          <Row gap={Spacing.two}>
-            {decision.ok ? (
-              <Button title={t('allow_entry')} icon="log-in-outline" onPress={allow} style={{ flex: 1 }} />
-            ) : (
-              <>
-                <Button title={t('deny_entry')} variant="danger" icon="close" onPress={deny} style={{ flex: 1 }} />
-                <Button title={t('sell_plan')} variant="secondary" icon="card-outline" onPress={() => setPicking((v) => !v)} style={{ flex: 1 }} />
-              </>
-            )}
-            {decision.ok ? <Button title="" icon="card-outline" variant="ghost" onPress={() => setPicking((v) => !v)} style={{ paddingHorizontal: 14 }} /> : null}
-            <Button title="" icon="call-outline" variant="ghost" onPress={() => Linking.openURL(`tel:${member.phone.replace(/\s/g, '')}`)} style={{ paddingHorizontal: 14 }} />
-          </Row>
+          <View style={{ gap: Spacing.two }}>
+            <Row gap={Spacing.two}>
+              {decision.ok ? (
+                <>
+                  <Button title={t('allow_entry')} icon="log-in-outline" onPress={allow} style={{ flex: 1 }} />
+                  <Button title="" icon="card-outline" variant="ghost" onPress={() => setPicking((v) => !v)} style={{ paddingHorizontal: 14 }} />
+                </>
+              ) : (
+                <>
+                  <Button title={t('give_access')} icon="key-outline" onPress={giveAccess} style={{ flex: 1 }} />
+                  <Button title="" icon="close" variant="danger" onPress={deny} style={{ paddingHorizontal: 14 }} />
+                </>
+              )}
+              <Button title="" icon="call-outline" variant="ghost" onPress={() => Linking.openURL(`tel:${member.phone.replace(/\s/g, '')}`)} style={{ paddingHorizontal: 14 }} />
+            </Row>
+            {!decision.ok ? <Button title={t('sell_plan')} variant="secondary" icon="card-outline" onPress={() => setPicking((v) => !v)} /> : null}
+          </View>
         )}
         {/* Full client profile for the front desk */}
         <View style={styles.grid}>
@@ -137,7 +150,7 @@ export function MemberResult({ member, onDone, compact }: { member: MemberInfo; 
             </T>
             <Row gap={6} style={{ flexWrap: 'wrap' }}>
               {plans.map((p) => (
-                <Chip key={p.id} label={p.trial ? t('trial_grant') : `${td(p.name)} · ${formatPrice(p.price)}`} onPress={() => grant(p.id)} />
+                <Chip key={p.id} label={p.staffOnly ? t('guest_pass') : p.trial ? t('trial_grant') : `${td(p.name)} · ${formatPrice(p.price)}`} onPress={() => grant(p.id)} />
               ))}
             </Row>
           </View>

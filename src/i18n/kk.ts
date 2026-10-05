@@ -618,4 +618,6 @@ export const kk: Record<TKey, string> = {
   fact_orders_ready: 'Берілетін тапсырыстар',
   age_n: '{n} жас',
   days_n: '{n} күн',
+  give_access: 'Рұқсат беру',
+  guest_pass: 'Бүгінге қонақ кіруі',
 };

@@ -618,4 +618,6 @@ export const en: Record<TKey, string> = {
   fact_orders_ready: 'Orders to hand out',
   age_n: '{n} y.o.',
   days_n: '{n} d.',
+  give_access: 'Give access',
+  guest_pass: 'Guest entry for today',
 };

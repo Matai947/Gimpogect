@@ -71,7 +71,9 @@ export type Plan = {
   features: string[];
   popular?: boolean;
   dayOnly?: boolean;
-  trial?: boolean;
+  trial?: boolean; // free trial, hidden from the price list; 3 days
+  days?: number; // fixed-length pass instead of months
+  staffOnly?: boolean; // issued only at the front desk
 };
 
 export type NewsItem = {
@@ -286,7 +288,8 @@ export const classTemplates: ClassTemplate[] = [
 ];
 
 export const plans: Plan[] = [
-  { id: 'trial', name: 'Пробный', months: 0, price: 0, perMonth: 0, features: ['3 дня тренировок', 'Без обязательств', 'Можно без тренера'], trial: true },
+  { id: 'trial', name: 'Пробный', months: 0, price: 0, perMonth: 0, features: ['3 дня тренировок', 'Без обязательств', 'Можно без тренера'], trial: true, days: 3 },
+  { id: 'guest', name: 'Гостевой', months: 0, days: 1, price: 0, perMonth: 0, features: ['Разовый вход на сегодня'], trial: true, staffOnly: true },
   { id: 'p1', name: 'Старт', months: 1, price: 25000, perMonth: 25000, features: ['Все клубы сети', 'Групповые занятия', 'Заморозка 7 дней'] },
   { id: 'p3', name: 'Формула', months: 3, price: 60000, oldPrice: 75000, perMonth: 20000, features: ['Все клубы сети', 'Групповые занятия', 'Заморозка 14 дней', '1 гостевой визит'] },
   { id: 'p6', name: 'Прогресс', months: 6, price: 105000, oldPrice: 150000, perMonth: 17500, features: ['Все клубы сети', 'Групповые занятия', 'Заморозка 30 дней', '3 гостевых визита', 'Анализ состава тела'], popular: true },

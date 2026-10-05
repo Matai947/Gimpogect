@@ -638,6 +638,8 @@ export const ru = {
   fact_orders_ready: 'Заказов к выдаче',
   age_n: '{n} лет',
   days_n: '{n} дн.',
+  give_access: 'Дать доступ',
+  guest_pass: 'Гостевой вход на сегодня',
 } as const;
 
 export type TKey = keyof typeof ru;
