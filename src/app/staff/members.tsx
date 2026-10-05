@@ -51,7 +51,7 @@ export default function StaffMembersScreen() {
           </Pressable>
         ) : null}
       </View>
-      <ChipRow style={{ paddingBottom: Spacing.two }}>
+      <ChipRow>
         {filters.map((f) => (
           <Chip key={f.key} label={f.label} active={filter === f.key} onPress={() => setFilter(f.key)} />
         ))}

@@ -48,7 +48,7 @@ export default function StaffOrdersScreen() {
   return (
     <View style={styles.root}>
       <StaffHeader title={t('staff_tab_orders')} />
-      <ChipRow style={{ paddingVertical: Spacing.three }}>
+      <ChipRow>
         <Chip label={t('orders_pending')} active={filter === 'pending'} onPress={() => setFilter('pending')} icon="time-outline" />
         <Chip label={t('orders_all')} active={filter === 'all'} onPress={() => setFilter('all')} />
       </ChipRow>

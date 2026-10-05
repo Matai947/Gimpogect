@@ -43,7 +43,7 @@ export default function StaffProductsScreen() {
         <Ionicons name="search" size={18} color={Colors.textSecondary} />
         <TextInput value={query} onChangeText={setQuery} placeholder={t('shop_search_ph')} placeholderTextColor={Colors.textMuted} style={styles.searchInput} />
       </View>
-      <ChipRow style={{ paddingBottom: Spacing.two }}>
+      <ChipRow>
         {shopCategories.map((c) => (
           <Chip key={c.key} label={c.key === 'Все' ? t('all') : td(c.key)} active={category === c.key} onPress={() => setCategory(c.key)} />
         ))}
