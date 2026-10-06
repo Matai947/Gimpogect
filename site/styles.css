@@ -169,6 +169,10 @@ input:focus, select:focus { outline: none; border-color: var(--violet); }
 .foot a:hover { color: var(--violet); }
 .copy { max-width: var(--max); margin: 40px auto 0; color: #777; font-size: 14px; }
 
+/* WhatsApp bubble */
+.wa { position: fixed; right: 18px; bottom: 18px; z-index: 40; width: 58px; height: 58px; border-radius: 50%; background: #25d366; display: grid; place-items: center; box-shadow: 0 10px 30px rgba(37,211,102,.35); transition: transform .15s; }
+.wa:hover { transform: scale(1.08); }
+
 /* reveal on scroll */
 .reveal { opacity: 0; transform: translateY(24px); transition: opacity .6s ease, transform .6s ease; }
 .reveal.in { opacity: 1; transform: none; }
