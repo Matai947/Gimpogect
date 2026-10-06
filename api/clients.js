@@ -3,8 +3,9 @@
 // reads them all, fine up to a few thousand clients, move to a real database after that.
 const { get, list, put } = require('@vercel/blob');
 
-const STAFF_CODE = process.env.STAFF_CODE || '2468';
-const OWNER_CODE = process.env.OWNER_CODE || '1357';
+// No defaults: the codes live only in the Vercel environment, and the API refuses to work without them.
+const STAFF_CODE = process.env.STAFF_CODE;
+const OWNER_CODE = process.env.OWNER_CODE;
 
 const ID = /^u_\d{10,12}$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -20,7 +21,7 @@ const write = (id, data) => put(path(id), JSON.stringify(data), { access: 'priva
 
 const authed = (req) => {
   const code = String(req.headers['x-code'] || '');
-  return code === STAFF_CODE || code === OWNER_CODE;
+  return !!code && (code === STAFF_CODE || code === OWNER_CODE);
 };
 
 const str = (v, max) => String(v ?? '').trim().slice(0, max);
@@ -40,13 +41,15 @@ module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
+  if (!STAFF_CODE || !OWNER_CODE) return res.status(503).json({ error: 'not configured' });
   const op = String(req.query.op || '');
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
 
   try {
     if (req.method === 'POST' && op === 'register') {
       const id = str(body.id, 20);
-      if (!ID.test(id)) return res.status(400).json({ error: 'bad id' });
+      // The id is derived from the phone number, so they must agree.
+      if (!ID.test(id) || str(body.phone, 20).replace(/\D/g, '') !== id.slice(2)) return res.status(400).json({ error: 'bad id' });
       const prev = (await read(id)) || { id, since: new Date().toISOString().slice(0, 10) };
       const next = { ...prev, name: str(body.name, 60) || prev.name || 'Гость', phone: str(body.phone, 20), homeClubId: str(body.homeClubId, 8) || prev.homeClubId || 'c1' };
       if (body.profile && typeof body.profile === 'object') {

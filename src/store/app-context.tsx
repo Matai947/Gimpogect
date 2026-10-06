@@ -213,7 +213,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!state.hydrated) return;
-    const { hydrated: _h, ...persist } = state;
+    // The client registry is fetched live and never kept on the device.
+    const { hydrated: _h, remote: _r, ...persist } = state;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(persist)).catch(() => {});
   }, [state]);
 
@@ -240,7 +241,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       if (uid) {
         const m = (await fetchMyMembership(uid))?.membership;
-        if (live && m) setState((s) => (!s.membership || m.endDate > s.membership.endDate ? { ...s, membership: m } : s));
+        if (live && m && planById(m.planId)) setState((s) => (!s.membership || m.endDate > s.membership.endDate ? { ...s, membership: m } : s));
       }
     };
     tick();
