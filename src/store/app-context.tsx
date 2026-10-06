@@ -46,7 +46,7 @@ export type Order = {
 
 export type StaffSession = { name: string; clubId: string; since: string };
 /** A visit lasts 3 hours from the entry, unless staff mark the exit earlier. */
-export const SESSION_MS = 3 * 60 * 60 * 1000;
+export const SESSION_MS = 2 * 60 * 60 * 1000;
 
 export type CheckinEntry = { ts: number; memberId: string; name: string; ok: boolean; reason?: string; clubId: string; leftTs?: number };
 
