@@ -4,8 +4,7 @@ const BASE = process.env.EXPO_PUBLIC_API_URL ?? 'https://gym.matai.kz';
 
 export type RemoteMembership = { planId: string; startDate: string; endDate: string; freezeDaysLeft: number; frozenUntil?: string };
 export type RemoteProfile = { age?: number; goal?: string; heightCm?: number; weightKg?: number };
-export type RemoteSession = { clubId: string; inTs: number; outTs?: number };
-export type RemoteClient = { id: string; name: string; phone: string; homeClubId: string; since: string; membership?: RemoteMembership; profile?: RemoteProfile; session?: RemoteSession };
+export type RemoteClient = { id: string; name: string; phone: string; homeClubId: string; since: string; membership?: RemoteMembership; profile?: RemoteProfile };
 
 async function call<T>(op: string, init?: { method?: 'POST'; body?: unknown; code?: string; query?: string }): Promise<T | null> {
   try {
@@ -27,7 +26,3 @@ export const fetchMyMembership = (id: string) => call<{ membership: RemoteMember
 export const fetchClients = async (code: string) => (await call<{ clients: RemoteClient[] }>('list', { code }))?.clients ?? null;
 
 export const grantRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('grant', { method: 'POST', code, body: c });
-
-export const checkinRemote = (code: string, id: string, clubId: string) => call<{ ok: true }>('checkin', { method: 'POST', code, body: { id, clubId } });
-
-export const checkoutRemote = (code: string, id: string) => call<{ ok: true }>('checkout', { method: 'POST', code, body: { id } });

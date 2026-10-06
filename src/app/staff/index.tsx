@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   br: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 8 },
   resume: { position: 'absolute', bottom: 12, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 34, borderRadius: Radius.pill, backgroundColor: StaffAccent },
   manual: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, paddingLeft: Spacing.three, paddingRight: 6, height: 52 },
-  manualInput: { flex: 1, color: Colors.text, fontSize: 16 },
-  findBtn: { paddingHorizontal: 16, height: 44, borderRadius: Radius.sm, backgroundColor: StaffAccent, alignItems: 'center', justifyContent: 'center' },
+  manualInput: { flex: 1, color: Colors.text, fontSize: 15 },
+  findBtn: { paddingHorizontal: 14, height: 38, borderRadius: Radius.sm, backgroundColor: StaffAccent, alignItems: 'center', justifyContent: 'center' },
   notice: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: 'rgba(255,138,76,0.4)' },
 });

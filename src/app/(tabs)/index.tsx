@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
   timeBox: { borderLeftWidth: 3, paddingLeft: 10, minWidth: 82 },
   expiring: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: 'rgba(255,133,98,0.5)' },
   trial: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: 'rgba(255,199,54,0.45)' },
-  trialBtn: { alignSelf: 'flex-start', marginTop: Spacing.two, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
+  trialBtn: { alignSelf: 'flex-start', marginTop: Spacing.two, paddingHorizontal: 14, height: 36, borderRadius: Radius.pill, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
   price: { width: 200, height: 150, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: Colors.border },
   newsCard: { width: 280, height: 160, borderRadius: Radius.lg, overflow: 'hidden', justifyContent: 'flex-end', backgroundColor: Colors.surface },
 });

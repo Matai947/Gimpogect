@@ -5,7 +5,7 @@ import { OwnerAccent, OwnerHeader } from '@/components/owner-header';
 import { Chip, ChipRow, ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { addDays, clubById, clubs, formatPrice, toISODate } from '@/data/mock';
-import { useI18n, useMembers, usePresence, useSales } from '@/store/app-context';
+import { useI18n, useMembers, useSales } from '@/store/app-context';
 
 const sum = (a: { amount: number }[]) => a.reduce((s, x) => s + x.amount, 0);
 const shortDate = (iso: string) => iso.slice(5).split('-').reverse().join('.');
@@ -14,7 +14,6 @@ export default function OwnerOverview() {
   const { t, td } = useI18n();
   const sales = useSales();
   const { list } = useMembers();
-  const inside = usePresence().length;
   const [period, setPeriod] = useState<7 | 30>(30);
   const [sel, setSel] = useState<number | null>(null); // null = latest day
   const [chartW, setChartW] = useState(0);
@@ -74,10 +73,7 @@ export default function OwnerOverview() {
         </View>
 
         <Row gap={Spacing.two}>
-          <Kpi label={t('kpi_inside')} value={String(inside)} />
           <Kpi label={t('kpi_sales')} value={String(d.cur.length)} />
-        </Row>
-        <Row gap={Spacing.two}>
           <Kpi label={t('kpi_active')} value={String(active)} />
           <Kpi label={t('kpi_expiring')} value={String(expiring)} warn={expiring > 0} />
         </Row>

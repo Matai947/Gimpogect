@@ -82,17 +82,6 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ clients: all.filter(Boolean).sort((a, b) => String(b.since).localeCompare(String(a.since))) });
     }
 
-    // Entry/exit of a client at a club. The server clock is the source of truth for the 3-hour visit.
-    if (req.method === 'POST' && (op === 'checkin' || op === 'checkout')) {
-      const id = str(body.id, 20);
-      if (!ID.test(id)) return res.status(400).json({ error: 'bad id' });
-      const prev = await read(id);
-      if (!prev) return res.status(404).json({ error: 'unknown client' });
-      const session = op === 'checkin' ? { clubId: str(body.clubId, 8) || 'c1', inTs: Date.now() } : prev.session ? { ...prev.session, outTs: Date.now() } : undefined;
-      await write(id, { ...prev, session });
-      return res.status(200).json({ ok: true });
-    }
-
     if (req.method === 'POST' && op === 'grant') {
       const id = str(body.id, 20);
       const membership = cleanMembership(body.membership);

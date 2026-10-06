@@ -138,7 +138,7 @@ export function IconButton({
   onPress,
   color = Colors.text,
   bg = Colors.surfaceAlt,
-  size = 44,
+  size = 40,
 }: {
   icon: IoniconName;
   onPress?: () => void;

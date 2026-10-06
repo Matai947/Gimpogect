@@ -41,7 +41,7 @@ export default function TabsLayout() {
           height: Platform.OS === 'ios' ? 86 : 68,
           paddingTop: 6,
         },
-        tabBarLabelStyle: { fontSize: 11, fontFamily: 'Onest_600SemiBold' },
+        tabBarLabelStyle: { fontSize: 10, fontFamily: 'Onest_600SemiBold' },
         tabBarItemStyle: { paddingHorizontal: 0 },
         tabBarAllowFontScaling: false,
         tabBarBadgeStyle: { backgroundColor: Colors.accent, color: Colors.onAccent, fontSize: 10, fontWeight: '800' },

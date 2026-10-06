@@ -27,7 +27,7 @@ export default function StaffLayout() {
         tabBarActiveTintColor: StaffAccent,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarStyle: { backgroundColor: '#141414', borderTopColor: 'rgba(255,133,98,0.25)', height: Platform.OS === 'ios' ? 86 : 68, paddingTop: 6 },
-        tabBarLabelStyle: { fontSize: 11, fontFamily: 'Onest_600SemiBold' },
+        tabBarLabelStyle: { fontSize: 10, fontFamily: 'Onest_600SemiBold' },
         tabBarItemStyle: { paddingHorizontal: 0 },
         tabBarAllowFontScaling: false,
         tabBarBadgeStyle: { backgroundColor: StaffAccent, color: Colors.onAccent, fontSize: 10, fontWeight: '800' },

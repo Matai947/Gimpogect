@@ -3,26 +3,29 @@ import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { StaffAccent, hm } from '@/components/member-result';
+import { StaffAccent, leftText } from '@/components/member-result';
 import { StaffHeader } from '@/components/staff-header';
-import { Card, ProgressBar, Row, T } from '@/components/ui';
+import { Button, Card, ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { mockOrders } from '@/data/members';
 import { clubById, occupancyLabel, sessionsForDate, toISODate, trainerById } from '@/data/mock';
-import { SESSION_MS, useApp, useI18n, useNow, usePresence } from '@/store/app-context';
+import { minutesLeft } from '@/lib/presence';
+import { useApp, useI18n, usePresence } from '@/store/app-context';
 
 export default function StaffTodayScreen() {
-  const { staff, staffLog, orders, orderStatusOverrides, checkoutMember } = useApp();
-  const now = useNow();
-  const inside = usePresence().filter((p) => p.clubId === (staff?.clubId ?? 'c1'));
+  const { staff, staffLog, orders, orderStatusOverrides, logCheckin } = useApp();
   const { t, td } = useI18n();
   const clubId = staff?.clubId ?? 'c1';
   const club = clubById(clubId)!;
   const todayIso = toISODate(new Date());
 
   const todayLog = useMemo(() => staffLog.filter((e) => e.clubId === clubId && toISODate(new Date(e.ts)) === todayIso), [staffLog, clubId, todayIso]);
-  const okCount = todayLog.filter((e) => e.ok).length;
-  const deniedCount = todayLog.length - okCount;
+  const okCount = todayLog.filter((e) => e.ok && !e.out).length;
+  const deniedCount = todayLog.filter((e) => !e.ok).length;
+  const presence = usePresence(clubId);
+  const hhmm = (ts: number) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const today = todayIso;
+  const leftToday = presence.left.filter((x) => toISODate(new Date(x.since)) === today);
   const sessions = useMemo(() => sessionsForDate(todayIso).filter((s) => s.clubId === clubId), [todayIso, clubId]);
   const pendingOrders = [...orders, ...mockOrders].filter((o) => o.clubId === clubId && (orderStatusOverrides[o.id] ?? o.status) !== 'Выдан').length;
   const occ = occupancyLabel(club.occupancy);
@@ -31,42 +34,57 @@ export default function StaffTodayScreen() {
     <View style={styles.root}>
       <StaffHeader title={t('staff_tab_today')} />
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        <Card style={{ gap: Spacing.two, borderColor: 'rgba(76,195,138,0.5)' }}>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <T type="subheading">{t('inside_now')}</T>
+            <T type="display" color={Colors.success} style={{ fontSize: 34, lineHeight: 38 }}>
+              {presence.inside.length}
+            </T>
+          </Row>
+          {presence.inside.length === 0 ? (
+            <T type="small" color={Colors.textSecondary}>
+              {t('nobody_inside')}
+            </T>
+          ) : (
+            presence.inside.map((x) => (
+              <View key={x.memberId} style={styles.insideRow}>
+                <View style={{ flex: 1 }}>
+                  <T type="body" style={{ fontWeight: '600' }} numberOfLines={1}>
+                    {x.name}
+                  </T>
+                  <T type="small" color={Colors.textSecondary}>
+                    {t('inside_since', { time: hhmm(x.since) })} • {t('time_left', { t: leftText(t, minutesLeft(x, presence.now)) })}
+                  </T>
+                </View>
+                <Button title={t('mark_exit')} variant="secondary" size="sm" icon="log-out-outline" onPress={() => logCheckin({ memberId: x.memberId, name: x.name, ok: true, out: true, clubId: x.clubId })} />
+              </View>
+            ))
+          )}
+          {leftToday.length > 0 ? (
+            <View style={{ gap: 4, marginTop: Spacing.two }}>
+              <T type="label" color={Colors.textMuted}>
+                {t('left_today_title')}
+              </T>
+              {leftToday.slice(0, 8).map((x) => (
+                <Row key={x.memberId} style={{ justifyContent: 'space-between' }}>
+                  <T type="small" numberOfLines={1} style={{ flex: 1 }}>
+                    {x.name}
+                  </T>
+                  <T type="small" color={Colors.textMuted}>
+                    {t(x.auto ? 'left_auto' : 'left_at', { time: hhmm(x.until) })}
+                  </T>
+                </Row>
+              ))}
+            </View>
+          ) : null}
+        </Card>
+
         <View style={styles.grid}>
           <Stat value={okCount} label={t('today_checkins')} icon="log-in-outline" color={Colors.success} onPress={() => router.push('/staff')} />
           <Stat value={deniedCount} label={t('today_denied')} icon="close-circle-outline" color={Colors.danger} />
           <Stat value={sessions.length} label={t('today_classes')} icon="people-outline" color={StaffAccent} onPress={() => router.push('/staff/classes')} />
           <Stat value={pendingOrders} label={t('today_orders')} icon="cube-outline" color={Colors.warning} onPress={() => router.push('/staff/orders')} />
         </View>
-
-        <Card style={{ gap: 8 }}>
-          <Row style={{ justifyContent: 'space-between' }}>
-            <T type="subheading">{t('present_title')}</T>
-            <T type="display" color={Colors.success} style={{ fontSize: 28, lineHeight: 32 }}>
-              {inside.length}
-            </T>
-          </Row>
-          {inside.length === 0 ? (
-            <T type="small" color={Colors.textMuted}>
-              {t('present_empty')}
-            </T>
-          ) : (
-            inside.map((p) => (
-              <Row key={p.memberId} gap={Spacing.two} style={{ paddingVertical: 4 }}>
-                <View style={{ flex: 1 }}>
-                  <T type="body" style={{ fontWeight: '600' }} numberOfLines={1}>
-                    {p.name}
-                  </T>
-                  <T type="small" color={Colors.textSecondary}>
-                    {t('present_since', { from: hm(p.inTs), to: hm(p.until) })}
-                  </T>
-                </View>
-                <Pressable onPress={() => checkoutMember(p.memberId)} hitSlop={8} style={styles.exitBtn}>
-                  <Ionicons name="log-out-outline" size={18} color={Colors.text} />
-                </Pressable>
-              </Row>
-            ))
-          )}
-        </Card>
 
         <Card style={{ gap: 8 }}>
           <Row style={{ justifyContent: 'space-between' }}>
@@ -108,19 +126,15 @@ export default function StaffTodayScreen() {
           <Card padded={false}>
             {todayLog.slice(0, 12).map((e, i) => (
               <View key={e.ts} style={[styles.logRow, i > 0 && { borderTopWidth: 1, borderTopColor: Colors.border }]}>
-                <Ionicons name={e.ok ? 'checkmark-circle' : 'close-circle'} size={20} color={e.ok ? Colors.success : Colors.danger} />
+                <Ionicons name={e.out ? 'log-out' : e.ok ? 'checkmark-circle' : 'close-circle'} size={20} color={e.out ? Colors.info : e.ok ? Colors.success : Colors.danger} />
                 <View style={{ flex: 1 }}>
                   <T type="body" style={{ fontWeight: '600' }}>
                     {e.name}
+                    {e.out ? ` • ${t('exit_event')}` : ''}
                   </T>
                   {e.reason ? (
                     <T type="small" color={Colors.danger}>
                       {e.reason}
-                    </T>
-                  ) : null}
-                  {e.ok ? (
-                    <T type="small" color={!e.leftTs && now < e.ts + SESSION_MS ? Colors.success : Colors.textMuted}>
-                      {!e.leftTs && now < e.ts + SESSION_MS ? t('inside_until', { time: hm(e.ts + SESSION_MS) }) : t('left_at', { time: hm(e.leftTs ?? e.ts + SESSION_MS) })}
                     </T>
                   ) : null}
                 </View>
@@ -157,6 +171,6 @@ const styles = StyleSheet.create({
   stat: { width: '48%', flexGrow: 1, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, gap: 4 },
   session: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   time: { borderLeftWidth: 3, paddingLeft: 10, minWidth: 64 },
-  exitBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  insideRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: 6 },
   logRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: 12 },
 });
