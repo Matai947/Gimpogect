@@ -94,7 +94,7 @@ export default function OwnerClients() {
                     <Fact label={t('fact_since')} value={formatDateLong(m.since)} />
                     <Fact label={t('fact_last_visit')} value={m.lastVisit ? formatDateHuman(m.lastVisit) : '—'} />
                     <Fact label={t('fact_visits_total')} value={String(m.visitsTotal)} />
-                    <Fact label={t('fact_age_goal')} value={`${m.age ? t('age_n', { n: m.age }) + ' • ' : ''}${goalTitle(m.goal)}`} />
+                    <Fact label={t('fact_age_goal')} value={[m.age ? t('age_n', { n: m.age }) : '', m.goal ? goalTitle(m.goal) : ''].filter(Boolean).join(' • ') || '—'} />
                     <Fact label={t('fact_trainer')} value={m.trainerId ? (trainerById(m.trainerId)?.name ?? '—') : t('fact_no_trainer')} />
                   </View>
                   {m.note ? (

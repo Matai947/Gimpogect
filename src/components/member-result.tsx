@@ -139,7 +139,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
           <Fact label={t('fact_since')} value={formatDateLong(member.since)} />
           <Fact label={t('fact_last_visit')} value={member.lastVisit ? formatDateHuman(member.lastVisit) : '—'} />
           <Fact label={t('fact_visits_total')} value={String(member.visitsTotal)} />
-          <Fact label={t('fact_age_goal')} value={`${member.age ? t('age_n', { n: member.age }) + ' • ' : ''}${goalTitle(member.goal)}`} />
+          <Fact label={t('fact_age_goal')} value={[member.age ? t('age_n', { n: member.age }) : '', member.goal ? goalTitle(member.goal) : ''].filter(Boolean).join(' • ') || '—'} />
           <Fact label={t('fact_trainer')} value={member.trainerId ? (trainerById(member.trainerId)?.name ?? '—') : t('fact_no_trainer')} />
           <Fact label={t('fact_freeze')} value={t('days_n', { n: member.freezeDaysLeft })} />
           {member.params ? <Fact label={t('my_params')} value={member.params} /> : null}

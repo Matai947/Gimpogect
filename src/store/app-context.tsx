@@ -7,6 +7,7 @@ import { mockSales, type Sale } from '@/data/owner';
 import { addDays, planById, sessionById, toISODate } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
+import { fetchClients, fetchMyMembership, grantRemote, registerClient, type RemoteClient } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -62,6 +63,8 @@ type State = {
   trialUsed: boolean;
   staff: StaffSession | null;
   owner: boolean; // owner (CRM) session, separate code from staff
+  staffCode: string; // code typed at staff/owner login, sent to the API to read the client list
+  remote: RemoteClient[]; // clients registered from any device, fetched while staff or owner is signed in
   sales: Sale[]; // payments recorded on this device when staff issue plans
   staffLog: CheckinEntry[];
   attendance: Record<string, string[]>; // sessionId -> memberIds marked present
@@ -105,9 +108,9 @@ type Actions = {
   setCoachPlan: (plan: WeekPlan | null) => void;
   setCoachApiKey: (key: string | null) => void;
   setLang: (lang: Lang) => void;
-  staffLogin: (name: string, clubId: string) => void;
+  staffLogin: (name: string, clubId: string, code: string) => void;
   staffLogout: () => void;
-  ownerLogin: () => void;
+  ownerLogin: (code: string) => void;
   ownerLogout: () => void;
   setStaffClub: (clubId: string) => void;
   logCheckin: (entry: Omit<CheckinEntry, 'ts'>) => void;
@@ -136,6 +139,8 @@ const initialState: State = {
   trialUsed: false,
   staff: null,
   owner: false,
+  staffCode: '',
+  remote: [],
   sales: [],
   staffLog: [],
   attendance: {},
@@ -212,6 +217,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(persist)).catch(() => {});
   }, [state]);
 
+  // Register this client in the shared registry whenever the account or profile changes.
+  const user = state.user;
+  useEffect(() => {
+    if (!state.hydrated || !user) return;
+    const p = user.profile;
+    registerClient({ id: user.id, name: user.name, phone: user.phone, homeClubId: user.homeClubId, profile: p ? { age: p.age, goal: p.goal, heightCm: p.heightCm, weightKg: p.weightKg } : undefined });
+  }, [state.hydrated, user]);
+
+  // Staff and owner see the registry live; a client picks up a plan issued at the front desk.
+  const hydrated = state.hydrated;
+  const staffSignedIn = !!(state.staff || state.owner);
+  const staffCode = state.staffCode;
+  const uid = state.user?.id;
+  useEffect(() => {
+    if (!hydrated) return;
+    let live = true;
+    const tick = async () => {
+      if (staffSignedIn && staffCode) {
+        const clients = await fetchClients(staffCode);
+        if (live && clients) setState((s) => ({ ...s, remote: clients }));
+      }
+      if (uid) {
+        const m = (await fetchMyMembership(uid))?.membership;
+        if (live && m) setState((s) => (!s.membership || m.endDate > s.membership.endDate ? { ...s, membership: m } : s));
+      }
+    };
+    tick();
+    const iv = setInterval(tick, 8000);
+    return () => {
+      live = false;
+      clearInterval(iv);
+    };
+  }, [hydrated, staffSignedIn, staffCode, uid]);
+
   const login = useCallback((phone: string, name?: string) => {
     setState((s) => ({
       ...s,
@@ -237,13 +276,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   /* ---------- staff mode ---------- */
 
-  const staffLogin = useCallback((name: string, clubId: string) => {
-    setState((s) => ({ ...s, staff: { name, clubId, since: toISODate(new Date()) } }));
+  const staffLogin = useCallback((name: string, clubId: string, code: string) => {
+    setState((s) => ({ ...s, staffCode: code, staff: { name, clubId, since: toISODate(new Date()) } }));
   }, []);
 
-  const staffLogout = useCallback(() => setState((s) => ({ ...s, staff: null })), []);
-  const ownerLogin = useCallback(() => setState((s) => ({ ...s, owner: true })), []);
-  const ownerLogout = useCallback(() => setState((s) => ({ ...s, owner: false })), []);
+  const staffLogout = useCallback(() => setState((s) => ({ ...s, staff: null, staffCode: s.owner ? s.staffCode : '' })), []);
+  const ownerLogin = useCallback((code: string) => setState((s) => ({ ...s, owner: true, staffCode: code })), []);
+  const ownerLogout = useCallback(() => setState((s) => ({ ...s, owner: false, staffCode: s.staff ? s.staffCode : '' })), []);
 
   const setStaffClub = useCallback((clubId: string) => setState((s) => (s.staff ? { ...s, staff: { ...s.staff, clubId } } : s)), []);
 
@@ -330,21 +369,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  /** Staff issues a plan at the front desk: the user's own account or a mock member. */
-  const grantPlan = useCallback((memberId: string, planId: string) => {
-    if (!planById(planId)) return;
-    setState((s) => {
-      const plan = planById(planId)!;
-      const sold = (name: string): Sale[] => (plan.price > 0 ? [{ id: `S${Date.now()}`, ts: Date.now(), memberId, name, title: plan.name, kind: 'plan', amount: plan.price, clubId: s.staff?.clubId ?? 'c1', method: 'desk', staff: s.staff?.name ?? '' }, ...s.sales] : s.sales);
-      if (s.user?.id === memberId) return { ...s, sales: sold(s.user.name), trialUsed: s.trialUsed || (!!planById(planId)?.trial && !planById(planId)?.staffOnly), membership: extendMembership(s.membership, planId) };
-      const base = members.find((m) => m.id === memberId);
-      if (!base) return s;
-      const g = s.memberGrants[memberId];
-      const cur: Membership | null = g ? { planId: g.planId, startDate: g.endDate, endDate: g.endDate, freezeDaysLeft: 0 } : base.endDate ? { planId: base.planId!, startDate: base.endDate, endDate: base.endDate, freezeDaysLeft: 0 } : null;
-      const next = extendMembership(cur, planId);
-      return { ...s, sales: sold(base.name), memberGrants: { ...s.memberGrants, [memberId]: { planId, endDate: next.endDate } } };
-    });
-  }, []);
+  /** Staff issues a plan at the front desk: the user's own account, a client registered from another device, or a demo member. */
+  const grantPlan = useCallback(
+    (memberId: string, planId: string) => {
+      const plan = planById(planId);
+      if (!plan) return;
+      // Clients that exist on the server get the new plan there too, so their own phone picks it up.
+      const isSelf = state.user?.id === memberId;
+      const remote = state.remote.find((r) => r.id === memberId);
+      if ((isSelf || remote) && state.staffCode) {
+        const next = extendMembership(isSelf ? state.membership : (remote?.membership ?? null), planId);
+        grantRemote(state.staffCode, { id: memberId, name: isSelf ? state.user!.name : remote!.name, phone: isSelf ? state.user!.phone : remote!.phone, membership: next });
+      }
+      setState((s) => {
+        const sold = (name: string): Sale[] => (plan.price > 0 ? [{ id: `S${Date.now()}`, ts: Date.now(), memberId, name, title: plan.name, kind: 'plan', amount: plan.price, clubId: s.staff?.clubId ?? 'c1', method: 'desk', staff: s.staff?.name ?? '' }, ...s.sales] : s.sales);
+        if (s.user?.id === memberId) return { ...s, sales: sold(s.user.name), trialUsed: s.trialUsed || (!!plan.trial && !plan.staffOnly), membership: extendMembership(s.membership, planId) };
+        const r = s.remote.find((x) => x.id === memberId);
+        if (r) {
+          const next = extendMembership(r.membership ?? null, planId);
+          return { ...s, sales: sold(r.name), remote: s.remote.map((x) => (x.id === memberId ? { ...x, membership: next } : x)) };
+        }
+        const base = members.find((m) => m.id === memberId);
+        if (!base) return s;
+        const g = s.memberGrants[memberId];
+        const cur: Membership | null = g ? { planId: g.planId, startDate: g.endDate, endDate: g.endDate, freezeDaysLeft: 0 } : base.endDate ? { planId: base.planId!, startDate: base.endDate, endDate: base.endDate, freezeDaysLeft: 0 } : null;
+        const next = extendMembership(cur, planId);
+        return { ...s, sales: sold(base.name), memberGrants: { ...s.memberGrants, [memberId]: { planId, endDate: next.endDate } } };
+      });
+    },
+    [state.user, state.remote, state.membership, state.staffCode],
+  );
 
   const freezeMembership = useCallback((days: number) => {
     setState((s) => {
@@ -580,7 +634,7 @@ export type MemberInfo = {
   lastVisit?: string;
   visitsTotal: number;
   age: number;
-  goal: Goal;
+  goal?: Goal;
   trainerId?: string;
   freezeDaysLeft: number;
   bookingsToday: number;
@@ -589,7 +643,7 @@ export type MemberInfo = {
 };
 
 export function useMembers() {
-  const { user, membership, visits, memberGrants, bookings, orders } = useApp();
+  const { user, membership, visits, memberGrants, bookings, orders, remote } = useApp();
   return useMemo(() => {
     const today = new Date();
     const todayIso = toISODate(today);
@@ -627,6 +681,15 @@ export function useMembers() {
       const g = memberGrants[m.id];
       return build(g ? { ...m, planId: g.planId, endDate: g.endDate, frozenUntil: undefined } : m, false);
     });
+    // Clients registered from other devices, newest first. The device user is added below from local state.
+    const fresh = remote
+      .filter((r) => r.id !== user?.id && !members.some((m) => m.id === r.id))
+      .map((r) => {
+        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId, endDate: r.membership?.endDate, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0 }, false);
+        info.params = r.profile?.heightCm ? `${r.profile.heightCm} см • ${r.profile.weightKg} кг` : undefined;
+        return info;
+      });
+    list.unshift(...fresh);
     if (user) {
       const monthAgo = toISODate(addDays(today, -30));
       const self: Member = {
@@ -651,7 +714,7 @@ export function useMembers() {
       list,
       byId: (id: string) => list.find((m) => m.id === id),
     };
-  }, [user, membership, visits, memberGrants, bookings, orders]);
+  }, [user, membership, visits, memberGrants, bookings, orders, remote]);
 }
 
 /** All payments: demo history plus those recorded on this device. Newest first. */

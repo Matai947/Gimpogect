@@ -16,7 +16,7 @@ export type Member = {
   lastVisit?: string;
   visitsTotal: number;
   age: number;
-  goal: Goal;
+  goal?: Goal;
   trainerId?: string;
   freezeDaysLeft: number;
 };

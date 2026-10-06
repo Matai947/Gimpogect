@@ -663,4 +663,6 @@ export const en: Record<TKey, string> = {
   entry_denied: 'Denied',
   sale_by: 'Taken by: {name}',
   no_sales: 'No payments',
+  filter_new: 'New',
+  new_badge: 'New',
 };

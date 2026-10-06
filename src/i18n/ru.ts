@@ -683,6 +683,8 @@ export const ru = {
   entry_denied: 'Отказ',
   sale_by: 'Принял: {name}',
   no_sales: 'Платежей нет',
+  filter_new: 'Новые',
+  new_badge: 'Новый',
 } as const;
 
 export type TKey = keyof typeof ru;

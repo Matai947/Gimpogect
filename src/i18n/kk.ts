@@ -663,4 +663,6 @@ export const kk: Record<TKey, string> = {
   entry_denied: 'Бас тартылды',
   sale_by: 'Қабылдады: {name}',
   no_sales: 'Төлем жоқ',
+  filter_new: 'Жаңа',
+  new_badge: 'Жаңа',
 };

@@ -6,9 +6,10 @@ import { MemberResult, StaffAccent, entryDecision } from '@/components/member-re
 import { StaffHeader } from '@/components/staff-header';
 import { Avatar, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { addDays, toISODate } from '@/data/mock';
 import { useI18n, useMembers } from '@/store/app-context';
 
-type Filter = 'all' | 'active' | 'expiring' | 'expired' | 'frozen';
+type Filter = 'all' | 'new' | 'active' | 'expiring' | 'expired' | 'frozen';
 
 export default function StaffMembersScreen() {
   const { t, td } = useI18n();
@@ -19,8 +20,11 @@ export default function StaffMembersScreen() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const newSince = toISODate(addDays(new Date(), -3));
+    const isNew = (m: { since: string }) => m.since >= newSince;
     return list
       .filter((m) => {
+        if (filter === 'new') return isNew(m);
         if (filter === 'active') return m.active && !m.frozen;
         if (filter === 'expiring') return m.active && m.daysLeft <= 7;
         if (filter === 'expired') return !m.active;
@@ -28,11 +32,12 @@ export default function StaffMembersScreen() {
         return true;
       })
       .filter((m) => (q ? m.name.toLowerCase().includes(q) || m.phone.replace(/\s/g, '').includes(q.replace(/\s/g, '')) || m.id.includes(q) : true))
-      .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+      .sort((a, b) => Number(isNew(b)) - Number(isNew(a)) || a.name.localeCompare(b.name, 'ru'));
   }, [list, query, filter]);
 
   const filters: { key: Filter; label: string }[] = [
     { key: 'all', label: t('all') },
+    { key: 'new', label: t('filter_new') },
     { key: 'active', label: t('filter_active') },
     { key: 'expiring', label: t('filter_expiring') },
     { key: 'expired', label: t('filter_expired') },
@@ -72,6 +77,11 @@ export default function StaffMembersScreen() {
                   <T type="body" style={{ fontWeight: '600' }} numberOfLines={1}>
                     {m.name}
                   </T>
+                  {m.since >= toISODate(addDays(new Date(), -3)) && !m.isSelf ? (
+                    <T type="small" color={Colors.success} style={{ fontWeight: '700' }}>
+                      • {t('new_badge')}
+                    </T>
+                  ) : null}
                   {m.isSelf ? (
                     <T type="small" color={StaffAccent} style={{ fontWeight: '700' }}>
                       • {t('self_badge')}

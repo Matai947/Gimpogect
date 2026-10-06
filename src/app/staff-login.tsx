@@ -25,7 +25,7 @@ export default function StaffLoginScreen() {
   const enter = () => {
     // The owner has a separate code and lands in the CRM instead of the front-desk tools.
     if (code === OWNER_DEMO_CODE) {
-      ownerLogin();
+      ownerLogin(code);
       router.replace('/owner' as Href); // typed-routes cache can lag behind new route folders
       return;
     }
@@ -33,7 +33,7 @@ export default function StaffLoginScreen() {
       setError(t('staff_code_wrong'));
       return;
     }
-    staffLogin(name.trim() || t('staff_name_default'), clubId);
+    staffLogin(name.trim() || t('staff_name_default'), clubId, code);
     router.replace('/staff');
   };
 
