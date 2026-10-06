@@ -128,7 +128,7 @@ export default function HomeScreen() {
         <View style={{ paddingHorizontal: Spacing.three }}>
           <SectionHeader title={t('price_list')} action={t('to_plans')} onAction={() => router.push('/membership')} />
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }} style={{ flexGrow: 0 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }} style={{ flexGrow: 0, flexShrink: 0 }}>
           {plans
             .filter((p) => !p.trial)
             .map((p) => (

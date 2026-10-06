@@ -208,7 +208,7 @@ export default function CoachScreen() {
           </ScrollView>
 
           {coachMessages.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.two }} style={{ flexGrow: 0, height: 46 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.two }} style={{ flexGrow: 0, flexShrink: 0, height: 46 }}>
               {quickPrompts.map((p) => (
                 <Pressable key={p} onPress={() => void send(p)} style={styles.quick} disabled={busy}>
                   <T type="small" style={{ fontWeight: '600' }}>

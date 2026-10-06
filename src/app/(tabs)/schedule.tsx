@@ -46,7 +46,7 @@ export default function ScheduleScreen() {
       </View>
 
       {/* Date strip */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }} style={{ flexGrow: 0, height: 86 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }} style={{ flexGrow: 0, flexShrink: 0, height: 86 }}>
         {days.map((d) => {
           const iso = toISODate(d);
           const active = iso === date;
