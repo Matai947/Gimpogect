@@ -179,9 +179,9 @@ export default function CartScreen() {
 const styles = StyleSheet.create({
   img: { width: 96, height: '100%', minHeight: 110, backgroundColor: Colors.surfaceAlt },
   qty: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceAlt, borderRadius: 10, borderWidth: 1, borderColor: Colors.border },
-  qtyBtn: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
+  qtyBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   promo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: Colors.surface, borderRadius: Radius.md, paddingHorizontal: Spacing.three, height: 48, borderWidth: 1, borderColor: Colors.border },
-  promoInput: { flex: 1, color: Colors.text, fontSize: 15, fontWeight: '600' },
+  promoInput: { flex: 1, color: Colors.text, fontSize: 16, fontWeight: '600' },
   footer: {
     position: 'absolute',
     left: 0,

@@ -119,7 +119,7 @@ export default function StaffLoginScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
-  back: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
+  back: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
   content: { padding: Spacing.three, paddingTop: Spacing.four, paddingBottom: Spacing.six, gap: 4 },
   badge: { width: 64, height: 64, borderRadius: 20, backgroundColor: StaffAccent, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.two },
   input: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: Colors.surface, borderRadius: Radius.md, paddingHorizontal: Spacing.three, height: 54, borderWidth: 1, borderColor: Colors.border, marginTop: Spacing.two },

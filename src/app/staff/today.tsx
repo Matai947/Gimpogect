@@ -157,6 +157,6 @@ const styles = StyleSheet.create({
   stat: { width: '48%', flexGrow: 1, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, gap: 4 },
   session: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   time: { borderLeftWidth: 3, paddingLeft: 10, minWidth: 64 },
-  exitBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  exitBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   logRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: 12 },
 });

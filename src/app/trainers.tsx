@@ -98,6 +98,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     height: 48,
   },
-  searchInput: { flex: 1, color: Colors.text, fontSize: 15 },
+  searchInput: { flex: 1, color: Colors.text, fontSize: 16 },
   avatar: { width: 84, height: 84, borderRadius: Radius.md, backgroundColor: Colors.surfaceAlt },
 });

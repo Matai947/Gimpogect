@@ -267,7 +267,7 @@ function Field({ value, onChange, placeholder, keyboardType, multiline, style, a
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   top: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center' },
   body: { padding: Spacing.three, gap: 4, paddingBottom: Spacing.six },
   photo: { width: 110, height: 110, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   field: { height: 48, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, color: Colors.text, fontSize: 15 },

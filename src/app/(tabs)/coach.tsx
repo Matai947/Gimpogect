@@ -208,7 +208,7 @@ export default function CoachScreen() {
           </ScrollView>
 
           {coachMessages.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.two }} style={{ flexGrow: 0, flexShrink: 0, height: 46 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.two }} style={{ flexGrow: 0, flexShrink: 0, height: 52 }}>
               {quickPrompts.map((p) => (
                 <Pressable key={p} onPress={() => void send(p)} style={styles.quick} disabled={busy}>
                   <T type="small" style={{ fontWeight: '600' }}>
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.accent },
   stat: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.md, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   keyBox: { marginHorizontal: Spacing.three, marginTop: Spacing.two, padding: Spacing.three, gap: Spacing.two, backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border },
-  keyInput: { flex: 1, height: 42, borderRadius: Radius.sm, backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, color: Colors.text, fontSize: 14 },
+  keyInput: { flex: 1, height: 42, borderRadius: Radius.sm, backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, color: Colors.text, fontSize: 16 },
   tabs: { flexDirection: 'row', paddingHorizontal: Spacing.three, marginTop: Spacing.two, borderBottomWidth: 1, borderBottomColor: Colors.border },
   tab: { paddingVertical: 12, marginRight: Spacing.four, alignItems: 'center', flexDirection: 'row', gap: 6 },
   tabLine: { position: 'absolute', left: 0, right: 0, bottom: -1, height: 2, borderRadius: 1, backgroundColor: 'transparent' },
@@ -444,13 +444,13 @@ const styles = StyleSheet.create({
   userLine: { alignSelf: 'flex-end', maxWidth: '85%', paddingHorizontal: 14, paddingVertical: 10, borderRadius: Radius.lg, borderBottomRightRadius: 4, backgroundColor: Colors.surface, borderWidth: 1, borderColor: 'rgba(154,61,205,0.35)' },
   promptGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   promptCard: { width: '48%', flexGrow: 1, padding: 12, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
-  quick: { paddingHorizontal: 12, height: 34, borderRadius: Radius.pill, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+  quick: { paddingHorizontal: 14, height: 40, borderRadius: Radius.pill, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two, padding: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.background },
-  input: { flex: 1, minHeight: 46, maxHeight: 120, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 12, color: Colors.text, fontSize: 15 },
+  input: { flex: 1, minHeight: 46, maxHeight: 120, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 12, color: Colors.text, fontSize: 16 },
   sendBtn: { width: 46, height: 46, borderRadius: 23, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
   planBody: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },
   wishBox: { gap: Spacing.two },
-  wishInput: { flex: 1, height: 46, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, color: Colors.text, fontSize: 14 },
+  wishInput: { flex: 1, height: 46, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, color: Colors.text, fontSize: 16 },
   wishBtn: { width: 46, height: 46, borderRadius: Radius.md, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
   wishChip: { paddingHorizontal: 10, height: 28, borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   planHead: { gap: 6, paddingBottom: Spacing.two, borderBottomWidth: 1, borderBottomColor: Colors.border },
