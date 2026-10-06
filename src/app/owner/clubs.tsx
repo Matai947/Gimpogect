@@ -3,18 +3,19 @@ import { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { OwnerAccent, OwnerHeader } from '@/components/owner-header';
-import { Fact } from '@/components/member-result';
+import { Fact, hm } from '@/components/member-result';
 import { ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { addDays, clubById, clubs, formatPrice, occupancyLabel } from '@/data/mock';
-import { useApp, useI18n, useMembers, usePresence, useSales } from '@/store/app-context';
+import { SESSION_MS, useApp, useI18n, useMembers, useNow, usePresence, useSales } from '@/store/app-context';
 
 export default function OwnerClubs() {
   const { t } = useI18n();
   const { staffLog } = useApp();
+  const now = useNow();
+  const present = usePresence();
   const { list } = useMembers();
   const sales = useSales();
-  const presence = usePresence();
 
   const revenue = useMemo(() => {
     const from = addDays(new Date(), -29);
@@ -43,7 +44,7 @@ export default function OwnerClubs() {
               </Row>
               <View style={styles.grid}>
                 <Fact label={t('clubs_revenue')} value={formatPrice(revenue.get(c.id) ?? 0)} accent />
-                <Fact label={t('inside_now')} value={String(presence.inside.filter((x) => x.clubId === c.id).length)} accent />
+                <Fact label={t('present_title')} value={String(present.filter((p) => p.clubId === c.id).length)} accent />
                 <Fact label={t('clubs_clients')} value={String(mine.length)} />
                 <Fact label={t('clubs_visits')} value={String(mine.reduce((s, m) => s + m.visitsThisMonth, 0))} />
                 <Fact label={t('clubs_occ')} value={`${c.occupancy}% • ${occ.label}`} />
@@ -61,13 +62,13 @@ export default function OwnerClubs() {
         ) : (
           staffLog.slice(0, 20).map((e) => (
             <View key={`${e.ts}-${e.memberId}`} style={styles.logRow}>
-              <Ionicons name={e.out ? 'log-out' : e.ok ? 'checkmark-circle' : 'close-circle'} size={20} color={e.out ? Colors.info : e.ok ? Colors.success : Colors.danger} />
+              <Ionicons name={e.ok ? 'checkmark-circle' : 'close-circle'} size={20} color={e.ok ? Colors.success : Colors.danger} />
               <View style={{ flex: 1 }}>
                 <T type="body" style={{ fontWeight: '600' }} numberOfLines={1}>
                   {e.name}
                 </T>
                 <T type="small" color={Colors.textSecondary} numberOfLines={1}>
-                  {e.out ? t('exit_event') : e.ok ? t('entry_ok') : `${t('entry_denied')}${e.reason ? `: ${e.reason}` : ''}`} • {clubById(e.clubId)?.name.replace('Gym Project ', '')}
+                  {e.ok ? (!e.leftTs && now < e.ts + SESSION_MS ? t('inside_until', { time: hm(e.ts + SESSION_MS) }) : t('left_at', { time: hm(e.leftTs ?? e.ts + SESSION_MS) })) : `${t('entry_denied')}${e.reason ? `: ${e.reason}` : ''}`} • {clubById(e.clubId)?.name.replace('Gym Project ', '')}
                 </T>
               </View>
               <T type="small" color={OwnerAccent}>

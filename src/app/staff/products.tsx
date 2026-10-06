@@ -110,9 +110,9 @@ export default function StaffProductsScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
-  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, height: 34, borderRadius: Radius.pill, backgroundColor: StaffAccent },
+  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 14, height: 44, borderRadius: Radius.pill, backgroundColor: StaffAccent },
   search: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, margin: Spacing.three, marginBottom: Spacing.two, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: Spacing.three, height: 48 },
-  searchInput: { flex: 1, color: Colors.text, fontSize: 15 },
+  searchInput: { flex: 1, color: Colors.text, fontSize: 16 },
   body: { padding: Spacing.three, paddingTop: Spacing.two, gap: Spacing.two, paddingBottom: Spacing.six },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: 10, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   thumb: { width: 56, height: 56, borderRadius: 12, backgroundColor: Colors.surfaceAlt },

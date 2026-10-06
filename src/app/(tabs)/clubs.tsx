@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     height: 48,
   },
-  searchInput: { flex: 1, color: Colors.text, fontSize: 15 },
+  searchInput: { flex: 1, color: Colors.text, fontSize: 16 },
   imgTop: { position: 'absolute', top: 10, left: 10, right: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  heart: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
+  heart: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
 });

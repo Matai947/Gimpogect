@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     height: 48,
   },
-  searchInput: { flex: 1, color: Colors.text, fontSize: 15 },
+  searchInput: { flex: 1, color: Colors.text, fontSize: 16 },
   cat: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, height: 40, borderRadius: Radius.pill, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   catActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   banner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, borderRadius: Radius.lg, padding: Spacing.three, borderWidth: 1, borderColor: Colors.border },

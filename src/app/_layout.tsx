@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import '@/lib/alert-web';
+import { DialogHost } from '@/lib/alert-web';
 import { BackButton } from '@/components/back-button';
 import { Colors } from '@/constants/theme';
 import { AppProvider, useI18n } from '@/store/app-context';
@@ -86,6 +86,7 @@ export default function RootLayout() {
         <ThemeProvider value={theme}>
           <StatusBar style="light" />
           <RootStack />
+          <DialogHost />
         </ThemeProvider>
       </AppProvider>
     </GestureHandlerRootView>

@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   optActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   nut: { flex: 1, alignItems: 'center', paddingVertical: Spacing.three, gap: 2 },
   qty: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md, paddingHorizontal: 6, height: 48, borderWidth: 1, borderColor: Colors.border },
-  qtyBtn: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  qtyBtn: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   footer: {
     position: 'absolute',
     left: 0,

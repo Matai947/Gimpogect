@@ -7,8 +7,9 @@ import { Avatar, Badge, Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
 import { clubById, formatDateHuman, formatDateLong, formatPrice, plans, trainerById } from '@/data/mock';
-import { minutesLeft } from '@/lib/presence';
 import { useApp, useI18n, useMembers, usePresence, type MemberInfo } from '@/store/app-context';
+
+export const hm = (ts: number) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
 export const StaffAccent = '#FF8562';
 
@@ -21,19 +22,13 @@ export function entryDecision(m: MemberInfo, t: (k: any, v?: any) => string): { 
   return { ok: true };
 }
 
-/** "1 h 20 min" / "45 min" for the time left in the gym. */
-export function leftText(t: (k: any, v?: any) => string, mins: number) {
-  return mins >= 60 ? t('hm', { h: Math.floor(mins / 60), m: mins % 60 }) : t('min_only', { m: mins });
-}
-
 export function MemberResult({ member: snapshot, onDone, compact }: { member: MemberInfo; onDone?: () => void; compact?: boolean }) {
   const { t, td } = useI18n();
   // The scanner passes a snapshot; re-read so the card updates right after a plan is issued.
   const member = useMembers().byId(snapshot.id) ?? snapshot;
-  const { staff, logCheckin, grantPlan } = useApp();
+  const { staff, logCheckin, checkoutMember, grantPlan } = useApp();
+  const here = usePresence().find((p) => p.memberId === snapshot.id);
   const [logged, setLogged] = useState<string | null>(null);
-  const presence = usePresence();
-  const here = presence.inside.find((p) => p.memberId === member.id); // already checked in, within the 2 hours
   const [picking, setPicking] = useState(false);
   const [granted, setGranted] = useState<string | null>(null);
 
@@ -54,14 +49,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
     const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     logCheckin({ memberId: member.id, name: member.name, ok: true, clubId: staff?.clubId ?? member.homeClubId });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    setLogged(`${t('entry_logged', { name: member.name, time })}\n${t('stay_hint')}`);
-  };
-
-  const exit = () => {
-    const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    logCheckin({ memberId: member.id, name: member.name, ok: true, out: true, clubId: here?.clubId ?? staff?.clubId ?? member.homeClubId });
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    setLogged(t('exit_logged', { name: member.name, time }));
+    setLogged(t('entry_logged', { name: member.name, time }));
   };
 
   const giveAccess = () => {
@@ -123,16 +111,25 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
           ) : null}
         </View>
 
-        {here && !logged ? (
-          <View style={styles.logged}>
-            <Ionicons name="time-outline" size={18} color={Colors.success} />
-            <T type="small" color={Colors.success} style={{ fontWeight: '700', flex: 1 }}>
-              {t('inside_since', { time: new Date(here.since).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) })} • {t('time_left', { t: leftText(t, minutesLeft(here, presence.now)) })}
-            </T>
+        {here ? (
+          <View style={{ gap: Spacing.two }}>
+            <View style={styles.logged}>
+              <Ionicons name="log-in" size={18} color={Colors.success} />
+              <T type="small" color={Colors.success} style={{ fontWeight: '700', flex: 1 }}>
+                {t('present_since', { from: hm(here.inTs), to: hm(here.until) })}
+              </T>
+            </View>
+            <Button
+              title={t('mark_exit')}
+              icon="log-out-outline"
+              variant="secondary"
+              onPress={() => {
+                checkoutMember(member.id);
+                setLogged(null);
+              }}
+            />
           </View>
-        ) : null}
-
-        {logged ? (
+        ) : logged ? (
           <View style={styles.logged}>
             <Ionicons name="checkmark-done" size={18} color={Colors.success} />
             <T type="small" color={Colors.success} style={{ fontWeight: '700', flex: 1 }}>
@@ -144,7 +141,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             <Row gap={Spacing.two}>
               {decision.ok ? (
                 <>
-                  {here ? <Button title={t('mark_exit')} icon="log-out-outline" variant="secondary" onPress={exit} style={{ flex: 1 }} /> : <Button title={t('allow_entry')} icon="log-in-outline" onPress={allow} style={{ flex: 1 }} />}
+                  <Button title={t('allow_entry')} icon="log-in-outline" onPress={allow} style={{ flex: 1 }} />
                   <Button title="" icon="card-outline" variant="ghost" onPress={() => setPicking((v) => !v)} style={{ paddingHorizontal: 14 }} />
                 </>
               ) : (
@@ -198,7 +195,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             </T>
           </View>
         ) : null}
-        {logged && onDone ? <Button title={t('scan_again')} variant="secondary" icon="qr-code-outline" onPress={onDone} size="sm" /> : null}
+        {(logged || here) && onDone ? <Button title={t('scan_again')} variant="secondary" icon="qr-code-outline" onPress={onDone} size="sm" /> : null}
       </View>
     </View>
   );

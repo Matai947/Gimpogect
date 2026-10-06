@@ -7,8 +7,7 @@ import { mockSales, type Sale } from '@/data/owner';
 import { addDays, planById, sessionById, toISODate } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { fetchClients, fetchMyMembership, grantRemote, registerClient, type RemoteClient } from '@/lib/api';
-import { presenceOf, type Presence } from '@/lib/presence';
+import { checkinRemote, checkoutRemote, fetchClients, fetchMyMembership, grantRemote, registerClient, type RemoteClient } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -46,7 +45,10 @@ export type Order = {
 };
 
 export type StaffSession = { name: string; clubId: string; since: string };
-export type CheckinEntry = { ts: number; memberId: string; name: string; ok: boolean; reason?: string; clubId: string; out?: boolean }; // out = staff marked the exit
+/** A visit lasts 3 hours from the entry, unless staff mark the exit earlier. */
+export const SESSION_MS = 3 * 60 * 60 * 1000;
+
+export type CheckinEntry = { ts: number; memberId: string; name: string; ok: boolean; reason?: string; clubId: string; leftTs?: number };
 
 type State = {
   user: User | null;
@@ -115,6 +117,7 @@ type Actions = {
   ownerLogout: () => void;
   setStaffClub: (clubId: string) => void;
   logCheckin: (entry: Omit<CheckinEntry, 'ts'>) => void;
+  checkoutMember: (memberId: string) => void;
   toggleAttendance: (sessionId: string, memberId: string) => void;
   setOrderStatus: (orderId: string, status: OrderStatus) => void;
   upsertProduct: (p: Product) => void;
@@ -288,16 +291,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setStaffClub = useCallback((clubId: string) => setState((s) => (s.staff ? { ...s, staff: { ...s.staff, clubId } } : s)), []);
 
-  const logCheckin = useCallback((entry: Omit<CheckinEntry, 'ts'>) => {
+  const logCheckin = useCallback(
+    (entry: Omit<CheckinEntry, 'ts'>) => {
     const ts = Date.now();
     const today = toISODate(new Date());
+    if (entry.ok && state.staffCode && state.remote.some((r) => r.id === entry.memberId)) checkinRemote(state.staffCode, entry.memberId, entry.clubId);
     setState((s) => {
       // A successful check-in of the device user also counts as their visit.
-      const isSelf = s.user && entry.memberId === s.user.id && entry.ok && !entry.out;
+      const isSelf = s.user && entry.memberId === s.user.id && entry.ok;
       const visits = isSelf && !s.visits.some((v) => v.date === today) ? [{ date: today, clubId: entry.clubId }, ...s.visits] : s.visits;
       return { ...s, visits, staffLog: [{ ...entry, ts }, ...s.staffLog].slice(0, 200) };
     });
-  }, []);
+    },
+    [state.staffCode, state.remote],
+  );
+
+  /** Staff mark that a client has left before the 3 hours are over. */
+  const checkoutMember = useCallback(
+    (memberId: string) => {
+      const now = Date.now();
+      if (state.staffCode && state.remote.some((r) => r.id === memberId)) checkoutRemote(state.staffCode, memberId);
+      setState((s) => {
+        const i = s.staffLog.findIndex((e) => e.memberId === memberId && e.ok && !e.leftTs && now < e.ts + SESSION_MS);
+        if (i < 0) return s;
+        return { ...s, staffLog: s.staffLog.map((e, k) => (k === i ? { ...e, leftTs: now } : e)) };
+      });
+    },
+    [state.staffCode, state.remote],
+  );
 
   const toggleAttendance = useCallback((sessionId: string, memberId: string) => {
     setState((s) => {
@@ -528,13 +549,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ownerLogout,
       setStaffClub,
       logCheckin,
+      checkoutMember,
       toggleAttendance,
       setOrderStatus,
       upsertProduct,
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, logout, updateUser, completeOnboarding, grantPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, logout, updateUser, completeOnboarding, grantPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -719,25 +741,6 @@ export function useMembers() {
   }, [user, membership, visits, memberGrants, bookings, orders, remote]);
 }
 
-/** Who is in the gym right now (and who already left), refreshed every 30 seconds so stays expire on screen. */
-export function usePresence(clubId?: string) {
-  const { staffLog } = useApp();
-  const [now, setNow] = useState(0);
-  useEffect(() => {
-    const tick = () => setNow(Date.now());
-    const first = setTimeout(tick, 0);
-    const iv = setInterval(tick, 30000);
-    return () => {
-      clearTimeout(first);
-      clearInterval(iv);
-    };
-  }, []);
-  return useMemo(() => {
-    const all: Presence[] = presenceOf(staffLog, now).filter((p) => !clubId || p.clubId === clubId);
-    return { now, inside: all.filter((p) => p.inside), left: all.filter((p) => !p.inside) };
-  }, [staffLog, now, clubId]);
-}
-
 /** All payments: demo history plus those recorded on this device. Newest first. */
 export function useSales() {
   const { sales } = useApp();
@@ -821,4 +824,37 @@ export function useCartSummary(promo?: string) {
       promoValid: promoRate > 0,
     };
   }, [cart, membership.active, promo, byId]);
+}
+
+/** Current time that refreshes every 30 s, for "who is inside" views. */
+export function useNow() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const iv = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(iv);
+  }, []);
+  return now;
+}
+
+export type Present = { memberId: string; name: string; clubId: string; inTs: number; until: number };
+
+/** Everyone currently inside: entries logged on this device plus sessions stored on the server. Newest first. */
+export function usePresence(): Present[] {
+  const { staffLog, remote } = useApp();
+  const now = useNow();
+  return useMemo(() => {
+    const by = new Map<string, Present>();
+    const add = (p: Present) => {
+      const cur = by.get(p.memberId);
+      if (!cur || p.inTs > cur.inTs) by.set(p.memberId, p);
+    };
+    staffLog.forEach((e) => e.ok && !e.leftTs && now < e.ts + SESSION_MS && add({ memberId: e.memberId, name: e.name, clubId: e.clubId, inTs: e.ts, until: e.ts + SESSION_MS }));
+    remote.forEach((r) => r.session && !r.session.outTs && now < r.session.inTs + SESSION_MS && add({ memberId: r.id, name: r.name, clubId: r.session.clubId, inTs: r.session.inTs, until: r.session.inTs + SESSION_MS }));
+    // A local exit mark beats an older server session of the same client.
+    staffLog.forEach((e) => {
+      const p = by.get(e.memberId);
+      if (p && e.ok && e.leftTs && e.ts >= p.inTs) by.delete(e.memberId);
+    });
+    return [...by.values()].sort((a, b) => b.inTs - a.inTs);
+  }, [staffLog, remote, now]);
 }
