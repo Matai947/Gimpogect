@@ -39,6 +39,7 @@ p { margin: 0; }
 .links { display: flex; gap: 28px; font-weight: 500; font-size: 15px; }
 .links a { color: var(--muted); transition: color .15s; }
 .links a:hover { color: #fff; }
+.only-sm { display: none; }
 .nav-right { display: flex; align-items: center; gap: 12px; }
 .lang { display: flex; background: rgba(255,255,255,.08); border-radius: 999px; padding: 3px; }
 .lang button { border: 0; background: transparent; color: var(--muted); font: 700 12px 'Onest'; padding: 7px 11px; border-radius: 999px; cursor: pointer; }
@@ -186,6 +187,8 @@ input:focus, select:focus { outline: none; border-color: var(--violet); }
   .links { position: fixed; inset: 68px 0 auto 0; flex-direction: column; gap: 0; background: #0a0a0a; border-bottom: 1px solid var(--line); transform: translateY(-120%); transition: transform .25s; padding: 8px 20px 20px; }
   .links a { padding: 14px 0; font-size: 18px; border-bottom: 1px solid rgba(255,255,255,.06); }
   .nav.open .links { transform: none; }
+  .links .only-sm { display: block; }
+  .links .only-sm:nth-last-child(2) { color: var(--violet); font-weight: 700; }
   .burger { display: block; }
   .hide-sm { display: none; }
   .stats { grid-template-columns: repeat(2, 1fr); }
@@ -202,6 +205,26 @@ input:focus, select:focus { outline: none; border-color: var(--violet); }
   .why article { min-height: 0; }
   .hero h1 { max-width: none; }
   .cta .btn { flex: 1 1 100%; }
+}
+@media (max-width: 620px) {
+  /* prices become a swipeable row instead of five long cards */
+  .prices { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; margin: 0 calc(-1 * clamp(16px, 3vw, 40px)); padding: 16px clamp(16px, 3vw, 40px) 8px; scrollbar-width: none; }
+  .prices::-webkit-scrollbar { display: none; }
+  .price { flex: 0 0 78%; scroll-snap-align: center; align-self: flex-start; }
+  .price ul { margin-top: 12px; }
+  .wa { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); width: 52px; height: 52px; }
+  .foot { padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 480px) {
+  /* narrow phones (360 px): the header must fit logo, language switch and menu button */
+  .nav { gap: 8px; padding: 0 12px; }
+  .nav-right { gap: 6px; }
+  .logo { font-size: 16px; }
+  .lang button { padding: 6px 8px; font-size: 11px; }
+  .burger { width: 40px; }
+  .burger i { left: 9px; right: 9px; }
+  .stats { gap: 8px; }
+  .stats li { padding: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
