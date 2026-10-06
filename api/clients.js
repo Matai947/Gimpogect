@@ -46,6 +46,17 @@ module.exports = async function handler(req, res) {
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
 
   try {
+    if (req.method === 'POST' && op === 'lead') {
+      const name = str(body.name, 60);
+      const phone = str(body.phone, 20);
+      const digits = phone.replace(/\D/g, '');
+      if (name.length < 2 || digits.length < 10 || digits.length > 12) return res.status(400).json({ error: 'bad data' });
+      const day = new Date().toISOString().slice(0, 10);
+      const lead = { name, phone, clubId: ['c1', 'c2', 'c3', 'c4'].includes(body.clubId) ? body.clubId : '', lang: ['ru', 'kk', 'en'].includes(body.lang) ? body.lang : 'ru', ts: Date.now() };
+      await put(`leads/${day}-${digits}.json`, JSON.stringify(lead), { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json' });
+      return res.status(200).json({ ok: true });
+    }
+
     if (req.method === 'POST' && op === 'register') {
       const id = str(body.id, 20);
       // The id is derived from the phone number, so they must agree.
@@ -69,6 +80,15 @@ module.exports = async function handler(req, res) {
     }
 
     if (!authed(req)) return res.status(401).json({ error: 'code' });
+
+    if (req.method === 'GET' && op === 'leads') {
+      const page = await list({ prefix: 'leads/', limit: 200 });
+      const all = await Promise.all(page.blobs.map(async (b) => {
+        const r = await get(b.pathname, { access: 'private', useCache: false }).catch(() => null);
+        return r && r.statusCode === 200 ? new Response(r.stream).json() : null;
+      }));
+      return res.status(200).json({ leads: all.filter(Boolean).sort((a, b) => b.ts - a.ts) });
+    }
 
     if (req.method === 'GET' && op === 'list') {
       const blobs = [];

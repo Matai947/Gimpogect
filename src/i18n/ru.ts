@@ -692,6 +692,8 @@ export const ru = {
   left_at: 'Ушёл в {time}',
   inside_until: 'В зале до {time}',
   kpi_inside: 'Сейчас в зале',
+  leads_title: 'Заявки с сайта',
+  leads_any: 'Любой клуб',
 } as const;
 
 export type TKey = keyof typeof ru;

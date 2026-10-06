@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gym Project — сеть фитнес-клубов в Алматы и Астане</title>
+  <meta name="description" content="Gym Project: 4 клуба в Алматы и Астане, QR-вход, ИИ-тренер в приложении, групповые и персональные тренировки. Начни с 3 бесплатных дней." />
+  <meta name="theme-color" content="#0A0A0A" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="nav" id="nav">
+    <a class="logo" href="#top" aria-label="Gym Project">GYM<span>PROJECT</span></a>
+    <nav class="links" id="links">
+      <a href="#clubs" data-i18n="nav_clubs">Клубы</a>
+      <a href="#prices" data-i18n="nav_prices">Тарифы</a>
+      <a href="#trainers" data-i18n="nav_trainers">Тренеры</a>
+      <a href="#app" data-i18n="nav_app">Приложение</a>
+      <a href="#faq" data-i18n="nav_faq">Вопросы</a>
+    </nav>
+    <div class="nav-right">
+      <div class="lang" id="lang" role="group" aria-label="Language">
+        <button data-lang="ru" class="on">RU</button><button data-lang="kk">KZ</button><button data-lang="en">EN</button>
+      </div>
+      <a class="btn btn-ghost hide-sm" href="https://gym.matai.kz" data-i18n="nav_login">Войти</a>
+      <a class="btn btn-main" href="#lead" data-i18n="nav_lead">Оставить заявку</a>
+      <button class="burger" id="burger" aria-label="Menu"><i></i><i></i></button>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-bg"></div>
+      <div class="hero-in">
+        <p class="eyebrow" data-i18n="hero_eyebrow">Алматы • Астана</p>
+        <h1 data-i18n-html="hero_title">Сеть залов,<br />где всё <em>под рукой</em></h1>
+        <p class="lead" data-i18n="hero_sub">4 клуба, 600+ тренажёров, QR-вход и ИИ-тренер в приложении. Начни с 3 бесплатных дней.</p>
+        <div class="cta">
+          <a class="btn btn-main btn-lg" href="#lead" data-i18n="hero_cta1">3 дня бесплатно</a>
+          <a class="btn btn-ghost btn-lg" href="#clubs" data-i18n="hero_cta2">Выбрать клуб</a>
+        </div>
+      </div>
+      <ul class="stats">
+        <li><b data-count="4">4</b><span data-i18n="stat_clubs">клуба в двух городах</span></li>
+        <li><b data-count="625" data-plus="1">625+</b><span data-i18n="stat_machines">тренажёров</span></li>
+        <li><b>24/7</b><span data-i18n="stat_247">в Достыке и Astana Mega</span></li>
+        <li><b>4,8</b><span data-i18n="stat_rating">средняя оценка клиентов</span></li>
+      </ul>
+    </section>
+
+    <div class="marquee" aria-hidden="true"><div>
+      <span data-i18n="mq1">QR-ВХОД</span><span data-i18n="mq2">ИИ-ТРЕНЕР</span><span data-i18n="mq3">ГРУППОВЫЕ ПРОГРАММЫ</span><span data-i18n="mq4">ПЕРСОНАЛЬНЫЕ ТРЕНИРОВКИ</span><span data-i18n="mq5">СПОРТПИТ</span><span data-i18n="mq6">СПА И САУНА</span>
+      <span data-i18n="mq1">QR-ВХОД</span><span data-i18n="mq2">ИИ-ТРЕНЕР</span><span data-i18n="mq3">ГРУППОВЫЕ ПРОГРАММЫ</span><span data-i18n="mq4">ПЕРСОНАЛЬНЫЕ ТРЕНИРОВКИ</span><span data-i18n="mq5">СПОРТПИТ</span><span data-i18n="mq6">СПА И САУНА</span>
+    </div></div>
+
+    <section class="sec" id="clubs">
+      <div class="head"><p class="eyebrow" data-i18n="clubs_eyebrow">Клубы</p><h2 data-i18n="clubs_title">Выбери свой клуб</h2></div>
+      <div class="clubs" id="clubGrid"></div>
+    </section>
+
+    <section class="sec dark">
+      <div class="head"><p class="eyebrow" data-i18n="why_eyebrow">Почему мы</p><h2 data-i18n="why_title">Всё нужное — в одном приложении</h2></div>
+      <div class="why">
+        <article class="reveal"><span class="n">01</span><h3 data-i18n="why1_t">QR вместо карты</h3><p data-i18n="why1_p">Покажи код на входе. Абонемент, заморозка и продление всегда в телефоне.</p></article>
+        <article class="reveal"><span class="n">02</span><h3 data-i18n="why2_t">ИИ-тренер</h3><p data-i18n="why2_p">План под твой вес, рост и цель. Подскажет технику упражнения и питание.</p></article>
+        <article class="reveal"><span class="n">03</span><h3 data-i18n="why3_t">Группы и персональные</h3><p data-i18n="why3_p">Запись на занятие в два тапа. Тренеры с опытом, понятная цена за сессию.</p></article>
+        <article class="reveal"><span class="n">04</span><h3 data-i18n="why4_t">Магазин спортпита</h3><p data-i18n="why4_p">Протеин, добавки и аксессуары. Заказал в приложении, забрал в клубе со скидкой.</p></article>
+      </div>
+    </section>
+
+    <section class="trial">
+      <div>
+        <p class="eyebrow" data-i18n="trial_eyebrow">Без обязательств</p>
+        <h2 data-i18n="trial_title">3 дня пробных тренировок</h2>
+        <p data-i18n="trial_p">Бесплатно, можно без тренера. Оставь заявку, администратор активирует пробный период, и QR появится в приложении.</p>
+      </div>
+      <a class="btn btn-dark btn-lg" href="#lead" data-i18n="trial_cta">Попробовать</a>
+    </section>
+
+    <section class="sec" id="prices">
+      <div class="head"><p class="eyebrow" data-i18n="price_eyebrow">Тарифы</p><h2 data-i18n="price_title">Абонементы на любой срок</h2></div>
+      <div class="prices" id="priceGrid"></div>
+      <p class="note" data-i18n="price_note">Оплата и выдача абонемента на ресепшене любого клуба. После оплаты QR-пропуск сразу появляется в приложении. Все клубы сети входят в абонемент.</p>
+    </section>
+
+    <section class="sec dark" id="trainers">
+      <div class="head"><p class="eyebrow" data-i18n="tr_eyebrow">Тренеры</p><h2 data-i18n="tr_title">Люди, с которыми получается</h2></div>
+      <div class="trainers" id="trainerGrid"></div>
+    </section>
+
+    <section class="sec app" id="app">
+      <div class="app-text">
+        <p class="eyebrow" data-i18n="app_eyebrow">Приложение</p>
+        <h2 data-i18n="app_title">Приложение, которое подскажет и поддержит</h2>
+        <ul class="ticks">
+          <li data-i18n="app1">QR-пропуск и статус абонемента</li>
+          <li data-i18n="app2">Запись на групповые занятия и к тренеру</li>
+          <li data-i18n="app3">ИИ-тренер: план недели и техника упражнений</li>
+          <li data-i18n="app4">Магазин спортпита с заказом в клуб</li>
+          <li data-i18n="app5">Прогресс: вес, визиты, серии недель</li>
+        </ul>
+        <div class="cta"><a class="btn btn-main btn-lg" href="https://gym.matai.kz" data-i18n="app_cta">Открыть приложение</a></div>
+      </div>
+      <div class="phone reveal" aria-hidden="true">
+        <div class="phone-in">
+          <div class="pass"><small data-i18n="ph_plan">Абонемент «Прогресс»</small><b>128</b><span data-i18n="ph_days">дней осталось</span><i class="qr"></i></div>
+          <div class="row"><span data-i18n="ph_in">Сейчас в зале</span><b>38</b></div>
+          <div class="row"><span data-i18n="ph_next">Ближайшее занятие</span><b>19:00</b></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="faq">
+      <div class="head"><p class="eyebrow" data-i18n="faq_eyebrow">Вопросы</p><h2 data-i18n="faq_title">Коротко о главном</h2></div>
+      <div class="faq">
+        <details><summary data-i18n="q1">Как начать заниматься?</summary><p data-i18n="a1">Оставь заявку на сайте или приди в любой клуб. Администратор оформит абонемент или пробный период, а QR-пропуск появится в приложении.</p></details>
+        <details><summary data-i18n="q2">Можно ли ходить в любой клуб сети?</summary><p data-i18n="a2">Да, абонемент действует во всех четырёх клубах. Дневной тариф ограничен временем до 17:00.</p></details>
+        <details><summary data-i18n="q3">Можно ли заморозить абонемент?</summary><p data-i18n="a3">Да. Дни заморозки зависят от тарифа: от 7 дней на «Старте» до 90 дней на «Чемпионе». Заморозку можно включить в приложении.</p></details>
+        <details><summary data-i18n="q4">Сколько можно находиться в зале?</summary><p data-i18n="a4">После входа по QR доступно 2 часа. Когда время выходит, выход отмечается автоматически, чтобы счётчик людей в зале был точным.</p></details>
+      </div>
+    </section>
+
+    <section class="sec lead-sec" id="lead">
+      <div class="lead-box">
+        <div>
+          <p class="eyebrow" data-i18n="lead_eyebrow">Заявка</p>
+          <h2 data-i18n="lead_title">Оставь контакты, мы перезвоним</h2>
+          <p class="muted" data-i18n="lead_p">Расскажем про тарифы, подберём клуб и активируем 3 бесплатных дня.</p>
+        </div>
+        <form id="leadForm" novalidate>
+          <label><span data-i18n="f_name">Имя</span><input name="name" autocomplete="name" required maxlength="60" /></label>
+          <label><span data-i18n="f_phone">Телефон</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 7__ ___ __ __" required maxlength="20" /></label>
+          <label><span data-i18n="f_club">Клуб</span><select name="club" id="clubSelect"></select></label>
+          <button class="btn btn-main btn-lg" type="submit" data-i18n="f_send">Отправить заявку</button>
+          <p class="form-msg" id="formMsg" role="status"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="foot-grid">
+      <div><a class="logo" href="#top">GYM<span>PROJECT</span></a><p class="muted" data-i18n="foot_p">Сеть фитнес-клубов в Алматы и Астане.</p></div>
+      <div id="footClubs"></div>
+      <div>
+        <h4 data-i18n="foot_contacts">Связаться</h4>
+        <p><a href="https://wa.me/77273000001" rel="noopener">WhatsApp +7 727 300 00 01</a></p>
+        <p><a href="https://gym.matai.kz" data-i18n="foot_app">Веб-версия приложения</a></p>
+      </div>
+    </div>
+    <p class="copy">© 2026 Gym Project</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

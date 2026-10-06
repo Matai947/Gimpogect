@@ -20,6 +20,10 @@ async function call<T>(op: string, init?: { method?: 'POST'; body?: unknown; cod
   }
 }
 
+export type Lead = { name: string; phone: string; clubId: string; lang: string; ts: number };
+
+export const fetchLeads = async (code: string) => (await call<{ leads: Lead[] }>('leads', { code }))?.leads ?? null;
+
 export const registerClient = (c: { id: string; name: string; phone: string; homeClubId: string; profile?: RemoteProfile }) => call<{ membership: RemoteMembership | null }>('register', { method: 'POST', body: c });
 
 export const fetchMyMembership = (id: string) => call<{ membership: RemoteMembership | null }>('me', { query: `&id=${id}` });

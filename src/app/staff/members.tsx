@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { MemberResult, StaffAccent, entryDecision } from '@/components/member-result';
+import { LeadsCard } from '@/components/leads-card';
 import { StaffHeader } from '@/components/staff-header';
 import { Avatar, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -62,6 +63,7 @@ export default function StaffMembersScreen() {
         ))}
       </ChipRow>
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <LeadsCard accent={StaffAccent} />
         <T type="small" color={Colors.textMuted}>
           {t('members_n', { n: filtered.length })}
         </T>

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { Fact, entryDecision } from '@/components/member-result';
+import { LeadsCard } from '@/components/leads-card';
 import { OwnerAccent, OwnerHeader } from '@/components/owner-header';
 import { Avatar, Button, Chip, ChipRow, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -61,6 +62,7 @@ export default function OwnerClients() {
         ))}
       </ChipRow>
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <LeadsCard accent={OwnerAccent} />
         <T type="small" color={Colors.textMuted}>
           {t('members_n', { n: filtered.length })}
         </T>

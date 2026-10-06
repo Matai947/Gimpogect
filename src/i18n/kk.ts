@@ -672,4 +672,6 @@ export const kk: Record<TKey, string> = {
   left_at: '{time} шықты',
   inside_until: '{time} дейін залда',
   kpi_inside: 'Қазір залда',
+  leads_title: 'Сайттан өтінімдер',
+  leads_any: 'Кез келген клуб',
 };

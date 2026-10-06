@@ -672,4 +672,6 @@ export const en: Record<TKey, string> = {
   left_at: 'Left at {time}',
   inside_until: 'Inside until {time}',
   kpi_inside: 'In the gym now',
+  leads_title: 'Website requests',
+  leads_any: 'Any club',
 };

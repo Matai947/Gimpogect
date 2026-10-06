@@ -29,6 +29,15 @@
         "cd /d C:\\Users\\User\\bauflex-erp && npm run dev"
       ],
       "port": 5180
+    },
+    {
+      "name": "gym-site",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/serve-site.js",
+        "5190"
+      ],
+      "port": 5190
     }
   ]
 }
