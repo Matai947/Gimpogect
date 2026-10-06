@@ -3,16 +3,18 @@ import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { StaffAccent } from '@/components/member-result';
+import { StaffAccent, hm } from '@/components/member-result';
 import { StaffHeader } from '@/components/staff-header';
 import { Card, ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { mockOrders } from '@/data/members';
 import { clubById, occupancyLabel, sessionsForDate, toISODate, trainerById } from '@/data/mock';
-import { useApp, useI18n } from '@/store/app-context';
+import { SESSION_MS, useApp, useI18n, useNow, usePresence } from '@/store/app-context';
 
 export default function StaffTodayScreen() {
-  const { staff, staffLog, orders, orderStatusOverrides } = useApp();
+  const { staff, staffLog, orders, orderStatusOverrides, checkoutMember } = useApp();
+  const now = useNow();
+  const inside = usePresence().filter((p) => p.clubId === (staff?.clubId ?? 'c1'));
   const { t, td } = useI18n();
   const clubId = staff?.clubId ?? 'c1';
   const club = clubById(clubId)!;
@@ -35,6 +37,36 @@ export default function StaffTodayScreen() {
           <Stat value={sessions.length} label={t('today_classes')} icon="people-outline" color={StaffAccent} onPress={() => router.push('/staff/classes')} />
           <Stat value={pendingOrders} label={t('today_orders')} icon="cube-outline" color={Colors.warning} onPress={() => router.push('/staff/orders')} />
         </View>
+
+        <Card style={{ gap: 8 }}>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <T type="subheading">{t('present_title')}</T>
+            <T type="display" color={Colors.success} style={{ fontSize: 28, lineHeight: 32 }}>
+              {inside.length}
+            </T>
+          </Row>
+          {inside.length === 0 ? (
+            <T type="small" color={Colors.textMuted}>
+              {t('present_empty')}
+            </T>
+          ) : (
+            inside.map((p) => (
+              <Row key={p.memberId} gap={Spacing.two} style={{ paddingVertical: 4 }}>
+                <View style={{ flex: 1 }}>
+                  <T type="body" style={{ fontWeight: '600' }} numberOfLines={1}>
+                    {p.name}
+                  </T>
+                  <T type="small" color={Colors.textSecondary}>
+                    {t('present_since', { from: hm(p.inTs), to: hm(p.until) })}
+                  </T>
+                </View>
+                <Pressable onPress={() => checkoutMember(p.memberId)} hitSlop={8} style={styles.exitBtn}>
+                  <Ionicons name="log-out-outline" size={18} color={Colors.text} />
+                </Pressable>
+              </Row>
+            ))
+          )}
+        </Card>
 
         <Card style={{ gap: 8 }}>
           <Row style={{ justifyContent: 'space-between' }}>
@@ -86,6 +118,11 @@ export default function StaffTodayScreen() {
                       {e.reason}
                     </T>
                   ) : null}
+                  {e.ok ? (
+                    <T type="small" color={!e.leftTs && now < e.ts + SESSION_MS ? Colors.success : Colors.textMuted}>
+                      {!e.leftTs && now < e.ts + SESSION_MS ? t('inside_until', { time: hm(e.ts + SESSION_MS) }) : t('left_at', { time: hm(e.leftTs ?? e.ts + SESSION_MS) })}
+                    </T>
+                  ) : null}
                 </View>
                 <T type="small" color={Colors.textMuted}>
                   {new Date(e.ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
@@ -120,5 +157,6 @@ const styles = StyleSheet.create({
   stat: { width: '48%', flexGrow: 1, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, gap: 4 },
   session: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   time: { borderLeftWidth: 3, paddingLeft: 10, minWidth: 64 },
+  exitBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   logRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: 12 },
 });

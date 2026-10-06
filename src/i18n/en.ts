@@ -665,4 +665,11 @@ export const en: Record<TKey, string> = {
   no_sales: 'No payments',
   filter_new: 'New',
   new_badge: 'New',
+  present_title: 'In the gym now',
+  present_empty: 'Nobody is inside',
+  present_since: 'Inside from {from} to {to}',
+  mark_exit: 'Mark exit',
+  left_at: 'Left at {time}',
+  inside_until: 'Inside until {time}',
+  kpi_inside: 'In the gym now',
 };

@@ -685,6 +685,13 @@ export const ru = {
   no_sales: 'Платежей нет',
   filter_new: 'Новые',
   new_badge: 'Новый',
+  present_title: 'Сейчас в зале',
+  present_empty: 'В зале никого нет',
+  present_since: 'В зале с {from} до {to}',
+  mark_exit: 'Отметить выход',
+  left_at: 'Ушёл в {time}',
+  inside_until: 'В зале до {time}',
+  kpi_inside: 'Сейчас в зале',
 } as const;
 
 export type TKey = keyof typeof ru;

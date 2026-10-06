@@ -7,7 +7,9 @@ import { Avatar, Badge, Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
 import { clubById, formatDateHuman, formatDateLong, formatPrice, plans, trainerById } from '@/data/mock';
-import { useApp, useI18n, useMembers, type MemberInfo } from '@/store/app-context';
+import { useApp, useI18n, useMembers, usePresence, type MemberInfo } from '@/store/app-context';
+
+export const hm = (ts: number) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
 export const StaffAccent = '#FF8562';
 
@@ -24,7 +26,8 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   const { t, td } = useI18n();
   // The scanner passes a snapshot; re-read so the card updates right after a plan is issued.
   const member = useMembers().byId(snapshot.id) ?? snapshot;
-  const { staff, logCheckin, grantPlan } = useApp();
+  const { staff, logCheckin, checkoutMember, grantPlan } = useApp();
+  const here = usePresence().find((p) => p.memberId === snapshot.id);
   const [logged, setLogged] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   const [granted, setGranted] = useState<string | null>(null);
@@ -108,7 +111,25 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
           ) : null}
         </View>
 
-        {logged ? (
+        {here ? (
+          <View style={{ gap: Spacing.two }}>
+            <View style={styles.logged}>
+              <Ionicons name="log-in" size={18} color={Colors.success} />
+              <T type="small" color={Colors.success} style={{ fontWeight: '700', flex: 1 }}>
+                {t('present_since', { from: hm(here.inTs), to: hm(here.until) })}
+              </T>
+            </View>
+            <Button
+              title={t('mark_exit')}
+              icon="log-out-outline"
+              variant="secondary"
+              onPress={() => {
+                checkoutMember(member.id);
+                setLogged(null);
+              }}
+            />
+          </View>
+        ) : logged ? (
           <View style={styles.logged}>
             <Ionicons name="checkmark-done" size={18} color={Colors.success} />
             <T type="small" color={Colors.success} style={{ fontWeight: '700', flex: 1 }}>
@@ -174,7 +195,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             </T>
           </View>
         ) : null}
-        {logged && onDone ? <Button title={t('scan_again')} variant="secondary" icon="qr-code-outline" onPress={onDone} size="sm" /> : null}
+        {(logged || here) && onDone ? <Button title={t('scan_again')} variant="secondary" icon="qr-code-outline" onPress={onDone} size="sm" /> : null}
       </View>
     </View>
   );

@@ -665,4 +665,11 @@ export const kk: Record<TKey, string> = {
   no_sales: 'Төлем жоқ',
   filter_new: 'Жаңа',
   new_badge: 'Жаңа',
+  present_title: 'Қазір залда',
+  present_empty: 'Залда ешкім жоқ',
+  present_since: 'Залда {from} – {to}',
+  mark_exit: 'Шығуды белгілеу',
+  left_at: '{time} шықты',
+  inside_until: '{time} дейін залда',
+  kpi_inside: 'Қазір залда',
 };
