@@ -93,6 +93,7 @@ type Actions = {
   updateUser: (patch: Partial<User>) => void;
   completeOnboarding: (profile: FitnessProfile) => void;
   grantPlan: (memberId: string, planId: string) => void;
+  recordSale: (sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff'>) => void;
   freezeMembership: (days: number) => void;
   unfreezeMembership: () => void;
   book: (sessionId: string) => void;
@@ -423,6 +424,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [state.user, state.remote, state.membership, state.staffCode],
   );
 
+  /** Cash register: one receipt per sale, shown to the owner under payments. */
+  const recordSale = useCallback((sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff'>) => {
+    setState((s) => ({ ...s, sales: [{ ...sale, id: `R${Date.now().toString(36).toUpperCase()}`, ts: Date.now(), clubId: s.staff?.clubId ?? 'c1', staff: s.staff?.name ?? '' }, ...s.sales] }));
+  }, []);
+
   const freezeMembership = useCallback((days: number) => {
     setState((s) => {
       if (!s.membership || days <= 0 || days > s.membership.freezeDaysLeft) return s;
@@ -525,6 +531,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateUser,
       completeOnboarding,
       grantPlan,
+      recordSale,
       freezeMembership,
       unfreezeMembership,
       book,
@@ -556,7 +563,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, logout, updateUser, completeOnboarding, grantPlan, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, logout, updateUser, completeOnboarding, grantPlan, recordSale, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
