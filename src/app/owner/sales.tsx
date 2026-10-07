@@ -54,7 +54,7 @@ export default function OwnerSales() {
                     {s.name}
                   </T>
                   <T type="small" color={Colors.textSecondary} numberOfLines={1}>
-                    {td(s.title)} • {clubById(s.clubId)?.name.replace('Gym Project ', '')}
+                    {td(s.title)} • {clubById(s.clubId)?.name.replace('Seven Gym ', '')}
                   </T>
                   <T type="small" color={Colors.textMuted} numberOfLines={1}>
                     {new Date(s.ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} • {methodLabel[s.method]}

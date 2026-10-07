@@ -21,12 +21,12 @@ export type Sale = {
 const shopItems = [
   { title: 'Протеин Whey 900 г', amount: 24990 },
   { title: 'BCAA 300 г', amount: 12900 },
-  { title: 'Шейкер Gym Project', amount: 4500 },
+  { title: 'Шейкер Seven Gym', amount: 4500 },
   { title: 'Креатин 300 г', amount: 9900 },
   { title: 'Перчатки для зала', amount: 6900 },
 ];
 const planPool = ['p1', 'p1', 'p3', 'p3', 'p6', 'p12', 'pd1'];
-const clubPool = ['c1', 'c1', 'c1', 'c2', 'c2', 'c3', 'c4'];
+const clubPool = ['c1', 'c1', 'c1', 'c2', 'c2', 'c3'];
 const methodPool: PayMethod[] = ['kaspi', 'kaspi', 'kaspi', 'card', 'card', 'cash', 'split'];
 const staffPool = ['Айбек', 'Динара', 'Руслан'];
 

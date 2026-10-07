@@ -52,7 +52,7 @@ module.exports = async function handler(req, res) {
       const digits = phone.replace(/\D/g, '');
       if (name.length < 2 || digits.length < 10 || digits.length > 12) return res.status(400).json({ error: 'bad data' });
       const day = new Date().toISOString().slice(0, 10);
-      const lead = { name, phone, clubId: ['c1', 'c2', 'c3', 'c4'].includes(body.clubId) ? body.clubId : '', lang: ['ru', 'kk', 'en'].includes(body.lang) ? body.lang : 'ru', ts: Date.now() };
+      const lead = { name, phone, clubId: ['c1', 'c2', 'c3'].includes(body.clubId) ? body.clubId : '', lang: ['ru', 'kk', 'en'].includes(body.lang) ? body.lang : 'ru', ts: Date.now() };
       await put(`leads/${day}-${digits}.json`, JSON.stringify(lead), { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json' });
       return res.status(200).json({ ok: true });
     }

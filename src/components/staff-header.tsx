@@ -37,7 +37,7 @@ export function StaffHeader({ title, right }: { title: string; right?: React.Rea
           <Pressable onPress={pickClub} style={styles.club}>
             <Ionicons name="business" size={13} color={StaffAccent} />
             <T type="small" color={StaffAccent} style={{ fontWeight: '700', fontSize: 12 }} numberOfLines={1}>
-              {club?.name.replace('Gym Project ', '')}
+              {club?.name.replace('Seven Gym ', '')}
             </T>
             <Ionicons name="chevron-down" size={12} color={StaffAccent} />
           </Pressable>

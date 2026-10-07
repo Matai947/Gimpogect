@@ -108,7 +108,7 @@ export default function CartScreen() {
         <SectionHeader title={t('where_pickup')} />
         <ChipRow style={{ paddingHorizontal: 0 }}>
           {clubs.map((c) => (
-            <Chip key={c.id} label={c.name.replace('Gym Project ', '')} icon="storefront-outline" active={clubId === c.id} onPress={() => setClubId(c.id)} />
+            <Chip key={c.id} label={c.name.replace('Seven Gym ', '')} icon="storefront-outline" active={clubId === c.id} onPress={() => setClubId(c.id)} />
           ))}
         </ChipRow>
         <T type="small" color={Colors.textMuted} style={{ marginTop: Spacing.two }}>

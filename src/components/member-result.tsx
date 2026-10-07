@@ -78,7 +78,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
               {member.isSelf ? <Badge label={t('self_badge')} color={StaffAccent} /> : null}
             </Row>
             <T type="small" color={Colors.textSecondary}>
-              {member.phone} • {club?.name.replace('Gym Project ', '')}
+              {member.phone} • {club?.name.replace('Seven Gym ', '')}
             </T>
           </View>
           <View style={[styles.verdict, { backgroundColor: decision.ok ? 'rgba(76,195,138,0.15)' : 'rgba(240,96,93,0.15)' }]}>

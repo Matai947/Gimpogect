@@ -32,7 +32,7 @@ export const members: Member[] = [
   { id: 'u_77779990011', name: 'Ерасыл Жумабеков', phone: '+7 777 999 00 11', planId: 'pd1', endDate: d(18), homeClubId: 'c1', visitsThisMonth: 8, since: d(-12), lastVisit: d(-1), visitsTotal: 8, age: 22, goal: 'gain', freezeDaysLeft: 7 },
   { id: 'u_77083334455', name: 'Виктория Ли', phone: '+7 708 333 44 55', planId: 'p3', endDate: d(2), homeClubId: 'c2', visitsThisMonth: 12, note: 'Скоро окончание, предложить продление', since: d(-88), lastVisit: d(-1), visitsTotal: 36, age: 27, goal: 'lose', trainerId: 't3', freezeDaysLeft: 4 },
   { id: 'u_77016667788', name: 'Арман Досжанов', phone: '+7 701 666 77 88', homeClubId: 'c1', visitsThisMonth: 0, note: 'Гостевой визит, абонемента нет', since: d(0), visitsTotal: 0, age: 30, goal: 'tone', freezeDaysLeft: 0 },
-  { id: 'u_77752221133', name: 'Сабина Оразбекова', phone: '+7 775 222 11 33', planId: 'p12', endDate: d(330), homeClubId: 'c4', visitsThisMonth: 16, since: d(-900), lastVisit: d(-2), visitsTotal: 410, age: 36, goal: 'strength', trainerId: 't4', freezeDaysLeft: 90 },
+  { id: 'u_77752221133', name: 'Сабина Оразбекова', phone: '+7 775 222 11 33', planId: 'p12', endDate: d(330), homeClubId: 'c1', visitsThisMonth: 16, since: d(-900), lastVisit: d(-2), visitsTotal: 410, age: 36, goal: 'strength', trainerId: 't4', freezeDaysLeft: 90 },
   { id: 'u_77019998877', name: 'Нурлан Естаев', phone: '+7 701 999 88 77', planId: 'p6', endDate: d(60), homeClubId: 'c1', visitsThisMonth: 4, since: d(-125), lastVisit: d(-6), visitsTotal: 22, age: 45, goal: 'tone', freezeDaysLeft: 30 },
 ];
 

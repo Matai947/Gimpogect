@@ -54,7 +54,7 @@ export default function HomeScreen() {
         <Pressable onPress={() => router.push('/(tabs)/clubs')} style={styles.clubPill}>
           <Ionicons name="location" size={14} color={Colors.accent} />
           <T type="small" style={{ fontWeight: '600' }} numberOfLines={1}>
-            {homeClub?.name.replace('Gym Project ', '') ?? ''}
+            {homeClub?.name.replace('Seven Gym ', '') ?? ''}
           </T>
         </Pressable>
         <IconButton icon="notifications-outline" onPress={() => router.push('/news/n1')} />
@@ -260,7 +260,7 @@ export default function HomeScreen() {
                   <View style={{ flex: 1 }}>
                     <T type="subheading">{td(s.title)}</T>
                     <T type="small" color={Colors.textSecondary} numberOfLines={1}>
-                      {trainer?.name} • {club?.name.replace('Gym Project ', '')}
+                      {trainer?.name} • {club?.name.replace('Seven Gym ', '')}
                     </T>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
@@ -283,7 +283,7 @@ export default function HomeScreen() {
               <Card key={c.id} onPress={() => router.push(`/club/${c.id}`)} style={{ width: 200, gap: Spacing.two }}>
                 <Row style={{ justifyContent: 'space-between' }}>
                   <T type="subheading" numberOfLines={1} style={{ flex: 1 }}>
-                    {c.name.replace('Gym Project ', '')}
+                    {c.name.replace('Seven Gym ', '')}
                   </T>
                   {c.is24h ? <Badge label="24/7" color={Colors.info} /> : null}
                 </Row>

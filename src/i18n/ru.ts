@@ -354,7 +354,7 @@ export const ru = {
   logout: 'Выйти',
   logout_q: 'Выйти из аккаунта?',
   logout_body: 'Данные демо-профиля будут сброшены.',
-  version: 'Gym Project • версия 1.0.0 (демо)',
+  version: 'Seven Gym • версия 1.0.0 (демо)',
   documents: 'Документы',
 
   // shop
@@ -514,7 +514,7 @@ export const ru = {
   scan_permission: 'Нужен доступ к камере для сканирования',
   scan_allow: 'Разрешить камеру',
   scan_unknown: 'Код не распознан',
-  scan_unknown_sub: 'Это не QR Gym Project. Попробуйте ещё раз или введите номер вручную.',
+  scan_unknown_sub: 'Это не QR Seven Gym. Попробуйте ещё раз или введите номер вручную.',
   scan_not_found: 'Участник не найден',
   scan_again: 'Сканировать ещё',
   member_visits_month: '{n} визитов за месяц',

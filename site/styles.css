@@ -34,8 +34,9 @@ p { margin: 0; }
 
 /* nav */
 .nav { position: fixed; inset: 0 0 auto 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 clamp(16px, 3vw, 40px); height: 68px; background: rgba(10,10,10,.72); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,.07); }
-.logo { font: 700 20px 'Unbounded'; letter-spacing: -0.02em; }
-.logo span { color: var(--violet); margin-left: 2px; }
+.logo { display: inline-flex; align-items: center; }
+.logo img { height: 40px; width: auto; }
+.foot .logo img { height: 52px; }
 .links { display: flex; gap: 28px; font-weight: 500; font-size: 15px; }
 .links a { color: var(--muted); transition: color .15s; }
 .links a:hover { color: #fff; }
@@ -219,7 +220,7 @@ input:focus, select:focus { outline: none; border-color: var(--violet); }
   /* narrow phones (360 px): the header must fit logo, language switch and menu button */
   .nav { gap: 8px; padding: 0 12px; }
   .nav-right { gap: 6px; }
-  .logo { font-size: 16px; }
+  .logo img { height: 30px; }
   .lang button { padding: 6px 8px; font-size: 11px; }
   .burger { width: 40px; }
   .burger i { left: 9px; right: 9px; }

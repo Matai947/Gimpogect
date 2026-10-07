@@ -120,7 +120,7 @@ export default function OwnerOverview() {
         <View style={styles.card}>
           <T type="heading">{t('by_club')}</T>
           {clubs.map((c) => (
-            <Share key={c.id} label={clubById(c.id)?.name.replace('Gym Project ', '') ?? ''} value={d.byClub.find(([id]) => id === c.id)?.[1] ?? 0} total={revenue} />
+            <Share key={c.id} label={clubById(c.id)?.name.replace('Seven Gym ', '') ?? ''} value={d.byClub.find(([id]) => id === c.id)?.[1] ?? 0} total={revenue} />
           ))}
         </View>
 

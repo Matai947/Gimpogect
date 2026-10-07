@@ -63,7 +63,7 @@ export default function TrainersScreen() {
                 <Row gap={6}>
                   <Ionicons name="location-outline" size={13} color={Colors.textMuted} />
                   <T type="small" color={Colors.textMuted} style={{ flex: 1 }} numberOfLines={1}>
-                    {club?.name.replace('Gym Project ', '')} • {t('exp_years', { n: tr.experienceYears, y: tp(tr.experienceYears, 'years_pl') })}
+                    {club?.name.replace('Seven Gym ', '')} • {t('exp_years', { n: tr.experienceYears, y: tp(tr.experienceYears, 'years_pl') })}
                   </T>
                 </Row>
                 <Row style={{ justifyContent: 'space-between', marginTop: 2 }}>

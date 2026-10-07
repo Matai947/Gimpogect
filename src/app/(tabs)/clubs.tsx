@@ -9,7 +9,7 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubHours, clubs, occupancyLabel } from '@/data/mock';
 import { useApp, useI18n } from '@/store/app-context';
 
-const cities = ['Все', 'Алматы', 'Астана'];
+const cities = ['Все', 'Алматы'];
 
 export default function ClubsScreen() {
   const { favorites, toggleFavorite, user } = useApp();

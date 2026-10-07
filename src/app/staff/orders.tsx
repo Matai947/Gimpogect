@@ -64,7 +64,7 @@ export default function StaffOrdersScreen() {
                 <View>
                   <T type="heading">{o.id}</T>
                   <T type="small" color={Colors.textSecondary}>
-                    {formatDateHuman(o.date)} • {club?.name.replace('Gym Project ', '')}
+                    {formatDateHuman(o.date)} • {club?.name.replace('Seven Gym ', '')}
                   </T>
                 </View>
                 <Badge label={t(statusKey[o.status])} color={statusColor[o.status]} />

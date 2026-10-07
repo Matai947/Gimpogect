@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -51,17 +52,14 @@ export default function AuthScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#1C1230', Colors.background]} style={StyleSheet.absoluteFill} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} />
+      <LinearGradient colors={['#161616', Colors.background]} style={StyleSheet.absoluteFill} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <View style={styles.topBar}>
             <LangSwitch compact />
           </View>
           <View style={styles.hero}>
-            <View style={styles.logo}>
-              <Ionicons name="barbell" size={34} color={Colors.onAccent} />
-            </View>
-            <T type="display" style={{ fontSize: 34, lineHeight: 40 }}>Gym Project</T>
+            <Image source={require('../../assets/images/logo-primary.png')} style={styles.logoImg} contentFit="contain" accessibilityLabel="Seven Gym" />
             <T type="body" color={Colors.textSecondary} style={{ textAlign: 'center', maxWidth: 280 }}>
               {t('auth_tagline')}
             </T>
@@ -154,7 +152,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   topBar: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: Spacing.three, paddingTop: Spacing.two },
   hero: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three, paddingHorizontal: Spacing.four },
-  logo: { width: 72, height: 72, borderRadius: 22, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.two },
+  logoImg: { width: 240, height: 128, marginBottom: Spacing.two },
   sheet: {
     backgroundColor: Colors.surface,
     borderTopLeftRadius: Radius.xl,

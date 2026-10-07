@@ -342,7 +342,7 @@ export const kk: Record<TKey, string> = {
   logout: 'Шығу',
   logout_q: 'Аккаунттан шығасыз ба?',
   logout_body: 'Демо-профиль деректері өшіріледі.',
-  version: 'Gym Project • нұсқа 1.0.0 (демо)',
+  version: 'Seven Gym • нұсқа 1.0.0 (демо)',
   documents: 'Құжаттар',
 
   shop_sub: 'Спорттық тағам, аксессуарлар мен киім • клубтан алып кету',
@@ -495,7 +495,7 @@ export const kk: Record<TKey, string> = {
   scan_permission: 'Сканерлеу үшін камераға рұқсат керек',
   scan_allow: 'Камераға рұқсат беру',
   scan_unknown: 'Код танылмады',
-  scan_unknown_sub: 'Бұл Gym Project QR-ы емес. Қайталап көріңіз немесе нөмірді қолмен енгізіңіз.',
+  scan_unknown_sub: 'Бұл Seven Gym QR-ы емес. Қайталап көріңіз немесе нөмірді қолмен енгізіңіз.',
   scan_not_found: 'Мүше табылмады',
   scan_again: 'Тағы сканерлеу',
   member_visits_month: 'айына {n} келу',

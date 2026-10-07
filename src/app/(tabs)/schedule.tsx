@@ -72,7 +72,7 @@ export default function ScheduleScreen() {
       <ChipRow>
         <Chip label={t('all_clubs')} active={clubId === 'all'} onPress={() => setClubId('all')} icon="location-outline" />
         {clubs.map((c) => (
-          <Chip key={c.id} label={c.name.replace('Gym Project ', '')} active={clubId === c.id} onPress={() => setClubId(c.id)} />
+          <Chip key={c.id} label={c.name.replace('Seven Gym ', '')} active={clubId === c.id} onPress={() => setClubId(c.id)} />
         ))}
       </ChipRow>
       <View style={{ height: Spacing.two }} />
@@ -107,7 +107,7 @@ export default function ScheduleScreen() {
                     {booked ? <Badge label={t('you_booked')} color={Colors.success} /> : null}
                   </Row>
                   <T type="small" color={Colors.textSecondary} numberOfLines={1}>
-                    {trainer?.name} • {club?.name.replace('Gym Project ', '')} • {td(s.room)}
+                    {trainer?.name} • {club?.name.replace('Seven Gym ', '')} • {td(s.room)}
                   </T>
                   <Row gap={6}>
                     <Ionicons name="people-outline" size={13} color={left <= 3 ? Colors.warning : Colors.textMuted} />

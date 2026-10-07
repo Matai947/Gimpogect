@@ -24,7 +24,7 @@ export default function ProductEditScreen() {
   const existing = id ? byId(id) : undefined;
 
   const [name, setName] = useState(existing?.name ?? '');
-  const [brand, setBrand] = useState(existing?.brand ?? 'Gym Project');
+  const [brand, setBrand] = useState(existing?.brand ?? 'Seven Gym');
   const [category, setCategory] = useState<ShopCategory | null>(existing?.category ?? null);
   const [price, setPrice] = useState(existing ? String(existing.price) : '');
   const [oldPrice, setOldPrice] = useState(existing?.oldPrice ? String(existing.oldPrice) : '');
@@ -73,7 +73,7 @@ export default function ProductEditScreen() {
     const product: Product = {
       id: existing?.id ?? `c_${Date.now().toString(36)}`,
       name: name.trim(),
-      brand: brand.trim() || 'Gym Project',
+      brand: brand.trim() || 'Seven Gym',
       category,
       price: priceN,
       oldPrice: oldPrice ? parseInt(oldPrice.replace(/\D/g, ''), 10) || undefined : undefined,
@@ -157,7 +157,7 @@ export default function ProductEditScreen() {
           <Label text={t('p_name')} required />
           <Field value={name} onChange={setName} placeholder={t('p_name_ph')} />
           <Label text={t('p_brand')} />
-          <Field value={brand} onChange={setBrand} placeholder="Gym Project" />
+          <Field value={brand} onChange={setBrand} placeholder="Seven Gym" />
 
           <Label text={t('p_category')} required />
           <Row gap={Spacing.two} style={{ flexWrap: 'wrap' }}>

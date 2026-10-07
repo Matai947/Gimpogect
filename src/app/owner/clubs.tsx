@@ -36,7 +36,7 @@ export default function OwnerClubs() {
             <View key={c.id} style={styles.card}>
               <Row style={{ justifyContent: 'space-between' }}>
                 <T type="heading" style={{ flex: 1 }}>
-                  {c.name.replace('Gym Project ', '')}
+                  {c.name.replace('Seven Gym ', '')}
                 </T>
                 <T type="small" color={Colors.textSecondary}>
                   {c.city}
@@ -68,7 +68,7 @@ export default function OwnerClubs() {
                   {e.name}
                 </T>
                 <T type="small" color={Colors.textSecondary} numberOfLines={1}>
-                  {e.ok ? (!e.leftTs && now < e.ts + SESSION_MS ? t('inside_until', { time: hm(e.ts + SESSION_MS) }) : t('left_at', { time: hm(e.leftTs ?? e.ts + SESSION_MS) })) : `${t('entry_denied')}${e.reason ? `: ${e.reason}` : ''}`} • {clubById(e.clubId)?.name.replace('Gym Project ', '')}
+                  {e.ok ? (!e.leftTs && now < e.ts + SESSION_MS ? t('inside_until', { time: hm(e.ts + SESSION_MS) }) : t('left_at', { time: hm(e.leftTs ?? e.ts + SESSION_MS) })) : `${t('entry_denied')}${e.reason ? `: ${e.reason}` : ''}`} • {clubById(e.clubId)?.name.replace('Seven Gym ', '')}
                 </T>
               </View>
               <T type="small" color={OwnerAccent}>

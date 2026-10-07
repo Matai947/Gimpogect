@@ -88,7 +88,7 @@ export type NewsItem = {
 export const clubs: Club[] = [
   {
     id: 'c1',
-    name: 'Gym Project Достык',
+    name: 'Seven Gym Достык',
     city: 'Алматы',
     address: 'пр. Достык, 97 (БЦ «Достык Плаза»)',
     hours: 'Круглосуточно',
@@ -114,7 +114,7 @@ export const clubs: Club[] = [
   },
   {
     id: 'c2',
-    name: 'Gym Project Esentai',
+    name: 'Seven Gym Esentai',
     city: 'Алматы',
     address: 'пр. Аль-Фараби, 77/8 (Esentai Mall)',
     hours: '06:00 – 24:00',
@@ -139,7 +139,7 @@ export const clubs: Club[] = [
   },
   {
     id: 'c3',
-    name: 'Gym Project Абая',
+    name: 'Seven Gym Абая',
     city: 'Алматы',
     address: 'пр. Абая, 150/230',
     hours: '07:00 – 23:00',
@@ -161,30 +161,6 @@ export const clubs: Club[] = [
     hoursDetail: ['07:00–23:00', '08:00–22:00', '09:00–21:00'],
     liked: ['Удобно у метро', 'Сильная бокс-зона', 'Всегда чисто'],
     reviewsList: [{ name: 'Руслан Ж.', when: '1 неделю назад', text: 'Бокс-зона топ, мешки новые, тренер Руслан ставит удар с нуля.', stars: 5 }, { name: 'Алина', when: '2 месяца назад', text: 'Компактно, но всё есть. В час пик тесновато.', stars: 4 }],
-  },
-  {
-    id: 'c4',
-    name: 'Gym Project Astana Mega',
-    city: 'Астана',
-    address: 'ул. Коргалжын, 1 (ТРЦ «Mega Silk Way»)',
-    hours: 'Круглосуточно',
-    is24h: true,
-    occupancy: 45,
-    rating: 4.7,
-    reviews: 710,
-    distanceKm: 1180,
-    phone: '+7 717 200 00 04',
-    photos: [
-      'https://images.unsplash.com/photo-1757924284732-4189190321cf?w=1200&q=80',
-      'https://images.unsplash.com/photo-1765728617805-b9f22d64e5b3?w=1200&q=80',
-    ],
-    amenities: ['Тренажёрный зал', 'Бассейн', 'Кроссфит-зона', 'Групповые залы', 'Сауна', 'Парковка'],
-    description: 'Самый большой клуб сети в столице: 5 000 м², бассейн, кроссфит-бокс и восемь групповых программ ежедневно.',
-    areaM2: 5000,
-    machines: 200,
-    hoursDetail: ['Круглосуточно', 'Круглосуточно', 'Круглосуточно'],
-    liked: ['Огромная площадь', 'Кроссфит-бокс', 'Бесплатный паркинг'],
-    reviewsList: [{ name: 'Сабина О.', when: '5 дней назад', text: 'Самый большой зал в столице, 8 групповых в день. Паркинг у Mega бесплатный.', stars: 5 }, { name: 'Nurlan E.', when: '1 месяц назад', text: 'Бассейн и сауна после тренировки, что ещё нужно.', stars: 5 }],
   },
 ];
 
@@ -247,7 +223,7 @@ export const trainers: Trainer[] = [
   {
     id: 't5',
     name: 'Ерлан Нурланов',
-    clubId: 'c4',
+    clubId: 'c2',
     specialties: ['Плавание', 'Аква', 'Триатлон'],
     rating: 4.7,
     reviews: 96,
@@ -282,7 +258,7 @@ export const classTemplates: ClassTemplate[] = [
   { id: 'k7', title: 'Сайкл', category: 'Кардио', clubId: 'c2', trainerId: 't6', time: '19:30', durationMin: 45, weekdays: [1, 2, 3, 4, 5], capacity: 24, level: 'Средний', room: 'Сайкл-студия', description: 'Интервальная езда под музыку с контролем пульса.', color: '#FFB347' },
   { id: 'k8', title: 'TRX Total Body', category: 'Сила', clubId: 'c1', trainerId: 't4', time: '08:00', durationMin: 50, weekdays: [6, 0], capacity: 16, level: 'Все уровни', room: 'Зал 3', description: 'Функциональная тренировка с петлями TRX на всё тело.', color: '#F2B632' },
   { id: 'k9', title: 'Аква-аэробика', category: 'Аква', clubId: 'c1', trainerId: 't5', time: '11:00', durationMin: 45, weekdays: [2, 4, 6], capacity: 15, level: 'Все уровни', room: 'Бассейн', description: 'Кардио в воде без нагрузки на суставы.', color: '#FF8562' },
-  { id: 'k10', title: 'Силовой класс', category: 'Сила', clubId: 'c4', trainerId: 't1', time: '18:30', durationMin: 60, weekdays: [1, 3, 5], capacity: 20, level: 'Начальный', room: 'Зал 1', description: 'Базовые упражнения со штангой и гантелями под контролем тренера.', color: '#FF7A45' },
+  { id: 'k10', title: 'Силовой класс', category: 'Сила', clubId: 'c1', trainerId: 't1', time: '18:30', durationMin: 60, weekdays: [1, 3, 5], capacity: 20, level: 'Начальный', room: 'Зал 1', description: 'Базовые упражнения со штангой и гантелями под контролем тренера.', color: '#FF7A45' },
   { id: 'k11', title: 'Вечерняя йога', category: 'Йога', clubId: 'c1', trainerId: 't2', time: '20:30', durationMin: 60, weekdays: [2, 4], capacity: 20, level: 'Все уровни', room: 'Зал 2', description: 'Расслабляющая практика в конце дня: инь-йога и медитация.', color: '#7C5CFF' },
   { id: 'k12', title: 'HIIT', category: 'Кардио', clubId: 'c3', trainerId: 't4', time: '07:00', durationMin: 40, weekdays: [1, 3, 5], capacity: 18, level: 'Продвинутый', room: 'Зал 1', description: 'Высокоинтенсивные интервалы. Максимум результата за 40 минут.', color: '#FFB347' },
 ];

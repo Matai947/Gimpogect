@@ -38,7 +38,7 @@ export default function ClubScreen() {
     <Screen edges={[]}>
       <Stack.Screen
         options={{
-          title: club.name.replace('Gym Project ', ''),
+          title: club.name.replace('Seven Gym ', ''),
           headerRight: () => <IconButton icon={fav ? 'heart' : 'heart-outline'} color={fav ? Colors.danger : Colors.text} bg="transparent" onPress={() => toggleFavorite(club.id)} />,
         }}
       />

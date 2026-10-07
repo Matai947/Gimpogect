@@ -49,7 +49,7 @@ export function LeadsCard({ accent }: { accent: string }) {
               {l.name}
             </T>
             <T type="small" color={Colors.textSecondary} numberOfLines={1}>
-              {l.phone} • {l.clubId ? clubById(l.clubId)?.name.replace('Gym Project ', '') : t('leads_any')} • {new Date(l.ts).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} {new Date(l.ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+              {l.phone} • {l.clubId ? clubById(l.clubId)?.name.replace('Seven Gym ', '') : t('leads_any')} • {new Date(l.ts).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} {new Date(l.ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
             </T>
           </View>
           <Ionicons name="call-outline" size={20} color={accent} />

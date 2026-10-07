@@ -258,8 +258,8 @@ export const products: Product[] = [
   // Аксессуары
   {
     id: 's16',
-    name: 'Шейкер Gym Project 700 мл',
-    brand: 'Gym Project',
+    name: 'Шейкер Seven Gym 700 мл',
+    brand: 'Seven Gym',
     category: 'Аксессуары',
     price: 3900,
     image: img('photo-1593188543121-6441d07ad2e5'),
@@ -286,7 +286,7 @@ export const products: Product[] = [
   {
     id: 's18',
     name: 'Набор резиновых петель, 5 шт',
-    brand: 'Gym Project',
+    brand: 'Seven Gym',
     category: 'Аксессуары',
     price: 12900,
     oldPrice: 15900,
@@ -312,7 +312,7 @@ export const products: Product[] = [
   {
     id: 's20',
     name: 'Полотенце microfiber',
-    brand: 'Gym Project',
+    brand: 'Seven Gym',
     category: 'Аксессуары',
     price: 3500,
     image: img('photo-1638183130424-873c491cca1b'),
@@ -325,7 +325,7 @@ export const products: Product[] = [
   {
     id: 's21',
     name: 'Спортивная сумка 40 л',
-    brand: 'Gym Project',
+    brand: 'Seven Gym',
     category: 'Аксессуары',
     price: 18900,
     image: img('photo-1692506530242-c12d6c3ae2e2'),
@@ -338,7 +338,7 @@ export const products: Product[] = [
   {
     id: 's22',
     name: 'Футболка Dry-Fit',
-    brand: 'Gym Project',
+    brand: 'Seven Gym',
     category: 'Одежда',
     price: 9900,
     image: img('photo-1758448756350-3d0eec02ba37'),

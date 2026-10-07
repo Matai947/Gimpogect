@@ -342,7 +342,7 @@ export const en: Record<TKey, string> = {
   logout: 'Log out',
   logout_q: 'Log out?',
   logout_body: 'Demo profile data will be reset.',
-  version: 'Gym Project • version 1.0.0 (demo)',
+  version: 'Seven Gym • version 1.0.0 (demo)',
   documents: 'Documents',
 
   shop_sub: 'Nutrition, gear and apparel • pick up at the club',
@@ -495,7 +495,7 @@ export const en: Record<TKey, string> = {
   scan_permission: 'Camera access is needed to scan',
   scan_allow: 'Allow camera',
   scan_unknown: 'Code not recognized',
-  scan_unknown_sub: 'This is not a Gym Project QR. Try again or enter the number manually.',
+  scan_unknown_sub: 'This is not a Seven Gym QR. Try again or enter the number manually.',
   scan_not_found: 'Member not found',
   scan_again: 'Scan again',
   member_visits_month: '{n} visits this month',
