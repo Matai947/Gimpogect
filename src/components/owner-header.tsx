@@ -8,7 +8,7 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubs } from '@/data/mock';
 import { useApp, useI18n } from '@/store/app-context';
 
-export const OwnerAccent = '#FFC736';
+export const OwnerAccent = '#B8952B';
 
 /** Gold header band for owner CRM screens. Exit is direct: Alert.alert is a no-op on web. */
 export function OwnerHeader({ title }: { title: string }) {
@@ -52,8 +52,8 @@ export function OwnerHeader({ title }: { title: string }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { backgroundColor: '#141414' },
-  band: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.three, borderBottomWidth: 1, borderBottomColor: 'rgba(255,199,54,0.25)' },
-  tag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 30, borderRadius: Radius.pill, backgroundColor: 'rgba(255,199,54,0.12)', borderWidth: 1, borderColor: 'rgba(255,199,54,0.35)' },
-  iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
+  wrap: { backgroundColor: '#FFFFFF' },
+  band: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.three, borderBottomWidth: 1, borderBottomColor: 'rgba(184,149,43,0.25)' },
+  tag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 30, borderRadius: Radius.pill, backgroundColor: 'rgba(184,149,43,0.12)', borderWidth: 1, borderColor: 'rgba(184,149,43,0.35)' },
+  iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.06)', alignItems: 'center', justifyContent: 'center' },
 });

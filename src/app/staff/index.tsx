@@ -167,7 +167,7 @@ const CORNER = 26;
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   body: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },
-  cameraWrap: { height: 280, borderRadius: Radius.xl, overflow: 'hidden', backgroundColor: '#05090C', borderWidth: 1, borderColor: 'rgba(255,133,98,0.35)' },
+  cameraWrap: { height: 280, borderRadius: Radius.xl, overflow: 'hidden', backgroundColor: '#05090C', borderWidth: 1, borderColor: 'rgba(217,100,58,0.35)' },
   noCamera: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two, padding: Spacing.three },
   frame: { position: 'absolute', left: 40, right: 40, top: 40, bottom: 40 },
   corner: { position: 'absolute', width: CORNER, height: CORNER, borderColor: StaffAccent },

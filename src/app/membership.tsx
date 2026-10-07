@@ -33,7 +33,7 @@ export default function MembershipScreen() {
   return (
     <Screen edges={[]} contentStyle={{ paddingBottom: 140 }}>
       <View style={styles.body}>
-        <LinearGradient colors={info.active ? ['#2A1A3A', Colors.surface] : ['#3A1A1A', Colors.surface]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.current}>
+        <LinearGradient colors={info.active ? ['#FFF6DC', Colors.surface] : ['#FCE9E8', Colors.surface]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.current}>
           <Row style={{ justifyContent: 'space-between' }}>
             <T type="caption">{t('ms_current')}</T>
             {info.active ? <Badge label={info.frozen ? t('status_frozen') : t('status_active')} color={info.frozen ? Colors.info : Colors.success} /> : <Badge label={t('status_inactive')} color={Colors.danger} />}
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   body: { padding: Spacing.three },
   current: { borderRadius: Radius.xl, padding: Spacing.four, borderWidth: 1, borderColor: Colors.border },
   plan: { backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1.5, borderColor: Colors.border, padding: Spacing.three },
-  planActive: { borderColor: Colors.accent, backgroundColor: 'rgba(154,61,205,0.06)' },
+  planActive: { borderColor: Colors.accent, backgroundColor: 'rgba(212,175,55,0.06)' },
   pay: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three },
   footer: {
     position: 'absolute',

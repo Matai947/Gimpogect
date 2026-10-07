@@ -116,5 +116,5 @@ const styles = StyleSheet.create({
   body: { padding: Spacing.three, paddingTop: Spacing.two, gap: Spacing.two, paddingBottom: Spacing.six },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: 10, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   thumb: { width: 56, height: 56, borderRadius: 12, backgroundColor: Colors.surfaceAlt },
-  restore: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, height: 32, borderRadius: Radius.pill, borderWidth: 1, borderColor: 'rgba(255,133,98,0.5)' },
+  restore: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, height: 32, borderRadius: Radius.pill, borderWidth: 1, borderColor: 'rgba(217,100,58,0.5)' },
 });

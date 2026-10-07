@@ -194,7 +194,7 @@ export function Badge({ label, color = Colors.accent, textColor }: { label: stri
   );
 }
 
-export function ProgressBar({ value, color = Colors.accent, height = 6, track = 'rgba(255,255,255,0.12)' }: { value: number; color?: string; height?: number; track?: string }) {
+export function ProgressBar({ value, color = Colors.accent, height = 6, track = 'rgba(0,0,0,0.1)' }: { value: number; color?: string; height?: number; track?: string }) {
   return (
     <View style={{ height, borderRadius: height / 2, backgroundColor: track, overflow: 'hidden' }}>
       <View style={{ width: `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`, height: '100%', backgroundColor: color, borderRadius: height / 2 }} />

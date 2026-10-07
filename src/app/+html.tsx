@@ -9,9 +9,9 @@ export default function Root({ children }: PropsWithChildren) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content="#0D1320" />
+        <meta name="theme-color" content="#F6F6F6" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: css }} />
       </head>
@@ -21,7 +21,7 @@ export default function Root({ children }: PropsWithChildren) {
 }
 
 const css = `
-  html, body { background: #0D1320; }
+  html, body { background: #F6F6F6; }
   input, textarea { outline: none !important; box-shadow: none !important; -webkit-appearance: none; appearance: none; }
   input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   input[type=number] { -moz-appearance: textfield; }

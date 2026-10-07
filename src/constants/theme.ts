@@ -1,56 +1,55 @@
 import { Platform } from 'react-native';
 
-/** s89-style: carbon black base, white caps headlines, violet pill buttons, coral and yellow secondary accents. */
+/** Seven Gym brand book on a white base: onyx text, gold accent, light paper surfaces. */
 export const Colors = {
-  background: '#0A0A0A',
-  surface: '#1F1F1F',
-  surfaceAlt: '#2A2A2A',
-  border: '#333333',
-  text: '#FFFFFF',
-  textSecondary: '#B5B5B5',
-  textMuted: '#777777',
-  accent: '#9A3DCD',
-  accentDark: '#7B2FB0',
-  onAccent: '#FFFFFF',
-  success: '#4CC38A',
-  warning: '#FF8562',
-  danger: '#E6424F',
-  info: '#FFC736',
+  background: '#F6F6F6',
+  surface: '#FFFFFF',
+  surfaceAlt: '#EFEFEF',
+  border: '#E4E4E4',
+  text: '#0B0B0B',
+  textSecondary: '#5F5F5F',
+  textMuted: '#9A9A9A',
+  accent: '#D4AF37',
+  accentDark: '#B8952B',
+  onAccent: '#0B0B0B',
+  success: '#1F8A4C',
+  warning: '#D9643A',
+  danger: '#D63B47',
+  info: '#C9A227',
 } as const;
 
 /** Tints of the accent for chips, icon wells and highlighted rows. */
 export const Tint = {
-  accent08: 'rgba(154,61,205,0.08)',
-  accent12: 'rgba(154,61,205,0.14)',
-  accent25: 'rgba(154,61,205,0.3)',
-  accent45: 'rgba(154,61,205,0.5)',
+  accent08: 'rgba(212,175,55,0.10)',
+  accent12: 'rgba(212,175,55,0.16)',
+  accent25: 'rgba(212,175,55,0.32)',
+  accent45: 'rgba(212,175,55,0.5)',
 } as const;
 
 /**
- * Unbounded (display) + Onest (text). Both ship Cyrillic Extended, so Kazakh letters render.
+ * Raleway (display) + Montserrat (text), per the brand book. Both cover Kazakh Cyrillic.
  * Custom fonts need one family per weight; `fontFor` maps a weight to the right file.
  */
 export const FontFiles = {
-  Unbounded_500Medium: 'Unbounded_500Medium',
-  Unbounded_600SemiBold: 'Unbounded_600SemiBold',
-  Unbounded_700Bold: 'Unbounded_700Bold',
-  Onest_400Regular: 'Onest_400Regular',
-  Onest_500Medium: 'Onest_500Medium',
-  Onest_600SemiBold: 'Onest_600SemiBold',
-  Onest_700Bold: 'Onest_700Bold',
-  Onest_800ExtraBold: 'Onest_800ExtraBold',
+  Raleway_700Bold: 'Raleway_700Bold',
+  Raleway_800ExtraBold: 'Raleway_800ExtraBold',
+  Montserrat_400Regular: 'Montserrat_400Regular',
+  Montserrat_500Medium: 'Montserrat_500Medium',
+  Montserrat_600SemiBold: 'Montserrat_600SemiBold',
+  Montserrat_700Bold: 'Montserrat_700Bold',
+  Montserrat_800ExtraBold: 'Montserrat_800ExtraBold',
 } as const;
 
 export type FontRole = 'display' | 'text';
 
 export function fontFor(role: FontRole, weight?: string | number): string {
   const w = Number(weight ?? (role === 'display' ? 700 : 400)) || 400;
-  if (role === 'display') return w >= 700 ? FontFiles.Unbounded_700Bold : w >= 600 ? FontFiles.Unbounded_600SemiBold : FontFiles.Unbounded_500Medium;
-  if (w >= 800) return FontFiles.Onest_800ExtraBold;
-  if (w >= 700) return FontFiles.Onest_700Bold;
-  if (w >= 600) return FontFiles.Onest_600SemiBold;
-  if (w >= 500) return FontFiles.Onest_500Medium;
-  return FontFiles.Onest_400Regular;
+  if (role === 'display') return w >= 800 ? FontFiles.Raleway_800ExtraBold : FontFiles.Raleway_700Bold;
+  if (w >= 800) return FontFiles.Montserrat_800ExtraBold;
+  if (w >= 700) return FontFiles.Montserrat_700Bold;
+  if (w >= 600) return FontFiles.Montserrat_600SemiBold;
+  if (w >= 500) return FontFiles.Montserrat_500Medium;
+  return FontFiles.Montserrat_400Regular;
 }
 
 export const Fonts = Platform.select({

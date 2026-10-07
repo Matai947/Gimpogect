@@ -6,8 +6,8 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "gymproject",
-    "userInterfaceStyle": "dark",
-    "backgroundColor": "#080808",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F6F6F6",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "kz.matai.gymproject",

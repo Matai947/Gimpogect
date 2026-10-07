@@ -25,7 +25,7 @@ export function LangSwitch({ compact }: { compact?: boolean }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: Radius.pill, padding: 3, borderWidth: 1, borderColor: Colors.border, alignSelf: 'flex-start' },
+  wrap: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: Radius.pill, padding: 3, borderWidth: 1, borderColor: Colors.border, alignSelf: 'flex-start' },
   item: { paddingHorizontal: 12, height: 28, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
   itemActive: { backgroundColor: Colors.accent },
 });

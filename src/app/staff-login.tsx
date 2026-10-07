@@ -39,7 +39,7 @@ export default function StaffLoginScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#2A1600', Colors.background]} style={StyleSheet.absoluteFill} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.7 }} />
+      <LinearGradient colors={['#FFF1E9', Colors.background]} style={StyleSheet.absoluteFill} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.7 }} />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <Row style={{ justifyContent: 'space-between', paddingHorizontal: Spacing.three, paddingTop: Spacing.two }}>
@@ -93,7 +93,7 @@ export default function StaffLoginScreen() {
               {clubs.map((c) => {
                 const active = clubId === c.id;
                 return (
-                  <Pressable key={c.id} onPress={() => setClubId(c.id)} style={[styles.club, active && { borderColor: StaffAccent, backgroundColor: 'rgba(255,133,98,0.08)' }]}>
+                  <Pressable key={c.id} onPress={() => setClubId(c.id)} style={[styles.club, active && { borderColor: StaffAccent, backgroundColor: 'rgba(217,100,58,0.08)' }]}>
                     <Ionicons name="business-outline" size={18} color={active ? StaffAccent : Colors.textMuted} />
                     <View style={{ flex: 1 }}>
                       <T type="body" style={{ fontWeight: '600' }}>
@@ -119,7 +119,7 @@ export default function StaffLoginScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
-  back: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
+  back: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.06)', alignItems: 'center', justifyContent: 'center' },
   content: { padding: Spacing.three, paddingTop: Spacing.four, paddingBottom: Spacing.six, gap: 4 },
   badge: { width: 64, height: 64, borderRadius: 20, backgroundColor: StaffAccent, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.two },
   input: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: Colors.surface, borderRadius: Radius.md, paddingHorizontal: Spacing.three, height: 54, borderWidth: 1, borderColor: Colors.border, marginTop: Spacing.two },

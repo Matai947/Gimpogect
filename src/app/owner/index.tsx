@@ -137,7 +137,7 @@ export default function OwnerOverview() {
 
 function Kpi({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
-    <View style={[styles.kpi, warn && { borderColor: 'rgba(255,133,98,0.5)' }]}>
+    <View style={[styles.kpi, warn && { borderColor: 'rgba(217,100,58,0.5)' }]}>
       <T type="small" color={Colors.textMuted} numberOfLines={1}>
         {label}
       </T>
@@ -167,7 +167,7 @@ function Share({ label, value, total }: { label: string; value: number; total: n
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   body: { paddingBottom: Spacing.six, gap: Spacing.two, paddingHorizontal: Spacing.three, width: '100%', maxWidth: 900, alignSelf: 'center' },
-  hero: { gap: 2, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: 'rgba(255,199,54,0.4)' },
+  hero: { gap: 2, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: 'rgba(184,149,43,0.4)' },
   kpi: { flex: 1, gap: 2, padding: Spacing.three, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   chart: { flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 116 },

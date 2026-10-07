@@ -97,7 +97,7 @@ export default function ProfileScreen() {
           {achievements.map((a) => {
             const done = stats.total >= a.min;
             return (
-              <View key={a.id} style={[styles.ach, done && { borderColor: Colors.accent, backgroundColor: 'rgba(154,61,205,0.08)' }]}>
+              <View key={a.id} style={[styles.ach, done && { borderColor: Colors.accent, backgroundColor: 'rgba(212,175,55,0.08)' }]}>
                 <Ionicons name={a.icon} size={22} color={done ? Colors.accent : Colors.textMuted} />
                 <T type="small" color={done ? Colors.text : Colors.textMuted} style={{ textAlign: 'center' }}>
                   {a.min === 1 ? t('ach_first') : t('ach_n', { n: a.min })}
@@ -194,5 +194,5 @@ const styles = StyleSheet.create({
   section: { paddingHorizontal: Spacing.three, marginBottom: Spacing.four },
   ach: { width: '30%', flexGrow: 1, alignItems: 'center', gap: 6, padding: Spacing.two, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface },
   langRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: 12, paddingHorizontal: Spacing.three },
-  langIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(154,61,205,0.12)', alignItems: 'center', justifyContent: 'center' },
+  langIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(212,175,55,0.12)', alignItems: 'center', justifyContent: 'center' },
 });

@@ -25,8 +25,8 @@ export default function OwnerLayout() {
         headerShown: false,
         tabBarActiveTintColor: OwnerAccent,
         tabBarInactiveTintColor: Colors.textMuted,
-        tabBarStyle: { backgroundColor: '#141414', borderTopColor: 'rgba(255,199,54,0.25)', height: Platform.OS === 'ios' ? 86 : 68, paddingTop: 6 },
-        tabBarLabelStyle: { fontSize: 11, fontFamily: 'Onest_600SemiBold' },
+        tabBarStyle: { backgroundColor: '#FFFFFF', borderTopColor: 'rgba(184,149,43,0.25)', height: Platform.OS === 'ios' ? 86 : 68, paddingTop: 6 },
+        tabBarLabelStyle: { fontSize: 11, fontFamily: 'Montserrat_600SemiBold' },
         tabBarAllowFontScaling: false,
       }}>
       <Tabs.Screen name="index" options={{ title: t('tab_overview'), tabBarIcon: (p: IconProps) => <TabIcon name="stats-chart" outline="stats-chart-outline" {...p} /> }} />

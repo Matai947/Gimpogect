@@ -300,8 +300,8 @@ const styles = StyleSheet.create({
   top: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, gap: Spacing.two },
   content: { padding: Spacing.three, paddingTop: Spacing.four, gap: Spacing.two, paddingBottom: Spacing.five },
   option: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: Colors.border },
-  optionActive: { borderColor: Colors.accent, backgroundColor: 'rgba(154,61,205,0.06)' },
-  optionIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(154,61,205,0.12)', alignItems: 'center', justifyContent: 'center' },
+  optionActive: { borderColor: Colors.accent, backgroundColor: 'rgba(212,175,55,0.06)' },
+  optionIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(212,175,55,0.12)', alignItems: 'center', justifyContent: 'center' },
   segment: { flex: 1, height: 52, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   segmentActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   day: { flex: 1, height: 56, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   numBtn: { width: 48, height: 48, borderRadius: 14, backgroundColor: Colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   numBtnPlus: { backgroundColor: Colors.accent },
   // minWidth 0 + no flex: on web an <input> has an intrinsic width that otherwise pushes the + button off-screen.
-  numInput: { minWidth: 0, maxWidth: 110, color: Colors.text, fontSize: 30, fontWeight: '800', fontFamily: 'Unbounded_600SemiBold', padding: 0 },
+  numInput: { minWidth: 0, maxWidth: 110, color: Colors.text, fontSize: 30, fontWeight: '800', fontFamily: 'Raleway_700Bold', padding: 0 },
   bmiCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.three, padding: Spacing.three, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   footer: { padding: Spacing.three, paddingBottom: Spacing.three, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.background },
 });

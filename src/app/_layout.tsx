@@ -1,6 +1,6 @@
-import { Onest_400Regular, Onest_500Medium, Onest_600SemiBold, Onest_700Bold, Onest_800ExtraBold } from '@expo-google-fonts/onest';
-import { Unbounded_500Medium, Unbounded_600SemiBold, Unbounded_700Bold, useFonts } from '@expo-google-fonts/unbounded';
-import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import { Montserrat_400Regular, Montserrat_500Medium, Montserrat_600SemiBold, Montserrat_700Bold, Montserrat_800ExtraBold } from '@expo-google-fonts/montserrat';
+import { Raleway_700Bold, Raleway_800ExtraBold, useFonts } from '@expo-google-fonts/raleway';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -12,9 +12,9 @@ import { Colors } from '@/constants/theme';
 import { AppProvider, useI18n } from '@/store/app-context';
 
 const theme = {
-  ...DarkTheme,
+  ...DefaultTheme,
   colors: {
-    ...DarkTheme.colors,
+    ...DefaultTheme.colors,
     primary: Colors.accent,
     background: Colors.background,
     card: Colors.background,
@@ -31,7 +31,7 @@ function RootStack() {
       screenOptions={{
         headerStyle: { backgroundColor: Colors.background },
         headerTintColor: Colors.text,
-        headerTitleStyle: { fontFamily: 'Onest_700Bold' },
+        headerTitleStyle: { fontFamily: 'Montserrat_700Bold' },
         headerShadowVisible: false,
         headerBackButtonDisplayMode: 'minimal',
         headerLeft: () => <BackButton />,
@@ -63,14 +63,13 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    Unbounded_500Medium,
-    Unbounded_600SemiBold,
-    Unbounded_700Bold,
-    Onest_400Regular,
-    Onest_500Medium,
-    Onest_600SemiBold,
-    Onest_700Bold,
-    Onest_800ExtraBold,
+    Raleway_700Bold,
+    Raleway_800ExtraBold,
+    Montserrat_400Regular,
+    Montserrat_500Medium,
+    Montserrat_600SemiBold,
+    Montserrat_700Bold,
+    Montserrat_800ExtraBold,
   });
   const ready = fontsLoaded || !!fontError;
 
@@ -84,7 +83,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AppProvider>
         <ThemeProvider value={theme}>
-          <StatusBar style="light" />
+          <StatusBar style="dark" />
           <RootStack />
           <DialogHost />
         </ThemeProvider>

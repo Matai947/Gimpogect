@@ -11,7 +11,7 @@ import { useApp, useI18n, useMembers, usePresence, type MemberInfo } from '@/sto
 
 export const hm = (ts: number) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-export const StaffAccent = '#FF8562';
+export const StaffAccent = '#D9643A';
 
 /** Decides whether a member may enter right now and why not. */
 export function entryDecision(m: MemberInfo, t: (k: any, v?: any) => string): { ok: boolean; reason?: string } {

@@ -233,7 +233,7 @@ export default function HomeScreen() {
         <SectionHeader title={t('home_upcoming')} action={t('all')} onAction={() => router.push('/bookings')} />
         {upcoming.length === 0 ? (
           <Card onPress={() => router.push('/(tabs)/schedule')} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
-            <View style={[styles.flame, { backgroundColor: 'rgba(154,61,205,0.12)' }]}>
+            <View style={[styles.flame, { backgroundColor: 'rgba(212,175,55,0.12)' }]}>
               <Ionicons name="add" size={22} color={Colors.accent} />
             </View>
             <View style={{ flex: 1 }}>
@@ -379,11 +379,11 @@ const styles = StyleSheet.create({
   quick: { flex: 1, alignItems: 'center', gap: 8 },
   quickIcon: { width: 56, height: 56, borderRadius: 18, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   flame: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,138,76,0.15)', alignItems: 'center', justifyContent: 'center' },
-  goalIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(154,61,205,0.12)', alignItems: 'center', justifyContent: 'center' },
-  coachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, backgroundColor: 'rgba(154,61,205,0.08)', borderWidth: 1, borderColor: 'rgba(154,61,205,0.25)' },
+  goalIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(212,175,55,0.12)', alignItems: 'center', justifyContent: 'center' },
+  coachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, backgroundColor: 'rgba(212,175,55,0.08)', borderWidth: 1, borderColor: 'rgba(212,175,55,0.25)' },
   timeBox: { borderLeftWidth: 3, paddingLeft: 10, minWidth: 82 },
-  expiring: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: 'rgba(255,133,98,0.5)' },
-  trial: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: 'rgba(255,199,54,0.45)' },
+  expiring: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: 'rgba(217,100,58,0.5)' },
+  trial: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: 'rgba(184,149,43,0.45)' },
   trialBtn: { alignSelf: 'flex-start', marginTop: Spacing.two, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
   price: { width: 200, height: 150, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: Colors.border },
   newsCard: { width: 280, height: 160, borderRadius: Radius.lg, overflow: 'hidden', justifyContent: 'flex-end', backgroundColor: Colors.surface },
