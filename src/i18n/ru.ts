@@ -720,6 +720,19 @@ export const ru = {
   pos_custom_ph: 'Своя сумма, ₸',
   pos_custom_add: 'Добавить',
   pos_custom_line: 'Товар на {n}',
+  auth_pass_title: 'Пароль',
+  auth_pass_sub: 'Если вы впервые, придумайте пароль: не короче 6 знаков',
+  auth_pass_ph: 'Пароль',
+  auth_pass_wrong: 'Неверный пароль',
+  auth_pass_short: 'Пароль не короче 6 знаков',
+  auth_offline: 'Нет связи с сервером, попробуйте ещё раз',
+  auth_new_sub: 'Номер новый. Как вас называть?',
+  reset_pass: 'Сбросить пароль',
+  reset_pass_done: 'Пароль сброшен. Клиент задаст новый при следующем входе.',
+  plan_prices_title: 'Цены абонементов',
+  plan_prices_sub: 'Меняются сразу в кассе, на главной и в приложении клиента',
+  plan_price: 'Цена',
+  plan_old_price: 'Старая цена',
 } as const;
 
 export type TKey = keyof typeof ru;

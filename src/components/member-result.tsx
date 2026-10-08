@@ -6,8 +6,8 @@ import { Linking, StyleSheet, View } from 'react-native';
 import { Avatar, Badge, Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
-import { clubById, formatDateHuman, formatDateLong, formatPrice, plans, trainerById } from '@/data/mock';
-import { useApp, useI18n, useMembers, usePresence, type MemberInfo } from '@/store/app-context';
+import { clubById, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
+import { useApp, useI18n, useMembers, usePlans, usePresence, type MemberInfo } from '@/store/app-context';
 
 export const hm = (ts: number) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
@@ -24,6 +24,7 @@ export function entryDecision(m: MemberInfo, t: (k: any, v?: any) => string): { 
 
 export function MemberResult({ member: snapshot, onDone, compact }: { member: MemberInfo; onDone?: () => void; compact?: boolean }) {
   const { t, td } = useI18n();
+  const plans = usePlans();
   // The scanner passes a snapshot; re-read so the card updates right after a plan is issued.
   const member = useMembers().byId(snapshot.id) ?? snapshot;
   const { staff, logCheckin, checkoutMember, grantPlan } = useApp();

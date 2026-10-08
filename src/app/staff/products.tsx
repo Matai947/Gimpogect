@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { StaffAccent } from '@/components/member-result';
+import { PlanPrices } from '@/components/plan-prices';
 import { StaffHeader } from '@/components/staff-header';
 import { Badge, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -51,6 +52,7 @@ export default function StaffProductsScreen() {
       </ChipRow>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <PlanPrices accent={StaffAccent} />
         <T type="small" color={Colors.textMuted}>
           {t('products_n', { n: list.length })} • {t('products_manage_sub')}
         </T>

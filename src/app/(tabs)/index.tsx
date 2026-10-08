@@ -10,13 +10,14 @@ import { ProductCard } from '@/components/product-card';
 import { Badge, Button, Card, IconButton, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTip, goalTitle } from '@/data/fitness';
-import { clubById, clubHours, clubs, formatDateHuman, formatPrice, news, occupancyLabel, plans, sessionById, sessionStart, trainerById, trainers } from '@/data/mock';
-import { useApp, useCatalog, useFitnessProfile, useI18n, useMembershipInfo, useVisitStats } from '@/store/app-context';
+import { clubById, clubHours, clubs, formatDateHuman, formatPrice, news, occupancyLabel, sessionById, sessionStart, trainerById, trainers } from '@/data/mock';
+import { useApp, useCatalog, useFitnessProfile, useI18n, useMembershipInfo, usePlans, useVisitStats } from '@/store/app-context';
 
 export default function HomeScreen() {
   const { user, bookings, addToCart, coachPlan } = useApp();
   const membership = useMembershipInfo();
   const { t, tp, td } = useI18n();
+  const plans = usePlans();
   const { products } = useCatalog();
   const shopHits = useMemo(() => products.filter((p) => p.badge === 'Хит' || p.badge === 'Новинка').slice(0, 6), [products]);
   const stats = useVisitStats();

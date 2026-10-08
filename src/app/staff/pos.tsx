@@ -7,10 +7,10 @@ import { StaffAccent } from '@/components/member-result';
 import { StaffHeader } from '@/components/staff-header';
 import { Avatar, Badge, Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { formatPrice, plans } from '@/data/mock';
+import { formatPrice } from '@/data/mock';
 import type { PayMethod } from '@/data/owner';
 import { MEMBER_DISCOUNT } from '@/data/shop';
-import { useApp, useCatalog, useI18n, useMembers, type MemberInfo } from '@/store/app-context';
+import { useApp, useCatalog, useI18n, useMembers, usePlans, type MemberInfo } from '@/store/app-context';
 
 type Line = { key: string; title: string; price: number; qty: number; planId?: string; productId?: string };
 type Receipt = { id: string; ts: number; lines: Line[]; subtotal: number; discount: number; total: number; method: PayMethod; client?: MemberInfo };
@@ -21,6 +21,7 @@ const newTs = () => Date.now();
 
 export default function StaffPosScreen() {
   const { t, td } = useI18n();
+  const plans = usePlans();
   const { staff, recordSale, grantPlan } = useApp();
   const { products } = useCatalog();
   const { list: members } = useMembers();
@@ -88,6 +89,32 @@ export default function StaffPosScreen() {
     setCash('');
     setError(null);
   };
+
+  const clientSearch = (
+    <View>
+      <View style={styles.search}>
+        <Ionicons name="search" size={18} color={Colors.textSecondary} />
+        <TextInput value={query} onChangeText={setQuery} placeholder={t('pos_client_ph')} placeholderTextColor={Colors.textMuted} style={styles.searchInput} />
+      </View>
+      {matches.map((m) => (
+        <Pressable
+          key={m.id}
+          onPress={() => {
+            setClient(m);
+            setQuery('');
+            setError(null);
+          }}
+          style={styles.match}>
+          <Avatar name={m.name} size={30} />
+          <T type="small" style={{ flex: 1 }} numberOfLines={1}>
+            {m.name} • {m.phone}
+          </T>
+          {m.active ? <Badge label={`−${MEMBER_DISCOUNT * 100}%`} color={Colors.success} /> : null}
+        </Pressable>
+      ))}
+    </View>
+  );
+  const needsClient = !client && lines.some((l) => l.planId);
 
   const methodLabel: Record<PayMethod, string> = { kaspi: t('pay_kaspi'), card: t('pay_card'), cash: t('pay_cash'), split: t('pay_split'), desk: t('pay_desk') };
 
@@ -162,27 +189,7 @@ export default function StaffPosScreen() {
             </Pressable>
           </Row>
         ) : (
-          <View>
-            <View style={styles.search}>
-              <Ionicons name="search" size={18} color={Colors.textSecondary} />
-              <TextInput value={query} onChangeText={setQuery} placeholder={t('pos_client_ph')} placeholderTextColor={Colors.textMuted} style={styles.searchInput} />
-            </View>
-            {matches.map((m) => (
-              <Pressable
-                key={m.id}
-                onPress={() => {
-                  setClient(m);
-                  setQuery('');
-                }}
-                style={styles.match}>
-                <Avatar name={m.name} size={30} />
-                <T type="small" style={{ flex: 1 }} numberOfLines={1}>
-                  {m.name} • {m.phone}
-                </T>
-                {m.active ? <Badge label={`−${MEMBER_DISCOUNT * 100}%`} color={Colors.success} /> : null}
-              </Pressable>
-            ))}
-          </View>
+          clientSearch
         )}
 
         {/* catalogue */}
@@ -308,12 +315,20 @@ export default function StaffPosScreen() {
                 ) : null}
               </View>
             ) : null}
+            {needsClient ? (
+              <View style={styles.cashBox}>
+                <T type="label" color={Colors.danger}>
+                  {t('pos_need_client')}
+                </T>
+                {clientSearch}
+              </View>
+            ) : null}
             {error ? (
               <T type="small" color={Colors.danger} style={{ fontWeight: '700' }}>
                 {error}
               </T>
             ) : null}
-            <Button title={t('pos_pay', { sum: formatPrice(total) })} icon="checkmark-circle-outline" size="lg" onPress={pay} disabled={cashShort} style={{ backgroundColor: StaffAccent }} />
+            <Button title={t('pos_pay', { sum: formatPrice(total) })} icon="checkmark-circle-outline" size="lg" onPress={pay} disabled={cashShort || needsClient} style={{ backgroundColor: StaffAccent }} />
           </>
         )}
       </View>

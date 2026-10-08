@@ -11,8 +11,6 @@ import { Button, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useApp, useI18n } from '@/store/app-context';
 
-const DEMO_CODE = '1234';
-
 function formatPhone(digits: string) {
   const d = digits.replace(/\D/g, '').slice(0, 10);
   const parts = [d.slice(0, 3), d.slice(3, 6), d.slice(6, 8), d.slice(8, 10)].filter(Boolean);
@@ -22,9 +20,10 @@ function formatPhone(digits: string) {
 export default function AuthScreen() {
   const { restore, login } = useApp();
   const { t } = useI18n();
-  const [step, setStep] = useState<'phone' | 'code' | 'name'>('phone');
+  const [step, setStep] = useState<'phone' | 'password' | 'name'>('phone');
   const [digits, setDigits] = useState('');
-  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -33,28 +32,32 @@ export default function AuthScreen() {
   const sendCode = () => {
     if (!phoneReady) return;
     setError(null);
-    setStep('code');
+    setStep('password');
   };
 
   const [checking, setChecking] = useState(false);
 
+  // Known phone: the account comes back from the server (name, questionnaire, plan). Unknown phone: ask the name and create it.
   const verify = async () => {
-    if (code !== DEMO_CODE) {
-      setError(t('auth_code_wrong'));
+    if (password.length < 6) {
+      setError(t('auth_pass_short'));
       return;
     }
     setError(null);
-    // Known phone: the account comes back from the server, no name step and no questionnaire again.
     setChecking(true);
-    const known = await restore(formatPhone(digits));
+    const r = await restore(formatPhone(digits), password);
     setChecking(false);
-    if (known) router.replace('/(tabs)');
-    else setStep('name');
+    if (r === 'ok') router.replace('/(tabs)');
+    else if (r === 'unknown') setStep('name');
+    else setError(t(r === 'wrong' ? 'auth_pass_wrong' : 'auth_offline'));
   };
 
-  const finish = () => {
-    login(formatPhone(digits), name || t('guest'));
-    router.replace('/onboarding');
+  const finish = async () => {
+    setChecking(true);
+    const ok = await login(formatPhone(digits), name || t('guest'), password);
+    setChecking(false);
+    if (ok) router.replace('/onboarding');
+    else setError(t('auth_offline'));
   };
 
   return (
@@ -92,7 +95,7 @@ export default function AuthScreen() {
               </>
             )}
 
-            {step === 'code' && (
+            {step === 'password' && (
               <>
                 <Pressable onPress={() => setStep('phone')} hitSlop={8}>
                   <Row gap={4}>
@@ -102,38 +105,50 @@ export default function AuthScreen() {
                     </T>
                   </Row>
                 </Pressable>
-                <T type="heading">{t('auth_code_title')}</T>
-                <T type="caption">{t('auth_code_sub')}</T>
+                <T type="heading">{t('auth_pass_title')}</T>
+                <T type="caption">{t('auth_pass_sub')}</T>
                 <View style={styles.input}>
-                  <Ionicons name="keypad-outline" size={18} color={Colors.textSecondary} />
+                  <Ionicons name="lock-closed-outline" size={18} color={Colors.textSecondary} />
                   <TextInput
-                    value={code}
-                    onChangeText={(v) => setCode(v.replace(/\D/g, '').slice(0, 4))}
-                    keyboardType="number-pad"
-                    style={[styles.inputText, { letterSpacing: 8 }]}
-                    placeholder="••••"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPass}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="password"
+                    style={styles.inputText}
+                    placeholder={t('auth_pass_ph')}
                     placeholderTextColor={Colors.textMuted}
                     autoFocus
+                    onSubmitEditing={() => void verify()}
                   />
+                  <Pressable onPress={() => setShowPass((v) => !v)} hitSlop={8}>
+                    <Ionicons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textSecondary} />
+                  </Pressable>
                 </View>
                 {error ? (
                   <T type="small" color={Colors.danger}>
                     {error}
                   </T>
                 ) : null}
-                <Button title={t('auth_confirm')} onPress={() => void verify()} disabled={code.length < 4 || checking} size="lg" />
+                <Button title={t('auth_confirm')} onPress={() => void verify()} disabled={password.length < 6 || checking} size="lg" />
               </>
             )}
 
             {step === 'name' && (
               <>
                 <T type="heading">{t('auth_name_title')}</T>
-                <T type="caption">{t('auth_name_sub')}</T>
+                <T type="caption">{t('auth_new_sub')}</T>
                 <View style={styles.input}>
                   <Ionicons name="person-outline" size={18} color={Colors.textSecondary} />
                   <TextInput value={name} onChangeText={setName} style={styles.inputText} placeholder={t('auth_name_ph')} placeholderTextColor={Colors.textMuted} autoFocus autoCapitalize="words" />
                 </View>
-                <Button title={t('auth_start')} onPress={finish} size="lg" icon="arrow-forward" />
+                {error ? (
+                  <T type="small" color={Colors.danger}>
+                    {error}
+                  </T>
+                ) : null}
+                <Button title={t('auth_start')} onPress={() => void finish()} disabled={checking} size="lg" icon="arrow-forward" />
               </>
             )}
 

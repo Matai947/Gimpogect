@@ -4,10 +4,10 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile, type Goal } from '@/data/fitness';
 import { members, mockOrders, type Member } from '@/data/members';
 import { mockSales, type Sale } from '@/data/owner';
-import { addDays, planById, sessionById, toISODate } from '@/data/mock';
+import { addDays, planById, plans, sessionById, toISODate } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { checkinRemote, checkoutRemote, fetchClients, fetchMyMembership, grantRemote, registerClient, type RemoteClient } from '@/lib/api';
+import { checkinRemote, checkoutRemote, fetchClients, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -67,6 +67,7 @@ type State = {
   staff: StaffSession | null;
   owner: boolean; // owner (CRM) session, separate code from staff
   staffCode: string; // code typed at staff/owner login, sent to the API to read the client list
+  token: string; // the client's own access token from the server (password sign-in)
   remote: RemoteClient[]; // clients registered from any device, fetched while staff or owner is signed in
   sales: Sale[]; // payments recorded on this device when staff issue plans
   staffLog: CheckinEntry[];
@@ -74,6 +75,7 @@ type State = {
   orderStatusOverrides: Record<string, OrderStatus>;
   customProducts: Product[]; // products created by staff
   productOverrides: Record<string, Product>; // staff edits of base products
+  planPrices: Record<string, { price: number; oldPrice?: number }>; // staff edits of membership prices
   hiddenProducts: string[]; // base products removed by staff
   memberGrants: Record<string, { planId: string; endDate: string }>; // plans issued by staff to mock members
   hydrated: boolean;
@@ -88,14 +90,16 @@ function catalogOf(s: Pick<State, 'customProducts' | 'productOverrides' | 'hidde
 }
 
 type Actions = {
-  login: (phone: string, name?: string) => void;
+  /** Create a new account: the password is set on the server, which answers with the access token. */
+  login: (phone: string, name: string, password: string) => Promise<boolean>;
   /** Sign in with an account the server already knows: name, questionnaire and plan come back without re-registering. Returns false if unknown. */
-  restore: (phone: string) => Promise<boolean>;
+  restore: (phone: string, password: string) => Promise<'ok' | 'unknown' | 'wrong' | 'offline'>;
   logout: () => void;
   updateUser: (patch: Partial<User>) => void;
   completeOnboarding: (profile: FitnessProfile) => void;
   grantPlan: (memberId: string, planId: string) => void;
   recordSale: (sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff'>) => void;
+  setPlanPrice: (planId: string, price: number, oldPrice?: number) => void;
   freezeMembership: (days: number) => void;
   unfreezeMembership: () => void;
   book: (sessionId: string) => void;
@@ -147,6 +151,7 @@ const initialState: State = {
   staff: null,
   owner: false,
   staffCode: '',
+  token: '',
   remote: [],
   sales: [],
   staffLog: [],
@@ -154,6 +159,7 @@ const initialState: State = {
   orderStatusOverrides: {},
   customProducts: [],
   productOverrides: {},
+  planPrices: {},
   hiddenProducts: [],
   memberGrants: {},
   hydrated: false,
@@ -228,16 +234,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Register this client in the shared registry whenever the account or profile changes.
   const user = state.user;
   useEffect(() => {
-    if (!state.hydrated || !user) return;
+    if (!state.hydrated || !user || !state.token) return;
     const p = user.profile;
-    registerClient({ id: user.id, name: user.name, phone: user.phone, homeClubId: user.homeClubId, profile: p ? { age: p.age, goal: p.goal, heightCm: p.heightCm, weightKg: p.weightKg, targetWeightKg: p.targetWeightKg, gender: p.gender, level: p.level, daysPerWeek: p.daysPerWeek } : undefined });
-  }, [state.hydrated, user]);
+    registerClient({ id: user.id, name: user.name, phone: user.phone, homeClubId: user.homeClubId, profile: p ? { age: p.age, goal: p.goal, heightCm: p.heightCm, weightKg: p.weightKg, targetWeightKg: p.targetWeightKg, gender: p.gender, level: p.level, daysPerWeek: p.daysPerWeek } : undefined }, state.token);
+  }, [state.hydrated, user, state.token]);
 
   // Staff and owner see the registry live; a client picks up a plan issued at the front desk.
   const hydrated = state.hydrated;
   const staffSignedIn = !!(state.staff || state.owner);
   const staffCode = state.staffCode;
   const uid = state.user?.id;
+  const token = state.token;
   useEffect(() => {
     if (!hydrated) return;
     let live = true;
@@ -246,8 +253,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const clients = await fetchClients(staffCode);
         if (live && clients) setState((s) => ({ ...s, remote: clients }));
       }
-      if (uid) {
-        const m = (await fetchMyMembership(uid))?.membership;
+      if (uid && token) {
+        const m = (await fetchMyMembership(uid, token))?.membership;
         if (live && m && planById(m.planId)) setState((s) => (!s.membership || m.endDate > s.membership.endDate ? { ...s, membership: m } : s));
       }
     };
@@ -257,33 +264,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       live = false;
       clearInterval(iv);
     };
-  }, [hydrated, staffSignedIn, staffCode, uid]);
+  }, [hydrated, staffSignedIn, staffCode, uid, token]);
 
-  const login = useCallback((phone: string, name?: string) => {
+  const login = useCallback(async (phone: string, name: string, password: string) => {
+    const id = `u_${phone.replace(/\D/g, '')}`;
+    const user = { id, name: name.trim() || 'Гость', phone, homeClubId: 'c1' };
+    const r = await registerClient({ ...user, password });
+    if (!r?.token) return false;
+    const token = r.token;
     setState((s) => ({
       ...s,
-      user: { id: `u_${phone.replace(/\D/g, '')}`, name: name?.trim() || 'Гость', phone, homeClubId: 'c1' },
+      user,
+      token,
       // A new client has no plan: the administrator issues it at the front desk after payment, and only then the QR appears.
       membership: s.membership,
       visits: s.visits.length ? s.visits : demoVisits(),
       weightLog: s.weightLog.length ? s.weightLog : demoWeights(),
     }));
+    return true;
   }, []);
 
-  const restore = useCallback(async (phone: string) => {
+  const restore = useCallback(async (phone: string, password: string) => {
     const id = `u_${phone.replace(/\D/g, '')}`;
-    const me = await fetchMyMembership(id);
-    if (!me || !me.name) return false;
+    const r = await loginClient(id, password);
+    if (r.status === 404) return 'unknown';
+    if (r.status === 401) return 'wrong';
+    if (!r.data) return 'offline';
+    const me = r.data.account;
+    const token = r.data.token;
     const p = me.profile;
     const full = p && p.goal && p.heightCm && p.weightKg && p.age ? ({ gender: (p.gender as FitnessProfile['gender']) ?? 'male', age: p.age, heightCm: p.heightCm, weightKg: p.weightKg, targetWeightKg: p.targetWeightKg, goal: p.goal as FitnessProfile['goal'], level: (p.level as FitnessProfile['level']) ?? 'beginner', daysPerWeek: p.daysPerWeek ?? 3 } satisfies FitnessProfile) : undefined;
     setState((s) => ({
       ...s,
-      user: { id, name: me.name!, phone, homeClubId: me.homeClubId ?? 'c1', profile: full },
+      user: { id, name: me.name ?? 'Гость', phone, homeClubId: me.homeClubId ?? 'c1', profile: full },
+      token,
       membership: me.membership ?? s.membership,
       visits: s.visits.length ? s.visits : demoVisits(),
       weightLog: full ? demoWeights(full.weightKg, full.goal) : s.weightLog,
     }));
-    return true;
+    return 'ok';
   }, []);
 
   const logout = useCallback(() => {
@@ -424,7 +443,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         grantRemote(state.staffCode, { id: memberId, name: isSelf ? state.user!.name : remote!.name, phone: isSelf ? state.user!.phone : remote!.phone, membership: next });
       }
       setState((s) => {
-        const sold = (name: string): Sale[] => (plan.price > 0 ? [{ id: `S${Date.now()}`, ts: Date.now(), memberId, name, title: plan.name, kind: 'plan', amount: plan.price, clubId: s.staff?.clubId ?? 'c1', method: 'desk', staff: s.staff?.name ?? '' }, ...s.sales] : s.sales);
+        const sold = (name: string): Sale[] => ((s.planPrices[planId]?.price ?? plan.price) > 0 ? [{ id: `S${Date.now()}`, ts: Date.now(), memberId, name, title: plan.name, kind: 'plan', amount: s.planPrices[planId]?.price ?? plan.price, clubId: s.staff?.clubId ?? 'c1', method: 'desk', staff: s.staff?.name ?? '' }, ...s.sales] : s.sales);
         if (s.user?.id === memberId) return { ...s, sales: sold(s.user.name), trialUsed: s.trialUsed || (!!plan.trial && !plan.staffOnly), membership: extendMembership(s.membership, planId) };
         const r = s.remote.find((x) => x.id === memberId);
         if (r) {
@@ -441,6 +460,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     },
     [state.user, state.remote, state.membership, state.staffCode],
   );
+
+  const setPlanPrice = useCallback((planId: string, price: number, oldPrice?: number) => {
+    setState((s) => ({ ...s, planPrices: { ...s.planPrices, [planId]: { price, oldPrice } } }));
+  }, []);
 
   /** Cash register: one receipt per sale, shown to the owner under payments. */
   const recordSale = useCallback((sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff'>) => {
@@ -551,6 +574,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       completeOnboarding,
       grantPlan,
       recordSale,
+      setPlanPrice,
       freezeMembership,
       unfreezeMembership,
       book,
@@ -582,7 +606,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, recordSale, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, recordSale, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -765,6 +789,15 @@ export function useMembers() {
       byId: (id: string) => list.find((m) => m.id === id),
     };
   }, [user, membership, visits, memberGrants, bookings, orders, remote]);
+}
+
+/** Membership plans with the front desk's price edits applied. */
+export function usePlans() {
+  const { planPrices } = useApp();
+  return useMemo(() => plans.map((p) => {
+    const o = planPrices[p.id];
+    return o ? { ...p, price: o.price, oldPrice: o.oldPrice, perMonth: p.months ? Math.round(o.price / p.months) : o.price } : p;
+  }), [planPrices]);
 }
 
 /** All payments: demo history plus those recorded on this device. Newest first. */

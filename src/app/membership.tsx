@@ -6,12 +6,13 @@ import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { Badge, Button, Card, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { clubById, formatDateLong, formatPrice, plans } from '@/data/mock';
-import { useApp, useI18n, useMembershipInfo } from '@/store/app-context';
+import { clubById, formatDateLong, formatPrice } from '@/data/mock';
+import { useApp, useI18n, useMembershipInfo, usePlans } from '@/store/app-context';
 
 export default function MembershipScreen() {
   const { membership, user, freezeMembership, unfreezeMembership } = useApp();
   const { t, tp, td } = useI18n();
+  const plans = usePlans();
   const info = useMembershipInfo();
   const { plan: planParam } = useLocalSearchParams<{ plan?: string }>();
   const [selected, setSelected] = useState<string>(plans.some((p) => p.id === planParam && !p.trial) ? planParam! : (info.plan?.id ?? 'p6'));
