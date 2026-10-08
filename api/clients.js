@@ -173,7 +173,8 @@ module.exports = async function handler(req, res) {
       const next = { ...prev, name, phone: str(body.phone, 20), homeClubId: str(body.homeClubId, 8) || prev.homeClubId || 'c1' };
       const profile = cleanProfile(body.profile);
       if (profile) next.profile = profile;
-      await write(id, next);
+      // Blob writes are the scarce quota: skip the write when nothing changed (the app re-sends on every launch).
+      if (!existing || JSON.stringify(next) !== JSON.stringify(existing)) await write(id, next);
       return res.status(200).json({ ok: true, membership: next.membership ?? null, token: existing ? undefined : issueToken(id) });
     }
 

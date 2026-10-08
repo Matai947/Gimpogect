@@ -23,7 +23,7 @@ export function LeadsCard({ accent }: { accent: string }) {
       if (live && r) setLeads(r);
     };
     load();
-    const iv = setInterval(load, 90000);
+    const iv = setInterval(load, 5 * 60000);
     return () => {
       live = false;
       clearInterval(iv);

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile, type Goal } from '@/data/fitness';
@@ -259,10 +260,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     };
     tick();
-    const iv = setInterval(tick, 60000); // once a minute: Vercel bills every call
+    // Every 5 minutes plus whenever the app comes back to the foreground: storage operations are the scarce quota on Vercel.
+    const iv = setInterval(tick, 5 * 60000);
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && tick());
     return () => {
       live = false;
       clearInterval(iv);
+      sub.remove();
     };
   }, [hydrated, staffSignedIn, staffCode, uid, token]);
 
