@@ -49,7 +49,7 @@ export default function AuthScreen() {
     setChecking(false);
     if (r === 'ok') router.replace('/(tabs)');
     else if (r === 'unknown') setStep('name');
-    else setError(t(r === 'wrong' ? 'auth_pass_wrong' : 'auth_offline'));
+    else setError(t(r === 'wrong' ? 'auth_pass_wrong' : r === 'reset' ? 'auth_reset_needed' : 'auth_offline'));
   };
 
   const finish = async () => {

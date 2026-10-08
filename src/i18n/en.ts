@@ -713,4 +713,5 @@ export const en: Record<TKey, string> = {
   plan_prices_sub: 'Applied right away in the register, home and the client app',
   plan_price: 'Price',
   plan_old_price: 'Old price',
+  auth_reset_needed: 'This number has no password yet. Ask the front desk to unlock sign-in, then set your password.',
 };

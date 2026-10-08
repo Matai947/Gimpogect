@@ -733,6 +733,7 @@ export const ru = {
   plan_prices_sub: 'Меняются сразу в кассе, на главной и в приложении клиента',
   plan_price: 'Цена',
   plan_old_price: 'Старая цена',
+  auth_reset_needed: 'У этого номера ещё нет пароля. Подойдите на ресепшен: администратор разблокирует вход, и вы зададите пароль.',
 } as const;
 
 export type TKey = keyof typeof ru;

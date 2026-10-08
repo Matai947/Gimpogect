@@ -20,7 +20,42 @@ async function read(id) {
   return new Response(r.stream).json();
 }
 
-const write = (id, data) => put(path(id), JSON.stringify(data), { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json' });
+const putJson = (name, data) => put(name, JSON.stringify(data), { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json' });
+const INDEX = 'clients/_index.json';
+
+async function readIndex() {
+  const r = await get(INDEX, { access: 'private', useCache: false }).catch(() => null);
+  if (!r || r.statusCode !== 200) return null;
+  return new Response(r.stream).json();
+}
+
+/** Writes the client file and refreshes the shared index, so the staff list is one read instead of one per client. */
+async function write(id, data) {
+  await putJson(path(id), data);
+  const index = (await readIndex()) || {};
+  const { passHash: _p, passReset: _r, ...pub } = data;
+  index[id] = pub;
+  await putJson(INDEX, index);
+}
+
+/** Rebuilds the index from the per-client files; used when the index is missing. */
+async function rebuildIndex() {
+  const blobs = [];
+  let cursor;
+  do {
+    const page = await list({ prefix: 'clients/', cursor, limit: 500 });
+    blobs.push(...page.blobs.filter((b) => b.pathname !== INDEX));
+    cursor = page.hasMore ? page.cursor : undefined;
+  } while (cursor && blobs.length < 2000);
+  const all = await Promise.all(blobs.map((b) => read(b.pathname.slice(8, -5))));
+  const index = {};
+  all.filter(Boolean).forEach((c) => {
+    const { passHash: _p, passReset: _r, ...pub } = c;
+    index[c.id] = pub;
+  });
+  await putJson(INDEX, index);
+  return index;
+}
 
 const authed = (req) => {
   const code = String(req.headers['x-code'] || '');
@@ -52,7 +87,7 @@ const tokenOwner = (req) => {
   return sig.length === expect.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect)) ? id : null;
 };
 const account = (c) => (c ? { membership: c.membership ?? null, name: c.name ?? null, homeClubId: c.homeClubId ?? null, profile: c.profile ?? null } : null);
-const publicClient = ({ passHash: _p, ...c }) => c;
+const publicClient = ({ passHash: _p, passReset: _r, ...c }) => c;
 
 function cleanMembership(m) {
   if (!m || typeof m !== 'object') return null;
@@ -104,8 +139,14 @@ module.exports = async function handler(req, res) {
       if (password.length < 6) return res.status(400).json({ error: 'short password' });
       if (c.passHash) {
         if (!checkPassword(password, c.passHash)) return res.status(401).json({ error: 'wrong password' });
+      } else if (c.passReset) {
+        // The front desk confirmed the person; the next sign-in sets the password.
+        const { passReset: _r, ...rest } = c;
+        await write(id, { ...rest, passHash: hashPassword(password) });
       } else {
-        await write(id, { ...c, passHash: hashPassword(password) });
+        // An account without a password (created at the desk or before passwords existed) must be unlocked by staff first,
+        // otherwise anyone who knows the phone number could claim it.
+        return res.status(409).json({ error: 'reset required' });
       }
       return res.status(200).json({ token: issueToken(id), account: account(c) });
     }
@@ -156,15 +197,8 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'GET' && op === 'list') {
-      const blobs = [];
-      let cursor;
-      do {
-        const page = await list({ prefix: 'clients/', cursor, limit: 500 });
-        blobs.push(...page.blobs);
-        cursor = page.hasMore ? page.cursor : undefined;
-      } while (cursor && blobs.length < 2000);
-      const all = await Promise.all(blobs.map((b) => read(b.pathname.slice(8, -5))));
-      return res.status(200).json({ clients: all.filter(Boolean).map(publicClient).sort((a, b) => String(b.since).localeCompare(String(a.since))) });
+      const index = (await readIndex()) || (await rebuildIndex());
+      return res.status(200).json({ clients: Object.values(index).map(publicClient).sort((a, b) => String(b.since).localeCompare(String(a.since))) });
     }
 
     // Entry/exit of a client at a club. The server clock is the source of truth for the visit.
@@ -185,7 +219,7 @@ module.exports = async function handler(req, res) {
       const prev = await read(id);
       if (!prev) return res.status(404).json({ error: 'unknown client' });
       const { passHash: _p, ...rest } = prev;
-      await write(id, rest);
+      await write(id, { ...rest, passReset: true });
       return res.status(200).json({ ok: true });
     }
 

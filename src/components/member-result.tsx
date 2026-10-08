@@ -6,6 +6,7 @@ import { Linking, StyleSheet, View } from 'react-native';
 import { Avatar, Badge, Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
+import { resetPasswordRemote } from '@/lib/api';
 import { clubById, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
 import { useApp, useI18n, useMembers, usePlans, usePresence, type MemberInfo } from '@/store/app-context';
 
@@ -27,7 +28,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   const plans = usePlans();
   // The scanner passes a snapshot; re-read so the card updates right after a plan is issued.
   const member = useMembers().byId(snapshot.id) ?? snapshot;
-  const { staff, logCheckin, checkoutMember, grantPlan } = useApp();
+  const { staff, staffCode, logCheckin, checkoutMember, grantPlan } = useApp();
   const here = usePresence().find((p) => p.memberId === snapshot.id);
   const [logged, setLogged] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
@@ -51,6 +52,13 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
     logCheckin({ memberId: member.id, name: member.name, ok: true, clubId: staff?.clubId ?? member.homeClubId });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setLogged(t('entry_logged', { name: member.name, time }));
+  };
+
+  const [resetDone, setResetDone] = useState(false);
+  const resetPassword = async () => {
+    if (!staffCode) return;
+    const ok = await resetPasswordRemote(staffCode, member.id);
+    if (ok) setResetDone(true);
   };
 
   const giveAccess = () => {
@@ -153,6 +161,13 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
               )}
               <Button title="" icon="call-outline" variant="ghost" onPress={() => Linking.openURL(`tel:${member.phone.replace(/\s/g, '')}`)} style={{ paddingHorizontal: 14 }} />
             </Row>
+            {resetDone ? (
+              <T type="small" color={Colors.success} style={{ fontWeight: '700' }}>
+                {t('reset_pass_done')}
+              </T>
+            ) : (
+              <Button title={t('reset_pass')} variant="ghost" size="sm" icon="key-outline" onPress={() => void resetPassword()} />
+            )}
             {!decision.ok ? <Button title={t('sell_plan')} variant="secondary" icon="card-outline" onPress={() => setPicking((v) => !v)} /> : null}
           </View>
         )}
