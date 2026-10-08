@@ -694,4 +694,10 @@ export const kk: Record<TKey, string> = {
   pos_change: 'Қайтарым',
   pos_received: 'Алынды',
   pos_plan_line: '«{name}» абонементі',
+  pos_given: 'Клиент берді',
+  pos_exact: 'Қайтарымсыз',
+  pos_short: 'Жетпейді',
+  pos_custom_ph: 'Өз сомаңыз, ₸',
+  pos_custom_add: 'Қосу',
+  pos_custom_line: '{n} тауар',
 };

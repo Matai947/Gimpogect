@@ -694,4 +694,10 @@ export const en: Record<TKey, string> = {
   pos_change: 'Change',
   pos_received: 'Received',
   pos_plan_line: 'Membership “{name}”',
+  pos_given: 'Client paid',
+  pos_exact: 'Exact',
+  pos_short: 'Short by',
+  pos_custom_ph: 'Custom amount, ₸',
+  pos_custom_add: 'Add',
+  pos_custom_line: 'Item for {n}',
 };

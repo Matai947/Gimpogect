@@ -3,7 +3,7 @@
 const BASE = process.env.EXPO_PUBLIC_API_URL ?? 'https://gym.matai.kz';
 
 export type RemoteMembership = { planId: string; startDate: string; endDate: string; freezeDaysLeft: number; frozenUntil?: string };
-export type RemoteProfile = { age?: number; goal?: string; heightCm?: number; weightKg?: number };
+export type RemoteProfile = { age?: number; goal?: string; heightCm?: number; weightKg?: number; targetWeightKg?: number; gender?: string; level?: string; daysPerWeek?: number };
 export type RemoteSession = { clubId: string; inTs: number; outTs?: number };
 export type RemoteClient = { id: string; name: string; phone: string; homeClubId: string; since: string; membership?: RemoteMembership; profile?: RemoteProfile; session?: RemoteSession };
 
@@ -26,7 +26,9 @@ export const fetchLeads = async (code: string) => (await call<{ leads: Lead[] }>
 
 export const registerClient = (c: { id: string; name: string; phone: string; homeClubId: string; profile?: RemoteProfile }) => call<{ membership: RemoteMembership | null }>('register', { method: 'POST', body: c });
 
-export const fetchMyMembership = (id: string) => call<{ membership: RemoteMembership | null }>('me', { query: `&id=${id}` });
+export type RemoteMe = { membership: RemoteMembership | null; name: string | null; homeClubId: string | null; profile: RemoteProfile | null };
+
+export const fetchMyMembership = (id: string) => call<RemoteMe>('me', { query: `&id=${id}` });
 
 export const fetchClients = async (code: string) => (await call<{ clients: RemoteClient[] }>('list', { code }))?.clients ?? null;
 

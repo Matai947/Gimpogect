@@ -20,7 +20,7 @@ function formatPhone(digits: string) {
 }
 
 export default function AuthScreen() {
-  const { login } = useApp();
+  const { restore, login } = useApp();
   const { t } = useI18n();
   const [step, setStep] = useState<'phone' | 'code' | 'name'>('phone');
   const [digits, setDigits] = useState('');
@@ -36,13 +36,20 @@ export default function AuthScreen() {
     setStep('code');
   };
 
-  const verify = () => {
-    if (code === DEMO_CODE) {
-      setError(null);
-      setStep('name');
-    } else {
+  const [checking, setChecking] = useState(false);
+
+  const verify = async () => {
+    if (code !== DEMO_CODE) {
       setError(t('auth_code_wrong'));
+      return;
     }
+    setError(null);
+    // Known phone: the account comes back from the server, no name step and no questionnaire again.
+    setChecking(true);
+    const known = await restore(formatPhone(digits));
+    setChecking(false);
+    if (known) router.replace('/(tabs)');
+    else setStep('name');
   };
 
   const finish = () => {
@@ -114,7 +121,7 @@ export default function AuthScreen() {
                     {error}
                   </T>
                 ) : null}
-                <Button title={t('auth_confirm')} onPress={verify} disabled={code.length < 4} size="lg" />
+                <Button title={t('auth_confirm')} onPress={() => void verify()} disabled={code.length < 4 || checking} size="lg" />
               </>
             )}
 

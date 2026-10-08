@@ -89,6 +89,8 @@ function catalogOf(s: Pick<State, 'customProducts' | 'productOverrides' | 'hidde
 
 type Actions = {
   login: (phone: string, name?: string) => void;
+  /** Sign in with an account the server already knows: name, questionnaire and plan come back without re-registering. Returns false if unknown. */
+  restore: (phone: string) => Promise<boolean>;
   logout: () => void;
   updateUser: (patch: Partial<User>) => void;
   completeOnboarding: (profile: FitnessProfile) => void;
@@ -228,7 +230,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!state.hydrated || !user) return;
     const p = user.profile;
-    registerClient({ id: user.id, name: user.name, phone: user.phone, homeClubId: user.homeClubId, profile: p ? { age: p.age, goal: p.goal, heightCm: p.heightCm, weightKg: p.weightKg } : undefined });
+    registerClient({ id: user.id, name: user.name, phone: user.phone, homeClubId: user.homeClubId, profile: p ? { age: p.age, goal: p.goal, heightCm: p.heightCm, weightKg: p.weightKg, targetWeightKg: p.targetWeightKg, gender: p.gender, level: p.level, daysPerWeek: p.daysPerWeek } : undefined });
   }, [state.hydrated, user]);
 
   // Staff and owner see the registry live; a client picks up a plan issued at the front desk.
@@ -266,6 +268,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       visits: s.visits.length ? s.visits : demoVisits(),
       weightLog: s.weightLog.length ? s.weightLog : demoWeights(),
     }));
+  }, []);
+
+  const restore = useCallback(async (phone: string) => {
+    const id = `u_${phone.replace(/\D/g, '')}`;
+    const me = await fetchMyMembership(id);
+    if (!me || !me.name) return false;
+    const p = me.profile;
+    const full = p && p.goal && p.heightCm && p.weightKg && p.age ? ({ gender: (p.gender as FitnessProfile['gender']) ?? 'male', age: p.age, heightCm: p.heightCm, weightKg: p.weightKg, targetWeightKg: p.targetWeightKg, goal: p.goal as FitnessProfile['goal'], level: (p.level as FitnessProfile['level']) ?? 'beginner', daysPerWeek: p.daysPerWeek ?? 3 } satisfies FitnessProfile) : undefined;
+    setState((s) => ({
+      ...s,
+      user: { id, name: me.name!, phone, homeClubId: me.homeClubId ?? 'c1', profile: full },
+      membership: me.membership ?? s.membership,
+      visits: s.visits.length ? s.visits : demoVisits(),
+      weightLog: full ? demoWeights(full.weightKg, full.goal) : s.weightLog,
+    }));
+    return true;
   }, []);
 
   const logout = useCallback(() => {
@@ -527,6 +545,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     () => ({
       ...state,
       login,
+      restore,
       logout,
       updateUser,
       completeOnboarding,
@@ -563,7 +582,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, logout, updateUser, completeOnboarding, grantPlan, recordSale, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, recordSale, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

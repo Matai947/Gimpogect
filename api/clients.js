@@ -62,11 +62,16 @@ module.exports = async function handler(req, res) {
       // The id is derived from the phone number, so they must agree.
       if (!ID.test(id) || str(body.phone, 20).replace(/\D/g, '') !== id.slice(2)) return res.status(400).json({ error: 'bad id' });
       const prev = (await read(id)) || { id, since: new Date().toISOString().slice(0, 10) };
-      const next = { ...prev, name: str(body.name, 60) || prev.name || 'Гость', phone: str(body.phone, 20), homeClubId: str(body.homeClubId, 8) || prev.homeClubId || 'c1' };
+      const given = str(body.name, 60);
+      // A placeholder name must not overwrite the real one saved earlier.
+      const name = given && given !== 'Гость' && given !== 'Guest' && given !== 'Қонақ' ? given : prev.name || given || 'Гость';
+      const next = { ...prev, name, phone: str(body.phone, 20), homeClubId: str(body.homeClubId, 8) || prev.homeClubId || 'c1' };
       if (body.profile && typeof body.profile === 'object') {
         const num = (v, lo, hi) => (Number.isFinite(Number(v)) && Number(v) >= lo && Number(v) <= hi ? Math.round(Number(v)) : undefined);
         const goal = ['lose', 'gain', 'tone', 'strength', 'flex'].includes(body.profile.goal) ? body.profile.goal : undefined;
-        next.profile = { age: num(body.profile.age, 10, 100), goal, heightCm: num(body.profile.heightCm, 100, 250), weightKg: num(body.profile.weightKg, 30, 300) };
+        const gender = ['male', 'female'].includes(body.profile.gender) ? body.profile.gender : undefined;
+        const level = ['beginner', 'intermediate', 'advanced'].includes(body.profile.level) ? body.profile.level : undefined;
+        next.profile = { age: num(body.profile.age, 10, 100), goal, heightCm: num(body.profile.heightCm, 100, 250), weightKg: num(body.profile.weightKg, 30, 300), targetWeightKg: num(body.profile.targetWeightKg, 30, 300), gender, level, daysPerWeek: num(body.profile.daysPerWeek, 1, 7) };
       }
       await write(id, next);
       return res.status(200).json({ ok: true, membership: next.membership ?? null });
@@ -76,7 +81,8 @@ module.exports = async function handler(req, res) {
       const id = str(req.query.id, 20);
       if (!ID.test(id)) return res.status(400).json({ error: 'bad id' });
       const c = await read(id);
-      return res.status(200).json({ membership: c?.membership ?? null });
+      // The id is derived from the phone, which the client proved by SMS (demo code for now).
+      return res.status(200).json({ membership: c?.membership ?? null, name: c?.name ?? null, homeClubId: c?.homeClubId ?? null, profile: c?.profile ?? null });
     }
 
     if (!authed(req)) return res.status(401).json({ error: 'code' });

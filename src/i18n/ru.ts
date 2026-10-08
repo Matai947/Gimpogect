@@ -714,6 +714,12 @@ export const ru = {
   pos_change: 'Сдача',
   pos_received: 'Получено',
   pos_plan_line: 'Абонемент «{name}»',
+  pos_given: 'Клиент дал',
+  pos_exact: 'Без сдачи',
+  pos_short: 'Не хватает',
+  pos_custom_ph: 'Своя сумма, ₸',
+  pos_custom_add: 'Добавить',
+  pos_custom_line: 'Товар на {n}',
 } as const;
 
 export type TKey = keyof typeof ru;

@@ -29,7 +29,8 @@ export default function StaffPosScreen() {
   const [client, setClient] = useState<MemberInfo | null>(null);
   const [cat, setCat] = useState<string>('all');
   const [lines, setLines] = useState<Line[]>([]);
-  const [method, setMethod] = useState<PayMethod>('kaspi');
+  const [method, setMethod] = useState<PayMethod>('cash');
+  const [custom, setCustom] = useState('');
   const [cash, setCash] = useState('');
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +51,8 @@ export default function StaffPosScreen() {
   const discount = client?.active ? Math.round(goods * MEMBER_DISCOUNT) : 0;
   const total = subtotal - discount;
   const received = Number(cash.replace(/\D/g, '')) || 0;
-  const change = method === 'cash' && received > total ? received - total : 0;
+  const change = received - total; // negative = not enough cash
+  const cashShort = method === 'cash' && lines.length > 0 && received < total;
 
   const add = (l: Omit<Line, 'qty'>) => {
     setError(null);
@@ -59,7 +61,7 @@ export default function StaffPosScreen() {
   const bump = (key: string, d: number) => setLines((ls) => ls.map((x) => (x.key === key ? { ...x, qty: x.qty + d } : x)).filter((x) => x.qty > 0));
 
   const pay = () => {
-    if (lines.length === 0) return;
+    if (lines.length === 0 || cashShort) return;
     const planLines = lines.filter((l) => l.planId);
     if (planLines.length && !client) {
       setError(t('pos_need_client'));
@@ -122,7 +124,7 @@ export default function StaffPosScreen() {
             <View style={styles.dash} />
             {receipt.discount ? <Sum label={t('pos_discount')} value={`−${formatPrice(receipt.discount)}`} /> : null}
             <Sum label={t('pos_total')} value={formatPrice(receipt.total)} big />
-            {receipt.method === 'cash' && received > receipt.total ? (
+            {receipt.method === 'cash' && received >= receipt.total ? (
               <>
                 <Sum label={t('pos_received')} value={formatPrice(received)} />
                 <Sum label={t('pos_change')} value={formatPrice(received - receipt.total)} />
@@ -191,6 +193,22 @@ export default function StaffPosScreen() {
             <Chip key={c} label={td(c)} active={cat === c} onPress={() => setCat(c)} />
           ))}
         </ChipRow>
+        {cat !== PLANS_TAB ? (
+          <Row gap={Spacing.two} style={styles.customRow}>
+            <Ionicons name="pricetag-outline" size={18} color={StaffAccent} />
+            <TextInput value={custom} onChangeText={setCustom} placeholder={t('pos_custom_ph')} placeholderTextColor={Colors.textMuted} keyboardType="number-pad" style={[styles.searchInput, { height: 40 }]} />
+            <Button
+              title={t('pos_custom_add')}
+              size="sm"
+              variant="secondary"
+              onPress={() => {
+                const v = Number(custom.replace(/\D/g, '')) || 0;
+                if (v > 0) add({ key: `custom:${newTs()}`, title: t('pos_custom_line', { n: formatPrice(v) }), price: v });
+                setCustom('');
+              }}
+            />
+          </Row>
+        ) : null}
         <View style={styles.grid}>
           {cat === PLANS_TAB
             ? plans
@@ -263,21 +281,39 @@ export default function StaffPosScreen() {
               ))}
             </Row>
             {method === 'cash' ? (
-              <Row gap={Spacing.two}>
-                <TextInput value={cash} onChangeText={setCash} placeholder={t('pos_received')} placeholderTextColor={Colors.textMuted} keyboardType="number-pad" style={[styles.searchInput, styles.cashInput]} />
-                {change ? (
-                  <T type="small" style={{ fontWeight: '700' }}>
-                    {t('pos_change')}: {formatPrice(change)}
+              <View style={styles.cashBox}>
+                <T type="label" color={Colors.textSecondary}>
+                  {t('pos_given')}
+                </T>
+                <Row gap={Spacing.two}>
+                  <TextInput value={cash} onChangeText={setCash} placeholder="0" placeholderTextColor={Colors.textMuted} keyboardType="number-pad" style={styles.cashInput} />
+                  <T type="heading" color={Colors.textMuted}>
+                    ₸
                   </T>
+                </Row>
+                <Row gap={6} style={{ flexWrap: 'wrap' }}>
+                  {[total, 5000, 10000, 20000].map((v, i) => (
+                    <Chip key={i} label={i === 0 ? t('pos_exact') : formatPrice(v)} onPress={() => setCash(String(v))} />
+                  ))}
+                </Row>
+                {received > 0 ? (
+                  <Row style={[styles.changeRow, { backgroundColor: cashShort ? 'rgba(214,59,71,0.1)' : 'rgba(31,138,76,0.12)' }]}>
+                    <T type="subheading" color={cashShort ? Colors.danger : Colors.success}>
+                      {cashShort ? t('pos_short') : t('pos_change')}
+                    </T>
+                    <T type="display" color={cashShort ? Colors.danger : Colors.success} style={{ fontSize: 28, lineHeight: 34 }}>
+                      {formatPrice(Math.abs(change))}
+                    </T>
+                  </Row>
                 ) : null}
-              </Row>
+              </View>
             ) : null}
             {error ? (
               <T type="small" color={Colors.danger} style={{ fontWeight: '700' }}>
                 {error}
               </T>
             ) : null}
-            <Button title={t('pos_pay', { sum: formatPrice(total) })} icon="checkmark-circle-outline" size="lg" onPress={pay} style={{ backgroundColor: StaffAccent }} />
+            <Button title={t('pos_pay', { sum: formatPrice(total) })} icon="checkmark-circle-outline" size="lg" onPress={pay} disabled={cashShort} style={{ backgroundColor: StaffAccent }} />
           </>
         )}
       </View>
@@ -303,7 +339,10 @@ const styles = StyleSheet.create({
   body: { padding: Spacing.three, gap: Spacing.two, paddingBottom: 320 },
   search: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: Spacing.three, height: 46 },
   searchInput: { flex: 1, color: Colors.text, fontSize: 15 },
-  cashInput: { height: 42, backgroundColor: Colors.surfaceAlt, borderRadius: Radius.sm, paddingHorizontal: 12, flex: 0, width: 140 },
+  cashInput: { flex: 1, height: 52, backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md, paddingHorizontal: 14, color: Colors.text, fontSize: 26, fontWeight: '800', borderWidth: 1, borderColor: Colors.border },
+  cashBox: { gap: 8, padding: 10, borderRadius: Radius.md, backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border },
+  changeRow: { justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.sm },
+  customRow: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: 10, paddingVertical: 6 },
   match: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: 8, borderRadius: Radius.sm, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, marginTop: 6 },
   clientRow: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: StaffAccent, borderRadius: Radius.md, padding: 10 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
