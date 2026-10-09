@@ -56,7 +56,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "deploy:web": "expo export --platform web && node scripts/prepare-deploy.js && vercel deploy dist --prod --yes"
+    "deploy:web": "expo export --platform web && node scripts/prepare-deploy.js && npx wrangler pages deploy dist --project-name gym-project --branch main"
   },
   "private": true
 }
