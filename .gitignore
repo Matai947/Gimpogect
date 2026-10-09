@@ -49,3 +49,4 @@ example
 
 # Vercel
 .vercel
+.wrangler/
