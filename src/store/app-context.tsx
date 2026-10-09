@@ -764,7 +764,7 @@ export function useMembers() {
     const fresh = remote
       .filter((r) => r.id !== user?.id && !members.some((m) => m.id === r.id))
       .map((r) => {
-        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId, endDate: r.membership?.endDate, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0 }, false);
+        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId, endDate: r.membership?.endDate, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, note: r.note, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0 }, false);
         info.params = r.profile?.heightCm ? `${r.profile.heightCm} см • ${r.profile.weightKg} кг` : undefined;
         return info;
       });
@@ -799,7 +799,7 @@ export function useMembers() {
 /** Membership plans with the front desk's price edits applied. */
 export function usePlans() {
   const { planPrices } = useApp();
-  return useMemo(() => plans.map((p) => {
+  return useMemo(() => plans.filter((p) => !p.legacy).map((p) => {
     const o = planPrices[p.id];
     return o ? { ...p, price: o.price, oldPrice: o.oldPrice, perMonth: p.months ? Math.round(o.price / p.months) : o.price } : p;
   }), [planPrices]);

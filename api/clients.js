@@ -1,60 +1,40 @@
-// Shared client registry for the whole network, stored as one private Blob per client.
-// ponytail: one file per client avoids write races between registrations; the list endpoint
-// reads them all, fine up to a few thousand clients, move to a real database after that.
-const { get, list, put } = require('@vercel/blob');
+// Shared client registry for the whole network, stored in Supabase (Postgres) through its REST API.
+// Tables clients / leads are private (RLS on, no policies); only this server holds the secret key.
 const crypto = require('crypto');
 
 // No defaults: the codes live only in the Vercel environment, and the API refuses to work without them.
 const STAFF_CODE = process.env.STAFF_CODE;
 const OWNER_CODE = process.env.OWNER_CODE;
 const TOKEN_SECRET = process.env.TOKEN_SECRET; // signs client access tokens
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY;
 const TOKEN_DAYS = 180;
 
-const ID = /^u_\d{10,12}$/;
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
-const path = (id) => `clients/${id}.json`;
+// u_<phone digits> for people with a phone; x_<n> for cards imported without one (no app account).
+const ID = /^(u_d{10,12}|x_d{1,6})$/;
+const DAY = /^d{4}-d{2}-d{2}$/;
+
+const sb = async (path, init = {}) => {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...init, headers: { apikey: SUPABASE_KEY, 'content-type': 'application/json', ...init.headers } });
+  if (!r.ok) throw new Error('db ' + r.status);
+  return r.status === 204 ? null : r.json();
+};
 
 async function read(id) {
-  const r = await get(path(id), { access: 'private', useCache: false }).catch(() => null);
-  if (!r || r.statusCode !== 200) return null;
-  return new Response(r.stream).json();
+  const rows = await sb(`clients?id=eq.${id}&select=data`);
+  return rows[0]?.data ?? null;
 }
 
-const putJson = (name, data) => put(name, JSON.stringify(data), { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json' });
-const INDEX = 'clients/_index.json';
+const write = (id, data) => sb('clients?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ id, data, updated_at: new Date().toISOString() }) });
 
-async function readIndex() {
-  const r = await get(INDEX, { access: 'private', useCache: false }).catch(() => null);
-  if (!r || r.statusCode !== 200) return null;
-  return new Response(r.stream).json();
-}
-
-/** Writes the client file and refreshes the shared index, so the staff list is one read instead of one per client. */
-async function write(id, data) {
-  await putJson(path(id), data);
-  const index = (await readIndex()) || {};
-  const { passHash: _p, passReset: _r, ...pub } = data;
-  index[id] = pub;
-  await putJson(INDEX, index);
-}
-
-/** Rebuilds the index from the per-client files; used when the index is missing. */
-async function rebuildIndex() {
-  const blobs = [];
-  let cursor;
-  do {
-    const page = await list({ prefix: 'clients/', cursor, limit: 500 });
-    blobs.push(...page.blobs.filter((b) => b.pathname !== INDEX));
-    cursor = page.hasMore ? page.cursor : undefined;
-  } while (cursor && blobs.length < 2000);
-  const all = await Promise.all(blobs.map((b) => read(b.pathname.slice(8, -5))));
-  const index = {};
-  all.filter(Boolean).forEach((c) => {
-    const { passHash: _p, passReset: _r, ...pub } = c;
-    index[c.id] = pub;
-  });
-  await putJson(INDEX, index);
-  return index;
+/** Every client, paged because PostgREST returns at most 1000 rows per request. */
+async function readAll() {
+  const all = [];
+  for (let from = 0; ; from += 1000) {
+    const rows = await sb(`clients?select=data&order=id&limit=1000&offset=${from}`);
+    all.push(...rows.map((r) => r.data));
+    if (rows.length < 1000) return all;
+  }
 }
 
 const authed = (req) => {
@@ -113,7 +93,7 @@ module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  if (!STAFF_CODE || !OWNER_CODE || !TOKEN_SECRET) return res.status(503).json({ error: 'not configured' });
+  if (!STAFF_CODE || !OWNER_CODE || !TOKEN_SECRET || !SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'not configured' });
   const op = String(req.query.op || '');
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
 
@@ -124,8 +104,8 @@ module.exports = async function handler(req, res) {
       const digits = digitsOf(phone);
       if (name.length < 2 || digits.length < 10 || digits.length > 12) return res.status(400).json({ error: 'bad data' });
       const day = new Date().toISOString().slice(0, 10);
-      const lead = { name, phone, clubId: ['c1', 'c2', 'c3'].includes(body.clubId) ? body.clubId : '', lang: ['ru', 'kk', 'en'].includes(body.lang) ? body.lang : 'ru', ts: Date.now() };
-      await put(`leads/${day}-${digits}.json`, JSON.stringify(lead), { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json' });
+      const lead = { name, phone, clubId: ['c1', 'c2'].includes(body.clubId) ? body.clubId : '', lang: ['ru', 'kk', 'en'].includes(body.lang) ? body.lang : 'ru', ts: Date.now() };
+      await sb('leads?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ id: `${day}-${digits}`, ts: lead.ts, data: lead }) });
       return res.status(200).json({ ok: true });
     }
 
@@ -189,17 +169,12 @@ module.exports = async function handler(req, res) {
     if (!authed(req)) return res.status(401).json({ error: 'code' });
 
     if (req.method === 'GET' && op === 'leads') {
-      const page = await list({ prefix: 'leads/', limit: 200 });
-      const all = await Promise.all(page.blobs.map(async (b) => {
-        const r = await get(b.pathname, { access: 'private', useCache: false }).catch(() => null);
-        return r && r.statusCode === 200 ? new Response(r.stream).json() : null;
-      }));
-      return res.status(200).json({ leads: all.filter(Boolean).sort((a, b) => b.ts - a.ts) });
+      const rows = await sb('leads?select=data&order=ts.desc&limit=200');
+      return res.status(200).json({ leads: rows.map((r) => r.data) });
     }
 
     if (req.method === 'GET' && op === 'list') {
-      const index = (await readIndex()) || (await rebuildIndex());
-      return res.status(200).json({ clients: Object.values(index).map(publicClient).sort((a, b) => String(b.since).localeCompare(String(a.since))) });
+      return res.status(200).json({ clients: (await readAll()).map(publicClient).sort((a, b) => String(b.since).localeCompare(String(a.since))) });
     }
 
     // Entry/exit of a client at a club. The server clock is the source of truth for the visit.

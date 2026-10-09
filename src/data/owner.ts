@@ -26,7 +26,7 @@ const shopItems = [
   { title: 'Перчатки для зала', amount: 6900 },
 ];
 const planPool = ['p1', 'p1', 'p3', 'p3', 'p6', 'p12', 'pd1'];
-const clubPool = ['c1', 'c1', 'c1', 'c2', 'c2', 'c3'];
+const clubPool = ['c1', 'c1', 'c2'];
 const methodPool: PayMethod[] = ['kaspi', 'kaspi', 'kaspi', 'card', 'card', 'cash', 'split'];
 const staffPool = ['Айбек', 'Динара', 'Руслан'];
 

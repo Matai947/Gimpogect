@@ -3,9 +3,8 @@ const API = 'https://gym.matai.kz/api/clients';
 const IMG = (id, w = 1000) => `https://images.unsplash.com/photo-${id}?w=${w}&q=80`;
 
 const clubs = [
-  { id: 'c1', name: 'Seven Gym Достык', city: 'city_alm', addr: 'пр. Достык, 97 (БЦ «Достык Плаза»)', h: 'h247', area: 4500, machines: 190, rating: '4,8', phone: '+7 727 300 00 01', img: '1671970922029-0430d2ae122c', am: ['am_gym', 'am_pool25', 'am_sauna', 'am_groups'] },
-  { id: 'c2', name: 'Seven Gym Esentai', city: 'city_alm', addr: 'пр. Аль-Фараби, 77/8 (Esentai Mall)', h: '06:00–24:00', area: 2300, machines: 150, rating: '4,9', phone: '+7 727 300 00 02', img: '1758448756350-3d0eec02ba37', am: ['am_gym', 'am_yoga', 'am_cycle', 'am_sauna'] },
-  { id: 'c3', name: 'Seven Gym Абая', city: 'city_alm', addr: 'пр. Абая, 150/230', h: '07:00–23:00', area: 1200, machines: 85, rating: '4,6', phone: '+7 727 300 00 03', img: '1761971976282-b2bb051a5474', am: ['am_gym', 'am_boxing', 'am_groups', 'am_lockers'] },
+  { id: 'c1', name: 'Seven Gym Akkent', city: 'city_alm', addr: 'Адрес уточняется', h: '07:00–23:00', area: 0, machines: 0, rating: '', phone: '+7 727 300 00 01', img: '1671970922029-0430d2ae122c', am: ['am_gym'] },
+  { id: 'c2', name: 'Seven Gym Premier', city: 'city_alm', addr: 'Адрес уточняется', h: '07:00–23:00', area: 0, machines: 0, rating: '', phone: '+7 727 300 00 01', img: '1758448756350-3d0eec02ba37', am: ['am_gym'] },
 ];
 
 const plans = [
@@ -28,7 +27,7 @@ const trainers = [
 const dict = {
   ru: {
     nav_clubs: 'Клубы', nav_prices: 'Тарифы', nav_trainers: 'Тренеры', nav_app: 'Приложение', nav_faq: 'Вопросы', nav_login: 'Войти', nav_lead: 'Оставить заявку',
-    hero_eyebrow: 'Алматы', hero_title: 'Сеть залов,<br />где всё <em>под рукой</em>', hero_sub: '3 клуба, 400+ тренажёров, QR-вход и ИИ-тренер в приложении. Начни с 3 бесплатных дней.', hero_cta1: '3 дня бесплатно', hero_cta2: 'Выбрать клуб',
+    hero_eyebrow: 'Алматы', hero_title: 'Сеть залов,<br />где всё <em>под рукой</em>', hero_sub: '2 клуба, QR-вход и ИИ-тренер в приложении. Начни с 3 бесплатных дней.', hero_cta1: '3 дня бесплатно', hero_cta2: 'Выбрать клуб',
     stat_clubs: 'клуба в Алматы', stat_machines: 'тренажёров', stat_247: 'в клубе на Достык', stat_rating: 'средняя оценка клиентов',
     mq1: 'QR-ВХОД', mq2: 'ИИ-ТРЕНЕР', mq3: 'ГРУППОВЫЕ ПРОГРАММЫ', mq4: 'ПЕРСОНАЛЬНЫЕ ТРЕНИРОВКИ', mq5: 'СПОРТПИТ', mq6: 'СПА И САУНА',
     clubs_eyebrow: 'Клубы', clubs_title: 'Выбери свой клуб', city_alm: 'Алматы', h247: 'Круглосуточно', club_area: 'м²', club_machines: 'тренажёров', club_pick: 'Записаться в этот клуб', club_call: 'Позвонить',
@@ -58,7 +57,7 @@ const dict = {
   },
   kk: {
     nav_clubs: 'Клубтар', nav_prices: 'Тарифтер', nav_trainers: 'Жаттықтырушылар', nav_app: 'Қосымша', nav_faq: 'Сұрақтар', nav_login: 'Кіру', nav_lead: 'Өтінім қалдыру',
-    hero_eyebrow: 'Алматы', hero_title: 'Бәрі <em>қолыңда</em><br />тұратын залдар желісі', hero_sub: '3 клуб, 400+ жаттығу құралы, QR арқылы кіру және қосымшадағы ЖИ-жаттықтырушы. 3 тегін күннен бастаңыз.', hero_cta1: '3 күн тегін', hero_cta2: 'Клубты таңдау',
+    hero_eyebrow: 'Алматы', hero_title: 'Бәрі <em>қолыңда</em><br />тұратын залдар желісі', hero_sub: '2 клуб, QR арқылы кіру және қосымшадағы ЖИ-жаттықтырушы. 3 тегін күннен бастаңыз.', hero_cta1: '3 күн тегін', hero_cta2: 'Клубты таңдау',
     stat_clubs: 'Алматыдағы клуб', stat_machines: 'жаттығу құралы', stat_247: 'Достық клубында', stat_rating: 'клиенттердің орташа бағасы',
     mq1: 'QR АРҚЫЛЫ КІРУ', mq2: 'ЖИ-ЖАТТЫҚТЫРУШЫ', mq3: 'ТОП БАҒДАРЛАМАЛАРЫ', mq4: 'ЖЕКЕ ЖАТТЫҒУЛАР', mq5: 'СПОРТ ТАМАҒЫ', mq6: 'СПА ЖӘНЕ САУНА',
     clubs_eyebrow: 'Клубтар', clubs_title: 'Өз клубыңызды таңдаңыз', city_alm: 'Алматы', h247: 'Тәулік бойы', club_area: 'м²', club_machines: 'жаттығу құралы', club_pick: 'Осы клубқа жазылу', club_call: 'Қоңырау шалу',
@@ -88,7 +87,7 @@ const dict = {
   },
   en: {
     nav_clubs: 'Clubs', nav_prices: 'Prices', nav_trainers: 'Trainers', nav_app: 'App', nav_faq: 'FAQ', nav_login: 'Log in', nav_lead: 'Request a call',
-    hero_eyebrow: 'Almaty', hero_title: 'The gym network<br />where everything is <em>at hand</em>', hero_sub: '3 clubs, 400+ machines, QR entry and an AI coach in the app. Start with 3 free days.', hero_cta1: '3 days free', hero_cta2: 'Choose a club',
+    hero_eyebrow: 'Almaty', hero_title: 'The gym network<br />where everything is <em>at hand</em>', hero_sub: '2 clubs, QR entry and an AI coach in the app. Start with 3 free days.', hero_cta1: '3 days free', hero_cta2: 'Choose a club',
     stat_clubs: 'clubs in Almaty', stat_machines: 'machines', stat_247: 'at the Dostyk club', stat_rating: 'average client rating',
     mq1: 'QR ENTRY', mq2: 'AI COACH', mq3: 'GROUP CLASSES', mq4: 'PERSONAL TRAINING', mq5: 'SPORTS NUTRITION', mq6: 'SPA AND SAUNA',
     clubs_eyebrow: 'Clubs', clubs_title: 'Pick your club', city_alm: 'Almaty', h247: 'Open 24/7', club_area: 'm²', club_machines: 'machines', club_pick: 'Join this club', club_call: 'Call',
@@ -135,10 +134,10 @@ function render() {
 
   $('#clubGrid').innerHTML = clubs.map((c) => `
     <article class="club reveal" style="background-image:url('${IMG(c.img)}')">
-      <div class="tags"><span class="tag gold">★ ${c.rating}</span>${c.am.map((a) => `<span class="tag">${t(a)}</span>`).join('')}</div>
+      <div class="tags">${c.rating ? `<span class="tag gold">★ ${c.rating}</span>` : ''}${c.am.map((a) => `<span class="tag">${t(a)}</span>`).join('')}</div>
       <h3>${c.name}</h3>
       <p class="addr">${t(c.city)}, ${c.addr}</p>
-      <p class="meta"><span><b>${c.h === 'h247' ? t('h247') : c.h}</b></span><span><b>${money(c.area)}</b> ${t('club_area')}</span><span><b>${c.machines}+</b> ${t('club_machines')}</span></p>
+      <p class="meta"><span><b>${c.h === 'h247' ? t('h247') : c.h}</b></span>${c.area ? `<span><b>${money(c.area)}</b> ${t('club_area')}</span>` : ''}${c.machines ? `<span><b>${c.machines}+</b> ${t('club_machines')}</span>` : ''}</p>
       <div class="cta" style="margin-top:18px"><a class="btn btn-main" href="#lead" data-club="${c.id}">${t('club_pick')}</a><a class="btn btn-ghost" href="tel:${c.phone.replace(/\s/g, '')}">${t('club_call')}</a></div>
     </article>`).join('');
 

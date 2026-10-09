@@ -74,6 +74,7 @@ export type Plan = {
   trial?: boolean; // free trial, hidden from the price list; 3 days
   days?: number; // fixed-length pass instead of months
   staffOnly?: boolean; // issued only at the front desk
+  legacy?: boolean; // imported from the old system: shown on members, hidden from sale
 };
 
 export type NewsItem = {
@@ -88,11 +89,11 @@ export type NewsItem = {
 export const clubs: Club[] = [
   {
     id: 'c1',
-    name: 'Seven Gym Достык',
+    name: 'Seven Gym Akkent',
     city: 'Алматы',
-    address: 'пр. Достык, 97 (БЦ «Достык Плаза»)',
-    hours: 'Круглосуточно',
-    is24h: true,
+    address: 'Адрес уточняется',
+    hours: '07:00 – 23:00',
+    is24h: false,
     occupancy: 62,
     rating: 4.8,
     reviews: 1240,
@@ -104,20 +105,19 @@ export const clubs: Club[] = [
       'https://images.unsplash.com/photo-1597076545399-91a3ff0e71b3?w=1200&q=80',
     ],
     amenities: ['Тренажёрный зал', 'Бассейн 25 м', 'Сауна и хаммам', 'Групповые залы', 'Кроссфит-зона', 'Парковка', 'Детская комната'],
-    description:
-      'Флагманский клуб сети площадью 4 500 м². Три этажа тренажёрных зон, 25-метровый бассейн, термальная зона и четыре зала групповых программ.',
+    description: 'Тренажёрный зал Seven Gym Akkent.',
     areaM2: 4500,
     machines: 190,
-    hoursDetail: ['Круглосуточно', 'Круглосуточно', 'Круглосуточно'],
+    hoursDetail: ['07:00–23:00', '07:00–23:00', '07:00–23:00'],
     liked: ['Хороший набор тренажёров', 'Чистые раздевалки', 'Персонал на высшем уровне'],
     reviewsList: [{ name: 'Айдос Т.', when: '2 недели назад', text: 'Отличный зал, утром нет очередей на снаряды. Чисто, прохладно, душ всегда в порядке.', stars: 5 }, { name: 'Мария К.', when: '1 месяц назад', text: 'Супер персонал на рецепции, помогли с заморозкой за минуту. Бассейн чистый.', stars: 5 }, { name: 'Ерлан С.', when: '2 месяца назад', text: 'Много свободных весов и платформ, не нужно ждать. Паркинг вечером забит.', stars: 4 }],
   },
   {
     id: 'c2',
-    name: 'Seven Gym Esentai',
+    name: 'Seven Gym Premier',
     city: 'Алматы',
-    address: 'пр. Аль-Фараби, 77/8 (Esentai Mall)',
-    hours: '06:00 – 24:00',
+    address: 'Адрес уточняется',
+    hours: '07:00 – 23:00',
     is24h: false,
     occupancy: 38,
     rating: 4.9,
@@ -129,38 +129,12 @@ export const clubs: Club[] = [
       'https://images.unsplash.com/photo-1758448756350-3d0eec02ba37?w=1200&q=80',
     ],
     amenities: ['Тренажёрный зал', 'Йога-студия', 'Сайкл-студия', 'Сауна', 'Фитнес-бар', 'Парковка'],
-    description:
-      'Премиальный клуб в Esentai Mall с панорамными окнами на горы. Отдельные студии йоги и сайкла, зона функционального тренинга.',
+    description: 'Тренажёрный зал Seven Gym Premier.',
     areaM2: 2300,
     machines: 150,
-    hoursDetail: ['06:00–24:00', '08:00–22:00', '09:00–21:00'],
+    hoursDetail: ['07:00–23:00', '07:00–23:00', '07:00–23:00'],
     liked: ['Вид на горы', 'Новое оборудование', 'Тихо по утрам'],
     reviewsList: [{ name: 'Динара А.', when: '3 недели назад', text: 'Йога-студия с панорамой на Алатау, это лучшее утро в Алматы.', stars: 5 }, { name: 'Timur B.', when: '1 месяц назад', text: 'Премиальный уровень, сайкл-студия как в Европе.', stars: 5 }],
-  },
-  {
-    id: 'c3',
-    name: 'Seven Gym Абая',
-    city: 'Алматы',
-    address: 'пр. Абая, 150/230',
-    hours: '07:00 – 23:00',
-    is24h: false,
-    occupancy: 81,
-    rating: 4.6,
-    reviews: 530,
-    distanceKm: 2.9,
-    phone: '+7 727 300 00 03',
-    photos: [
-      'https://images.unsplash.com/photo-1761971976282-b2bb051a5474?w=1200&q=80',
-      'https://images.unsplash.com/photo-1761971975769-97e598bf526b?w=1200&q=80',
-    ],
-    amenities: ['Тренажёрный зал', 'Бокс-зона', 'Групповые залы', 'Сауна', 'Раздевалки с сейфами'],
-    description:
-      'Компактный клуб рядом с метро «Абая» с сильной боксёрской и силовой зоной. Идеален для тренировок до или после работы.',
-    areaM2: 1200,
-    machines: 85,
-    hoursDetail: ['07:00–23:00', '08:00–22:00', '09:00–21:00'],
-    liked: ['Удобно у метро', 'Сильная бокс-зона', 'Всегда чисто'],
-    reviewsList: [{ name: 'Руслан Ж.', when: '1 неделю назад', text: 'Бокс-зона топ, мешки новые, тренер Руслан ставит удар с нуля.', stars: 5 }, { name: 'Алина', when: '2 месяца назад', text: 'Компактно, но всё есть. В час пик тесновато.', stars: 4 }],
   },
 ];
 
@@ -191,20 +165,6 @@ export const trainers: Trainer[] = [
     avatar: 'https://images.unsplash.com/photo-1597076537061-a6b58163aa45?w=400&q=80',
     bio: 'Преподаватель хатха- и виньяса-йоги (RYT-500). Работаю с осанкой, мобильностью и восстановлением после травм.',
     audience: 'Женский и мужской тренер • 16–60 лет',
-  },
-  {
-    id: 't3',
-    name: 'Руслан Бекжанов',
-    clubId: 'c3',
-    specialties: ['Бокс', 'Кикбоксинг', 'Функциональный'],
-    rating: 4.8,
-    reviews: 143,
-    experienceYears: 12,
-    pricePerSession: 11000,
-    avatar: 'https://images.unsplash.com/photo-1738523686520-5965d77ab471?w=400&q=80',
-    bio: 'КМС по боксу, чемпион Казахстана среди юниоров. Ставлю ударную технику с нуля и готовлю к любительским турнирам.',
-    pro: true,
-    audience: 'Мужской тренер • 14–40 лет',
   },
   {
     id: 't4',
@@ -251,7 +211,6 @@ export const trainers: Trainer[] = [
 export const classTemplates: ClassTemplate[] = [
   { id: 'k1', title: 'Утренняя йога', category: 'Йога', clubId: 'c2', trainerId: 't2', time: '07:30', durationMin: 60, weekdays: [1, 3, 5], capacity: 20, level: 'Все уровни', room: 'Йога-студия', description: 'Мягкая практика для пробуждения тела: дыхание, суставная гимнастика, базовые асаны.', color: '#7C5CFF' },
   { id: 'k2', title: 'CrossFit WOD', category: 'Сила', clubId: 'c1', trainerId: 't1', time: '19:00', durationMin: 60, weekdays: [1, 2, 3, 4, 5], capacity: 16, level: 'Средний', room: 'Кроссфит-зона', description: 'Тренировка дня: силовая часть и метаболический комплекс. Масштабируется под ваш уровень.', color: '#FF7A45' },
-  { id: 'k3', title: 'Бокс', category: 'Бокс', clubId: 'c3', trainerId: 't3', time: '20:00', durationMin: 75, weekdays: [2, 4, 6], capacity: 14, level: 'Все уровни', room: 'Бокс-зона', description: 'Работа на лапах и мешках, школа бокса, спарринги по желанию.', color: '#FF5C5C' },
   { id: 'k4', title: 'Пилатес', category: 'Растяжка', clubId: 'c2', trainerId: 't2', time: '10:00', durationMin: 55, weekdays: [2, 4, 6, 0], capacity: 18, level: 'Начальный', room: 'Зал 2', description: 'Укрепляем центр тела, работаем над осанкой и гибкостью.', color: '#4DA3FF' },
   { id: 'k5', title: 'Zumba', category: 'Танцы', clubId: 'c2', trainerId: 't6', time: '18:00', durationMin: 55, weekdays: [1, 3, 5], capacity: 30, level: 'Все уровни', room: 'Зал 1', description: 'Танцевальное кардио под латино-хиты. Сжигаем до 600 ккал.', color: '#FF4FA3' },
   { id: 'k6', title: 'Стретчинг', category: 'Растяжка', clubId: 'c1', trainerId: 't4', time: '12:00', durationMin: 45, weekdays: [1, 2, 3, 4, 5, 6, 0], capacity: 22, level: 'Все уровни', room: 'Зал 3', description: 'Глубокая растяжка всех групп мышц. Отлично после силовой.', color: '#3DDC84' },
@@ -260,7 +219,6 @@ export const classTemplates: ClassTemplate[] = [
   { id: 'k9', title: 'Аква-аэробика', category: 'Аква', clubId: 'c1', trainerId: 't5', time: '11:00', durationMin: 45, weekdays: [2, 4, 6], capacity: 15, level: 'Все уровни', room: 'Бассейн', description: 'Кардио в воде без нагрузки на суставы.', color: '#D9643A' },
   { id: 'k10', title: 'Силовой класс', category: 'Сила', clubId: 'c1', trainerId: 't1', time: '18:30', durationMin: 60, weekdays: [1, 3, 5], capacity: 20, level: 'Начальный', room: 'Зал 1', description: 'Базовые упражнения со штангой и гантелями под контролем тренера.', color: '#FF7A45' },
   { id: 'k11', title: 'Вечерняя йога', category: 'Йога', clubId: 'c1', trainerId: 't2', time: '20:30', durationMin: 60, weekdays: [2, 4], capacity: 20, level: 'Все уровни', room: 'Зал 2', description: 'Расслабляющая практика в конце дня: инь-йога и медитация.', color: '#7C5CFF' },
-  { id: 'k12', title: 'HIIT', category: 'Кардио', clubId: 'c3', trainerId: 't4', time: '07:00', durationMin: 40, weekdays: [1, 3, 5], capacity: 18, level: 'Продвинутый', room: 'Зал 1', description: 'Высокоинтенсивные интервалы. Максимум результата за 40 минут.', color: '#FFB347' },
 ];
 
 export const plans: Plan[] = [
@@ -271,6 +229,15 @@ export const plans: Plan[] = [
   { id: 'p6', name: 'Прогресс', months: 6, price: 105000, oldPrice: 150000, perMonth: 17500, features: ['Все клубы сети', 'Групповые занятия', 'Заморозка 30 дней', '3 гостевых визита', 'Анализ состава тела'], popular: true },
   { id: 'p12', name: 'Чемпион', months: 12, price: 180000, oldPrice: 300000, perMonth: 15000, features: ['Все клубы сети', 'Групповые занятия', 'Заморозка 90 дней', '6 гостевых визитов', 'Анализ состава тела', '2 персональные тренировки'] },
   { id: 'pd1', name: 'Дневной', months: 1, price: 15000, perMonth: 15000, features: ['Вход с 07:00 до 17:00', 'Все клубы сети', 'Групповые занятия днём'], dayOnly: true },
+  // Plans carried over from the clubs' previous system. Shown on imported members, not sold.
+  { id: 'i1', name: 'Полный день 12 посещений', months: 1, price: 0, perMonth: 0, features: [], legacy: true },
+  { id: 'i2', name: 'Полный день Безлимитный', months: 1, price: 0, perMonth: 0, features: [], legacy: true },
+  { id: 'i3', name: 'Дневной абонемент 12 посещений', months: 1, price: 0, perMonth: 0, features: [], legacy: true, dayOnly: true },
+  { id: 'i4', name: 'Дневной абонемент Безлимитный', months: 1, price: 0, perMonth: 0, features: [], legacy: true, dayOnly: true },
+  { id: 'i5', name: 'Абонемент безлимитный', months: 1, price: 0, perMonth: 0, features: [], legacy: true },
+  { id: 'i6', name: '3 Месяца Безлимитный', months: 3, price: 0, perMonth: 0, features: [], legacy: true },
+  { id: 'i7', name: '6 Месяцев Безлимитный', months: 6, price: 0, perMonth: 0, features: [], legacy: true },
+  { id: 'i8', name: '12 Месяцев Безлимитный', months: 12, price: 0, perMonth: 0, features: [], legacy: true },
 ];
 
 export const news: NewsItem[] = [
