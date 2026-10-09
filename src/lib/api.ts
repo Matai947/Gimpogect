@@ -1,6 +1,7 @@
-// Client registry API (api/clients.js on the Vercel deployment). Every call is best effort:
+// Client registry API (functions/api/clients.js on Cloudflare Pages). Every call is best effort:
 // the app keeps working offline and just stops syncing.
-const BASE = process.env.EXPO_PUBLIC_API_URL ?? 'https://gym.matai.kz';
+// The web build talks to the server it was loaded from; native builds use the public address.
+const BASE = process.env.EXPO_PUBLIC_API_URL ?? (typeof location !== 'undefined' && location.origin.startsWith('http') ? location.origin : 'https://gym.matai.kz');
 
 export type RemoteMembership = { planId: string; startDate: string; endDate: string; freezeDaysLeft: number; frozenUntil?: string };
 export type RemoteProfile = { age?: number; goal?: string; heightCm?: number; weightKg?: number; targetWeightKg?: number; gender?: string; level?: string; daysPerWeek?: number };
