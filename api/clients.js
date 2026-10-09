@@ -11,8 +11,8 @@ const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY;
 const TOKEN_DAYS = 180;
 
 // u_<phone digits> for people with a phone; x_<n> for cards imported without one (no app account).
-const ID = /^(u_d{10,12}|x_d{1,6})$/;
-const DAY = /^d{4}-d{2}-d{2}$/;
+const ID = /^(u_\d{10,12}|x_\d{1,6})$/;
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 const sb = async (path, init = {}) => {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...init, headers: { apikey: SUPABASE_KEY, 'content-type': 'application/json', ...init.headers } });
