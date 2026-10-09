@@ -17,7 +17,8 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const sb = async (path, init = {}) => {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...init, headers: { apikey: SUPABASE_KEY, 'content-type': 'application/json', ...init.headers } });
   if (!r.ok) throw new Error('db ' + r.status);
-  return r.status === 204 ? null : r.json();
+  const text = await r.text(); // writes with return=minimal come back empty
+  return text ? JSON.parse(text) : null;
 };
 
 async function read(id) {
