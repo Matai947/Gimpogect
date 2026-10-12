@@ -1,3 +1,5 @@
+import type { ImageSourcePropType } from 'react-native';
+
 import { getLang, monthNames, translate, weekdayNames } from '@/i18n';
 
 export type Club = {
@@ -31,7 +33,8 @@ export type Trainer = {
   reviews: number;
   experienceYears: number;
   pricePerSession: number;
-  avatar: string;
+  avatar: ImageSourcePropType;
+  phone?: string;
   bio: string;
   pro?: boolean;
   audience: string;
@@ -98,7 +101,7 @@ export const clubs: Club[] = [
     rating: 4.8,
     reviews: 1240,
     distanceKm: 1.2,
-    phone: '+7 727 300 00 01',
+    phone: '+7 705 555 39 32',
     photos: [
       'https://images.unsplash.com/photo-1671970922029-0430d2ae122c?w=1200&q=80',
       'https://images.unsplash.com/photo-1597076537061-a6b58163aa45?w=1200&q=80',
@@ -123,7 +126,7 @@ export const clubs: Club[] = [
     rating: 4.9,
     reviews: 860,
     distanceKm: 4.7,
-    phone: '+7 727 300 00 02',
+    phone: '+7 705 555 39 32',
     photos: [
       'https://images.unsplash.com/photo-1559369064-c4d65141e408?w=1200&q=80',
       'https://images.unsplash.com/photo-1758448756350-3d0eec02ba37?w=1200&q=80',
@@ -141,85 +144,49 @@ export const clubs: Club[] = [
 export const trainers: Trainer[] = [
   {
     id: 't1',
-    name: 'Айдар Сериков',
-    clubId: 'c1',
-    specialties: ['Силовые', 'Кроссфит', 'Набор массы'],
-    rating: 4.9,
-    reviews: 212,
-    experienceYears: 8,
-    pricePerSession: 12000,
-    avatar: 'https://images.unsplash.com/photo-1704223523169-52feeed90365?w=400&q=80',
-    bio: 'Мастер спорта по тяжёлой атлетике, сертифицированный тренер CrossFit L2. Помогаю выстроить технику базовых движений и безопасно прогрессировать в весах.',
-    pro: true,
-    audience: 'Мужской тренер • 18–45 лет',
+    name: 'Буенбаев Аскар Адилханович',
+    clubId: '', // works in both clubs
+    specialties: ['Пауэрлифтинг','Жим лёжа','Бокс'],
+    rating: 0,
+    reviews: 0,
+    experienceYears: 0,
+    pricePerSession: 0,
+    avatar: require('../../assets/images/trainers/askar.jpg'),
+    phone: '+7 775 286 5723',
+    bio: 'КМС по пауэрлифтингу (жим лёжа), федерации WRPF, WPC, NAP. КМС по подъёму на бицепс. КМС по боксу.',
+    audience: '',
   },
   {
     id: 't2',
-    name: 'Динара Ахметова',
-    clubId: 'c2',
-    specialties: ['Йога', 'Пилатес', 'Растяжка'],
-    rating: 5.0,
-    reviews: 178,
-    experienceYears: 10,
-    pricePerSession: 10000,
-    avatar: 'https://images.unsplash.com/photo-1597076537061-a6b58163aa45?w=400&q=80',
-    bio: 'Преподаватель хатха- и виньяса-йоги (RYT-500). Работаю с осанкой, мобильностью и восстановлением после травм.',
-    audience: 'Женский и мужской тренер • 16–60 лет',
+    name: 'Мамыт Ерсін',
+    clubId: '', // works in both clubs
+    specialties: ['Вольная борьба','Пауэрлифтинг','Жим лёжа'],
+    rating: 0,
+    reviews: 0,
+    experienceYears: 0,
+    pricePerSession: 0,
+    avatar: require('../../assets/images/trainers/ersin.jpg'),
+    phone: '+7 747 038 5849',
+    bio: 'Кандидат мастера спорта по вольной борьбе, мастер спорта по пауэрлифтингу и жиму штанги лёжа.',
+    audience: '',
   },
   {
-    id: 't4',
-    name: 'Алина Ким',
-    clubId: 'c1',
-    specialties: ['Похудение', 'Кардио', 'Питание'],
-    rating: 4.9,
-    reviews: 264,
-    experienceYears: 6,
-    pricePerSession: 10000,
-    avatar: 'https://images.unsplash.com/photo-1597076545399-91a3ff0e71b3?w=400&q=80',
-    bio: 'Нутрициолог и персональный тренер. Составляю программу тренировок и питания под ваш ритм жизни, веду к результату без жёстких диет.',
-    pro: true,
-    audience: 'Женский и мужской тренер • 18–50 лет',
-  },
-  {
-    id: 't5',
-    name: 'Ерлан Нурланов',
-    clubId: 'c2',
-    specialties: ['Плавание', 'Аква', 'Триатлон'],
-    rating: 4.7,
-    reviews: 96,
-    experienceYears: 9,
-    pricePerSession: 9000,
-    avatar: 'https://images.unsplash.com/photo-1741156229623-da94e6d7977d?w=400&q=80',
-    bio: 'Тренер по плаванию, действующий триатлет. Учу плавать взрослых с нуля и ставлю технику кроля для стайеров.',
-    audience: 'Взрослые и дети от 7 лет',
-  },
-  {
-    id: 't6',
-    name: 'Мадина Оспанова',
-    clubId: 'c2',
-    specialties: ['Танцы', 'Zumba', 'Сайкл'],
-    rating: 4.8,
-    reviews: 121,
-    experienceYears: 5,
-    pricePerSession: 8000,
-    avatar: 'https://images.unsplash.com/photo-1559369064-c4d65141e408?w=400&q=80',
-    bio: 'Хореограф и инструктор групповых программ. Мои занятия — это кардио, которое не чувствуется как тренировка.',
-    audience: 'Женский и мужской тренер • 16–45 лет',
+    id: 't3',
+    name: 'Повчун Никита',
+    clubId: '', // works in both clubs
+    specialties: ['Жим лёжа','Пауэрлифтинг','Армрестлинг','Дзюдо'],
+    rating: 0,
+    reviews: 0,
+    experienceYears: 0,
+    pricePerSession: 0,
+    avatar: require('../../assets/images/trainers/nikita.jpg'),
+    phone: '+7 747 255 55 08',
+    bio: 'Мастер спорта по жиму лёжа (WRPF, WPC, НАП) и пауэрлифтингу, международный мастер спорта по подъёму на бицепс, кандидат в мастера спорта по армрестлингу и дзюдо. Многократный призёр Казахстана, Азии и Евразии.',
+    audience: '',
   },
 ];
 
-export const classTemplates: ClassTemplate[] = [
-  { id: 'k1', title: 'Утренняя йога', category: 'Йога', clubId: 'c2', trainerId: 't2', time: '07:30', durationMin: 60, weekdays: [1, 3, 5], capacity: 20, level: 'Все уровни', room: 'Йога-студия', description: 'Мягкая практика для пробуждения тела: дыхание, суставная гимнастика, базовые асаны.', color: '#7C5CFF' },
-  { id: 'k2', title: 'CrossFit WOD', category: 'Сила', clubId: 'c1', trainerId: 't1', time: '19:00', durationMin: 60, weekdays: [1, 2, 3, 4, 5], capacity: 16, level: 'Средний', room: 'Кроссфит-зона', description: 'Тренировка дня: силовая часть и метаболический комплекс. Масштабируется под ваш уровень.', color: '#FF7A45' },
-  { id: 'k4', title: 'Пилатес', category: 'Растяжка', clubId: 'c2', trainerId: 't2', time: '10:00', durationMin: 55, weekdays: [2, 4, 6, 0], capacity: 18, level: 'Начальный', room: 'Зал 2', description: 'Укрепляем центр тела, работаем над осанкой и гибкостью.', color: '#4DA3FF' },
-  { id: 'k5', title: 'Zumba', category: 'Танцы', clubId: 'c2', trainerId: 't6', time: '18:00', durationMin: 55, weekdays: [1, 3, 5], capacity: 30, level: 'Все уровни', room: 'Зал 1', description: 'Танцевальное кардио под латино-хиты. Сжигаем до 600 ккал.', color: '#FF4FA3' },
-  { id: 'k6', title: 'Стретчинг', category: 'Растяжка', clubId: 'c1', trainerId: 't4', time: '12:00', durationMin: 45, weekdays: [1, 2, 3, 4, 5, 6, 0], capacity: 22, level: 'Все уровни', room: 'Зал 3', description: 'Глубокая растяжка всех групп мышц. Отлично после силовой.', color: '#3DDC84' },
-  { id: 'k7', title: 'Сайкл', category: 'Кардио', clubId: 'c2', trainerId: 't6', time: '19:30', durationMin: 45, weekdays: [1, 2, 3, 4, 5], capacity: 24, level: 'Средний', room: 'Сайкл-студия', description: 'Интервальная езда под музыку с контролем пульса.', color: '#FFB347' },
-  { id: 'k8', title: 'TRX Total Body', category: 'Сила', clubId: 'c1', trainerId: 't4', time: '08:00', durationMin: 50, weekdays: [6, 0], capacity: 16, level: 'Все уровни', room: 'Зал 3', description: 'Функциональная тренировка с петлями TRX на всё тело.', color: '#F2B632' },
-  { id: 'k9', title: 'Аква-аэробика', category: 'Аква', clubId: 'c1', trainerId: 't5', time: '11:00', durationMin: 45, weekdays: [2, 4, 6], capacity: 15, level: 'Все уровни', room: 'Бассейн', description: 'Кардио в воде без нагрузки на суставы.', color: '#D9643A' },
-  { id: 'k10', title: 'Силовой класс', category: 'Сила', clubId: 'c1', trainerId: 't1', time: '18:30', durationMin: 60, weekdays: [1, 3, 5], capacity: 20, level: 'Начальный', room: 'Зал 1', description: 'Базовые упражнения со штангой и гантелями под контролем тренера.', color: '#FF7A45' },
-  { id: 'k11', title: 'Вечерняя йога', category: 'Йога', clubId: 'c1', trainerId: 't2', time: '20:30', durationMin: 60, weekdays: [2, 4], capacity: 20, level: 'Все уровни', room: 'Зал 2', description: 'Расслабляющая практика в конце дня: инь-йога и медитация.', color: '#7C5CFF' },
-];
+export const classTemplates: ClassTemplate[] = [];
 
 export const plans: Plan[] = [
   { id: 'trial', name: 'Пробный', months: 0, price: 0, perMonth: 0, features: ['3 дня тренировок', 'Без обязательств', 'Можно без тренера'], trial: true, days: 3 },

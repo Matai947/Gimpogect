@@ -6,13 +6,13 @@ import { StyleSheet, TextInput, View } from 'react-native';
 
 import { Badge, Card, Chip, ChipRow, Row, Screen, Stars, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { clubById, formatPrice, trainers } from '@/data/mock';
+import { trainers } from '@/data/mock';
 import { useI18n } from '@/store/app-context';
 
-const specialties = ['Все', 'Силовые', 'Йога', 'Похудение', 'Бокс', 'Плавание', 'Танцы', 'Кроссфит'];
+const specialties = ['Все', 'Пауэрлифтинг', 'Жим лёжа', 'Бокс', 'Вольная борьба', 'Армрестлинг'];
 
 export default function TrainersScreen() {
-  const { t, tp, td } = useI18n();
+  const { t, td } = useI18n();
   const [query, setQuery] = useState('');
   const [spec, setSpec] = useState('Все');
 
@@ -20,8 +20,7 @@ export default function TrainersScreen() {
     const q = query.trim().toLowerCase();
     return trainers
       .filter((tr) => (spec === 'Все' ? true : tr.specialties.includes(spec)))
-      .filter((tr) => (q ? tr.name.toLowerCase().includes(q) || tr.specialties.some((s) => s.toLowerCase().includes(q) || td(s).toLowerCase().includes(q)) : true))
-      .sort((a, b) => b.rating - a.rating);
+      .filter((tr) => (q ? tr.name.toLowerCase().includes(q) || tr.specialties.some((s) => s.toLowerCase().includes(q) || td(s).toLowerCase().includes(q)) : true));
   }, [query, spec, td]);
 
   return (
@@ -42,42 +41,33 @@ export default function TrainersScreen() {
       </ChipRow>
 
       <View style={{ paddingHorizontal: Spacing.three, gap: Spacing.two }}>
-        {list.map((tr) => {
-          const club = clubById(tr.clubId);
-          return (
-            <Card key={tr.id} onPress={() => router.push(`/trainer/${tr.id}`)} style={{ flexDirection: 'row', gap: Spacing.three }}>
-              <Image source={{ uri: tr.avatar }} style={styles.avatar} contentFit="cover" transition={200} />
-              <View style={{ flex: 1, gap: 4 }}>
-                <Row style={{ justifyContent: 'space-between' }}>
-                  <Row gap={6} style={{ flex: 1 }}>
-                    <T type="subheading" style={{ flexShrink: 1 }} numberOfLines={1}>
-                      {tr.name}
-                    </T>
-                    {tr.pro ? <Badge label={t('pro_badge')} color={Colors.info} /> : null}
-                  </Row>
-                  <Stars rating={tr.rating} />
+        {list.map((tr) => (
+          <Card key={tr.id} onPress={() => router.push(`/trainer/${tr.id}`)} style={{ flexDirection: 'row', gap: Spacing.three }}>
+            <Image source={tr.avatar} style={styles.avatar} contentFit="cover" transition={200} />
+            <View style={{ flex: 1, gap: 4 }}>
+              <Row style={{ justifyContent: 'space-between' }}>
+                <Row gap={6} style={{ flex: 1 }}>
+                  <T type="subheading" style={{ flexShrink: 1 }} numberOfLines={2}>
+                    {tr.name}
+                  </T>
+                  {tr.pro ? <Badge label={t('pro_badge')} color={Colors.info} /> : null}
                 </Row>
-                <T type="small" color={Colors.textSecondary} numberOfLines={1}>
-                  {tr.specialties.map(td).join(' • ')}
-                </T>
+                {tr.rating ? <Stars rating={tr.rating} /> : null}
+              </Row>
+              <T type="small" color={Colors.textSecondary} numberOfLines={1}>
+                {tr.specialties.map(td).join(' • ')}
+              </T>
+              {tr.phone ? (
                 <Row gap={6}>
-                  <Ionicons name="location-outline" size={13} color={Colors.textMuted} />
-                  <T type="small" color={Colors.textMuted} style={{ flex: 1 }} numberOfLines={1}>
-                    {club?.name.replace('Seven Gym ', '')} • {t('exp_years', { n: tr.experienceYears, y: tp(tr.experienceYears, 'years_pl') })}
-                  </T>
-                </Row>
-                <Row style={{ justifyContent: 'space-between', marginTop: 2 }}>
+                  <Ionicons name="call-outline" size={13} color={Colors.accent} />
                   <T type="label" color={Colors.accent}>
-                    {formatPrice(tr.pricePerSession)}
-                  </T>
-                  <T type="small" color={Colors.textMuted}>
-                    {t('per_session')}
+                    {tr.phone}
                   </T>
                 </Row>
-              </View>
-            </Card>
-          );
-        })}
+              ) : null}
+            </View>
+          </Card>
+        ))}
       </View>
     </Screen>
   );

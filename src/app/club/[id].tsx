@@ -17,7 +17,7 @@ export default function ClubScreen() {
   const { favorites, toggleFavorite, user, updateUser } = useApp();
   const { t, tp, td } = useI18n();
   const todaySessions = useMemo(() => sessionsForDate(toISODate(new Date())).filter((s) => s.clubId === id), [id]);
-  const clubTrainers = trainers.filter((tr) => tr.clubId === id);
+  const clubTrainers = trainers.filter((tr) => !tr.clubId || tr.clubId === id);
 
   if (!club) {
     return (
@@ -185,7 +185,7 @@ export default function ClubScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.two }}>
               {clubTrainers.map((tr) => (
                 <Pressable key={tr.id} onPress={() => router.push(`/trainer/${tr.id}`)} style={styles.trainer}>
-                  <Image source={{ uri: tr.avatar }} style={styles.trainerImg} contentFit="cover" />
+                  <Image source={tr.avatar} style={styles.trainerImg} contentFit="cover" />
                   <T type="small" style={{ fontWeight: '700' }} numberOfLines={1}>
                     {tr.name.split(' ')[0]}
                   </T>

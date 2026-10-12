@@ -1,5 +1,4 @@
 import { type Goal } from '@/data/fitness';
-import { addDays, toISODate } from '@/data/mock';
 
 /** Members of the club as the reception sees them. The signed-in device user is merged in at runtime. */
 export type Member = {

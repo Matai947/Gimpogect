@@ -91,7 +91,7 @@ export default function ClassScreen() {
       <View style={styles.body}>
         <Card style={{ gap: Spacing.three }}>
           <Pressable onPress={() => router.push(`/trainer/${session.trainerId}`)} style={styles.row}>
-            <Image source={{ uri: trainer?.avatar }} style={styles.avatar} contentFit="cover" />
+            <Image source={trainer?.avatar} style={styles.avatar} contentFit="cover" />
             <View style={{ flex: 1 }}>
               <T type="small" color={Colors.textSecondary}>
                 {t('trainer')}
