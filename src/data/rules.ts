@@ -1,0 +1,47 @@
+import type { Lang } from '@/i18n';
+
+/** Club visiting rules, as supplied by the club. Shown before registration and in the profile. */
+export const rules: Record<Lang, string[]> = {
+  ru: [
+    'Посещение клуба осуществляется по действующему абонементу либо разовому посещению.',
+    'Каждый клиент регистрирует своё посещение через систему контроля доступа.',
+    'Посетители обязаны использовать чистую сменную спортивную обувь и соответствующую одежду.',
+    'Во время тренировок рекомендуется использовать индивидуальное полотенце.',
+    'После использования тренажёров необходимо возвращать спортивный инвентарь на предназначенные места.',
+    'Необходимо бережно относиться к оборудованию и имуществу клуба.',
+    'Запрещается посещать клуб в состоянии алкогольного или наркотического опьянения.',
+    'Запрещается курение на территории клуба.',
+    'Необходимо соблюдать личную гигиену и уважительно относиться к другим посетителям.',
+    'Фото- и видеосъёмка других посетителей допускается только с их согласия.',
+    'При обнаружении неисправности тренажёра необходимо сообщить администрации.',
+    'Условия заморозки, продления и возврата абонемента определяются действующим тарифом и законодательством РК.',
+  ],
+  kk: [
+    'Клубқа кіру жарамды абонемент бойынша немесе бір реттік тәртіппен жүзеге асырылады.',
+    'Әр клиент өз келуін қолжетімділікті бақылау жүйесі арқылы тіркейді.',
+    'Келушілер таза ауыстырмалы спорт аяқкиімін және тиісті киімді пайдалануға міндетті.',
+    'Жаттығу кезінде жеке сүлгі пайдаланған жөн.',
+    'Жаттығу құралдарын пайдаланғаннан кейін спорттық құрал-жабдықты өз орнына қайтару қажет.',
+    'Клубтың жабдығы мен мүлкіне ұқыпты қарау қажет.',
+    'Алкогольдік немесе есірткілік масаң күйде клубқа келуге тыйым салынады.',
+    'Клуб аумағында темекі шегуге тыйым салынады.',
+    'Жеке гигиенаны сақтап, басқа келушілерге құрметпен қарау қажет.',
+    'Басқа келушілерді фото- және бейнеге түсіру тек олардың келісімімен ғана рұқсат етіледі.',
+    'Жаттығу құралының ақаулығы анықталса, әкімшілікке хабарлау қажет.',
+    'Абонементті мұздату, ұзарту және қайтару шарттары қолданыстағы тариф пен ҚР заңнамасымен айқындалады.',
+  ],
+  en: [
+    'Entry to the club is by a valid membership or a single visit.',
+    'Every client registers their visit through the access control system.',
+    'Visitors must wear clean indoor sports shoes and suitable clothing.',
+    'Using a personal towel during workouts is recommended.',
+    'After using equipment, return it to its place.',
+    'Treat the equipment and property of the club with care.',
+    'Entering the club under the influence of alcohol or drugs is prohibited.',
+    'Smoking on the club premises is prohibited.',
+    'Observe personal hygiene and be respectful to other visitors.',
+    'Photographing or filming other visitors is allowed only with their consent.',
+    'If you find a broken machine, tell the administrator.',
+    'Terms of freezing, renewing and refunding a membership follow the current plan and the law of the Republic of Kazakhstan.',
+  ],
+};

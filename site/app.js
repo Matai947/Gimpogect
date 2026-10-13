@@ -3,8 +3,8 @@ const API = 'https://gym.matai.kz/api/clients';
 const IMG = (id, w = 1000) => `https://images.unsplash.com/photo-${id}?w=${w}&q=80`;
 
 const clubs = [
-  { id: 'c1', name: 'Seven Gym Akkent', city: 'city_alm', addr: 'Адрес уточняется', h: '07:00–23:00', area: 0, machines: 0, rating: '', phone: '+7 727 300 00 01', img: '1671970922029-0430d2ae122c', am: ['am_gym'] },
-  { id: 'c2', name: 'Seven Gym Premier', city: 'city_alm', addr: 'Адрес уточняется', h: '07:00–23:00', area: 0, machines: 0, rating: '', phone: '+7 727 300 00 01', img: '1758448756350-3d0eec02ba37', am: ['am_gym'] },
+  { id: 'c1', name: 'Seven Gym Akkent', city: 'city_alm', addr: 'ул. Ш. Болтекулы, 1, 3 этаж', h: '07:00–23:00', area: 0, machines: 0, rating: '', phone: '+7 705 555 39 32', img: '1671970922029-0430d2ae122c', am: ['am_gym'] },
+  { id: 'c2', name: 'Seven Gym Premier', city: 'city_alm', addr: 'ул. Жуалы, 155, 2 этаж', h: '07:00–23:00', area: 0, machines: 0, rating: '', phone: '+7 705 555 39 32', img: '1758448756350-3d0eec02ba37', am: ['am_gym'] },
 ];
 
 const plans = [

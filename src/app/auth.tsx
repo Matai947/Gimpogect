@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,6 +25,7 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [name, setName] = useState('');
+  const [agree, setAgree] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const phoneReady = digits.length === 10;
@@ -148,7 +149,18 @@ export default function AuthScreen() {
                     {error}
                   </T>
                 ) : null}
-                <Button title={t('auth_start')} onPress={() => void finish()} disabled={checking} size="lg" icon="arrow-forward" />
+                <Pressable onPress={() => setAgree((v) => !v)} style={styles.agree} accessibilityRole="checkbox" accessibilityState={{ checked: agree }}>
+                  <Ionicons name={agree ? 'checkbox' : 'square-outline'} size={24} color={agree ? Colors.accent : Colors.textSecondary} />
+                  <T type="small" style={{ flex: 1 }}>
+                    {t('auth_rules_agree')}
+                  </T>
+                </Pressable>
+                <Pressable onPress={() => router.push('/rules' as Href)} hitSlop={8}>
+                  <T type="small" color={Colors.accent} style={{ fontWeight: '700' }}>
+                    {t('auth_rules_link')}
+                  </T>
+                </Pressable>
+                <Button title={t('auth_start')} onPress={() => void finish()} disabled={checking || !agree} size="lg" icon="arrow-forward" />
               </>
             )}
 
@@ -196,5 +208,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  agree: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   inputText: { flex: 1, color: Colors.text, fontSize: 18, fontWeight: '600' },
 });

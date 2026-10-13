@@ -56,6 +56,10 @@ export const kk: Record<TKey, string> = {
   auth_name_ph: 'Атыңыз',
   auth_start: 'Бастау',
   auth_terms: 'Жалғастыра отырып, мүшелік шарттарымен және құпиялылық саясатымен келісесіз',
+  rules_title: 'Клуб ережесі',
+  rules_sub: 'Seven Gym-ге келу ережелері. Алғашқы жаттығу алдында танысыңыз.',
+  auth_rules_agree: 'Мен клуб ережелерімен таныстым және келісемін',
+  auth_rules_link: 'Ережелерді оқу',
   guest: 'Қонақ',
 
   ob_step: '{b} қадамның {a}-і',
