@@ -139,7 +139,6 @@ p { margin: 0; }
 /* trainers */
 .trainers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .trainer { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
-.ava { width: 100%; aspect-ratio: 3 / 4; background: var(--onyx); overflow: hidden; }
 .trainer h3 { font-size: 17px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .pro { font: 700 11px 'Montserrat'; letter-spacing: .1em; background: var(--gold); color: var(--onyx); padding: 3px 9px; border-radius: 4px; }
 .trainer .sp { color: var(--muted); font-size: 14px; margin: 4px 0 8px; }
@@ -148,9 +147,7 @@ p { margin: 0; }
 .trainer .st a { color: inherit; text-decoration: none; }
 .trainer .st a:hover { text-decoration: underline; }
 .trainer .bio { font-size: 13px; color: #444; line-height: 1.5; margin: 0 0 10px; }
-.ava img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; display: block; transition: transform .5s; }
-.trainer:hover .ava img { transform: scale(1.04); }
-.trainer .info { padding: 20px 22px 24px; }
+.trainer .info { padding: 24px; }
 
 /* app */
 .app { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; }

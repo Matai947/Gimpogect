@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
@@ -43,7 +42,6 @@ export default function TrainersScreen() {
       <View style={{ paddingHorizontal: Spacing.three, gap: Spacing.two }}>
         {list.map((tr) => (
           <Card key={tr.id} onPress={() => router.push(`/trainer/${tr.id}`)} style={{ flexDirection: 'row', gap: Spacing.three }}>
-            <Image source={tr.avatar} style={styles.avatar} contentFit="cover" transition={200} />
             <View style={{ flex: 1, gap: 4 }}>
               <Row style={{ justifyContent: 'space-between' }}>
                 <Row gap={6} style={{ flex: 1 }}>
@@ -89,5 +87,4 @@ const styles = StyleSheet.create({
     height: 48,
   },
   searchInput: { flex: 1, color: Colors.text, fontSize: 16 },
-  avatar: { width: 84, height: 84, borderRadius: Radius.md, backgroundColor: Colors.surfaceAlt },
 });

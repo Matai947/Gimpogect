@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
@@ -91,7 +90,6 @@ export default function ClassScreen() {
       <View style={styles.body}>
         <Card style={{ gap: Spacing.three }}>
           <Pressable onPress={() => router.push(`/trainer/${session.trainerId}`)} style={styles.row}>
-            <Image source={trainer?.avatar} style={styles.avatar} contentFit="cover" />
             <View style={{ flex: 1 }}>
               <T type="small" color={Colors.textSecondary}>
                 {t('trainer')}
@@ -179,7 +177,6 @@ const styles = StyleSheet.create({
   hero: { padding: Spacing.three, paddingTop: Spacing.four, paddingBottom: Spacing.four, alignItems: 'flex-start' },
   body: { padding: Spacing.three },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.surfaceAlt },
   iconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(212,175,55,0.12)', alignItems: 'center', justifyContent: 'center' },
   footer: {
     position: 'absolute',

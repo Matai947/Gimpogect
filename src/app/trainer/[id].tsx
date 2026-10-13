@@ -1,14 +1,10 @@
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Dimensions, Linking, StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 
 import { Badge, Button, Chip, EmptyState, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { clubById, trainerById } from '@/data/mock';
 import { useI18n } from '@/store/app-context';
-
-const W = Dimensions.get('window').width;
 
 export default function TrainerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -29,18 +25,14 @@ export default function TrainerScreen() {
   return (
     <Screen edges={[]} contentStyle={{ paddingBottom: 120 }}>
       <Stack.Screen options={{ title: trainer.name }} />
-      <View style={{ height: 320 }}>
-        <Image source={trainer.avatar} style={{ width: W, height: 320 }} contentFit="cover" transition={200} />
-        <LinearGradient colors={['transparent', Colors.background]} style={[StyleSheet.absoluteFill, { top: 140 }]} />
-        <View style={styles.heroText}>
-          <Row gap={8}>
-            <T type="title" style={{ flexShrink: 1 }}>
-              {trainer.name}
-            </T>
-            {trainer.pro ? <Badge label={t('pro_badge')} color={Colors.info} /> : null}
-          </Row>
-          {club || trainer.audience ? <T type="caption">{[club?.name, trainer.audience].filter(Boolean).join(' • ')}</T> : null}
-        </View>
+      <View style={styles.head}>
+        <Row gap={8}>
+          <T type="title" style={{ flexShrink: 1 }}>
+            {trainer.name}
+          </T>
+          {trainer.pro ? <Badge label={t('pro_badge')} color={Colors.info} /> : null}
+        </Row>
+        {club || trainer.audience ? <T type="caption">{[club?.name, trainer.audience].filter(Boolean).join(' • ')}</T> : null}
       </View>
 
       <View style={styles.body}>
@@ -72,7 +64,7 @@ export default function TrainerScreen() {
 }
 
 const styles = StyleSheet.create({
-  heroText: { position: 'absolute', left: Spacing.three, right: Spacing.three, bottom: Spacing.two },
+  head: { padding: Spacing.three, paddingBottom: 0, gap: 4 },
   body: { padding: Spacing.three },
   footer: {
     position: 'absolute',

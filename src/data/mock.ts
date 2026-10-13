@@ -1,5 +1,3 @@
-import type { ImageSourcePropType } from 'react-native';
-
 import { getLang, monthNames, translate, weekdayNames } from '@/i18n';
 
 export type Club = {
@@ -33,7 +31,6 @@ export type Trainer = {
   reviews: number;
   experienceYears: number;
   pricePerSession: number;
-  avatar: ImageSourcePropType;
   phone?: string;
   bio: string;
   pro?: boolean;
@@ -151,7 +148,6 @@ export const trainers: Trainer[] = [
     reviews: 0,
     experienceYears: 0,
     pricePerSession: 0,
-    avatar: require('../../assets/images/trainers/askar.jpg'),
     phone: '+7 775 286 5723',
     bio: 'КМС по пауэрлифтингу (жим лёжа), федерации WRPF, WPC, NAP. КМС по подъёму на бицепс. КМС по боксу.',
     audience: '',
@@ -165,7 +161,6 @@ export const trainers: Trainer[] = [
     reviews: 0,
     experienceYears: 0,
     pricePerSession: 0,
-    avatar: require('../../assets/images/trainers/ersin.jpg'),
     phone: '+7 747 038 5849',
     bio: 'Кандидат мастера спорта по вольной борьбе, мастер спорта по пауэрлифтингу и жиму штанги лёжа.',
     audience: '',
@@ -179,7 +174,6 @@ export const trainers: Trainer[] = [
     reviews: 0,
     experienceYears: 0,
     pricePerSession: 0,
-    avatar: require('../../assets/images/trainers/nikita.jpg'),
     phone: '+7 747 255 55 08',
     bio: 'Мастер спорта по жиму лёжа (WRPF, WPC, НАП) и пауэрлифтингу, международный мастер спорта по подъёму на бицепс, кандидат в мастера спорта по армрестлингу и дзюдо. Многократный призёр Казахстана, Азии и Евразии.',
     audience: '',

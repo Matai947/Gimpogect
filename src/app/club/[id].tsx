@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { Alert, Dimensions, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Badge, Button, Card, Chip, EmptyState, IconButton, ProgressBar, Row, Screen, SectionHeader, Stars, T } from '@/components/ui';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Colors, Spacing } from '@/constants/theme';
 import { clubById, clubHours, occupancyLabel, sessionsForDate, toISODate, trainerById, trainers } from '@/data/mock';
 import { useApp, useI18n } from '@/store/app-context';
 
@@ -185,7 +185,6 @@ export default function ClubScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.two }}>
               {clubTrainers.map((tr) => (
                 <Pressable key={tr.id} onPress={() => router.push(`/trainer/${tr.id}`)} style={styles.trainer}>
-                  <Image source={tr.avatar} style={styles.trainerImg} contentFit="cover" />
                   <T type="small" style={{ fontWeight: '700' }} numberOfLines={1}>
                     {tr.name.split(' ')[0]}
                   </T>
@@ -229,5 +228,4 @@ function InfoRow({ icon, text }: { icon: React.ComponentProps<typeof Ionicons>['
 const styles = StyleSheet.create({
   body: { padding: Spacing.three },
   trainer: { width: 100, gap: 4 },
-  trainerImg: { width: 100, height: 100, borderRadius: Radius.md, backgroundColor: Colors.surfaceAlt, marginBottom: 4 },
 });
