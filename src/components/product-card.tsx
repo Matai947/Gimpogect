@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { ProductPhoto } from '@/components/product-photo';
 import { Badge, Row, Stars, T } from '@/components/ui';
 import { Colors, Radius } from '@/constants/theme';
 import { formatPrice } from '@/data/mock';
@@ -15,7 +15,7 @@ export function ProductCard({ product: p, width, onAdd }: { product: Product; wi
   return (
     <Pressable onPress={() => router.push(`/product/${p.id}`)} style={({ pressed }) => [styles.card, width ? { width } : styles.gridCard, pressed && { opacity: 0.9 }]}>
       <View style={styles.imgWrap}>
-        <Image source={{ uri: p.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+        <ProductPhoto uri={p.image} style={StyleSheet.absoluteFill} transition={200} />
         {p.badge ? (
           <View style={{ position: 'absolute', top: 8, left: 8 }}>
             <Badge label={td(p.badge)} color={badgeColor} />

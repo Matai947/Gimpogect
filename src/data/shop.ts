@@ -29,7 +29,6 @@ export const shopCategories: { key: 'Все' | ShopCategory; icon: string }[] = 
   { key: 'Одежда', icon: 'shirt-outline' },
 ];
 
-const img = (id: string) => `https://images.unsplash.com/${id}?w=800&q=80&fit=crop`;
 
 export const products: Product[] = [
   {
@@ -38,7 +37,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Напитки',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1560689189-65b6ed6228e7'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -50,7 +49,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Напитки',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1560689189-65b6ed6228e7'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -62,7 +61,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Напитки',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1560689189-65b6ed6228e7'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -74,7 +73,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Витамины',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1707129785947-ddc627a8bab9'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -86,7 +85,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Напитки',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1560689189-65b6ed6228e7'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -98,7 +97,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Напитки',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1560689189-65b6ed6228e7'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -110,7 +109,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Напитки',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1560689189-65b6ed6228e7'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -122,7 +121,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Напитки',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1560689189-65b6ed6228e7'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -134,7 +133,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Протеин',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1693996046865-19217d179161'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -146,7 +145,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Напитки',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1560689189-65b6ed6228e7'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -158,7 +157,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Креатин и амино',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1693996045435-af7c48b9cafb'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -170,7 +169,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Креатин и амино',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1693996045435-af7c48b9cafb'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -182,7 +181,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Протеин',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1693996046865-19217d179161'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -194,7 +193,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Батончики',
     price: 500, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1633360821154-1935fb5671e6'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -206,7 +205,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Батончики',
     price: 800, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1633360821154-1935fb5671e6'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -218,7 +217,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Напитки',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1560689189-65b6ed6228e7'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -230,7 +229,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Креатин и амино',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1693996045435-af7c48b9cafb'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -242,7 +241,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Креатин и амино',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1693996045435-af7c48b9cafb'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',
@@ -254,7 +253,7 @@ export const products: Product[] = [
     brand: '',
     category: 'Креатин и амино',
     price: 0, // 0 = not set yet, edit in the staff Products tab
-    image: img('photo-1693996045435-af7c48b9cafb'),
+    image: '',
     rating: 0,
     reviews: 0,
     description: '',

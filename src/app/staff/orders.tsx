@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -7,6 +6,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { StaffAccent } from '@/components/member-result';
 import { StaffHeader } from '@/components/staff-header';
+import { ProductPhoto } from '@/components/product-photo';
 import { Badge, Button, Chip, ChipRow, Divider, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { mockOrders } from '@/data/members';
@@ -87,7 +87,7 @@ export default function StaffOrdersScreen() {
                 if (!p) return null;
                 return (
                   <Row key={it.key} gap={Spacing.two}>
-                    <Image source={{ uri: p.image }} style={styles.thumb} contentFit="cover" />
+                    <ProductPhoto uri={p.image} style={styles.thumb} />
                     <View style={{ flex: 1 }}>
                       <T type="small" style={{ fontWeight: '600' }} numberOfLines={1}>
                         {p.name}

@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
+import { ProductPhoto } from '@/components/product-photo';
 import { Badge, Card, Divider, EmptyState, Row, Screen, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { clubById, formatDateHuman, formatPrice } from '@/data/mock';
@@ -46,7 +46,7 @@ export default function OrdersScreen() {
               if (!p) return null;
               return (
                 <Row key={it.key} gap={Spacing.two}>
-                  <Image source={{ uri: p.image }} style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: Colors.surfaceAlt }} contentFit="cover" />
+                  <ProductPhoto uri={p.image} style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: Colors.surfaceAlt }} />
                   <View style={{ flex: 1 }}>
                     <T type="small" style={{ fontWeight: '600' }} numberOfLines={1}>
                       {p.name}

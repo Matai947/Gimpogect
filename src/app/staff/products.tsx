@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
@@ -8,6 +7,7 @@ import { StaffAccent } from '@/components/member-result';
 import { PlanPrices } from '@/components/plan-prices';
 import { StaffHeader } from '@/components/staff-header';
 import { Badge, Chip, ChipRow, Row, T } from '@/components/ui';
+import { ProductPhoto } from '@/components/product-photo';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice } from '@/data/mock';
 import { shopCategories, type ShopCategory } from '@/data/shop';
@@ -62,7 +62,7 @@ export default function StaffProductsScreen() {
           const edited = !custom && !!productOverrides[p.id];
           return (
             <Pressable key={p.id} onPress={() => router.push({ pathname: '/staff/product-edit', params: { id: p.id } })} style={({ pressed }) => [styles.row, pressed && { backgroundColor: Colors.surfaceAlt }, isHidden && { opacity: 0.6 }]}>
-              <Image source={{ uri: p.image }} style={styles.thumb} contentFit="cover" transition={150} />
+              <ProductPhoto uri={p.image} style={styles.thumb} transition={150} />
               <View style={{ flex: 1, gap: 2 }}>
                 <Row gap={6}>
                   <T type="body" style={{ fontWeight: '700', flexShrink: 1 }} numberOfLines={1}>

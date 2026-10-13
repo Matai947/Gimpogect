@@ -57,6 +57,7 @@ export const en: Record<TKey, string> = {
   auth_start: 'Start',
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
+  price_tba: 'Price on request',
   rules_sub: 'Seven Gym visiting rules. Please read them before your first workout.',
   auth_rules_agree: 'I have read the club rules and agree to them',
   auth_rules_link: 'Read the rules',

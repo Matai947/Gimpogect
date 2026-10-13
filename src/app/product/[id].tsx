@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -7,6 +6,7 @@ import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, View } from 'reac
 
 import { ProductCard } from '@/components/product-card';
 import { Badge, Button, Card, EmptyState, IconButton, Row, Screen, SectionHeader, Stars, T } from '@/components/ui';
+import { ProductPhoto } from '@/components/product-photo';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice } from '@/data/mock';
 import { MEMBER_DISCOUNT } from '@/data/shop';
@@ -67,7 +67,7 @@ export default function ProductScreen() {
       />
 
       <View style={{ height: 320, backgroundColor: Colors.surfaceAlt }}>
-        <Image source={{ uri: product.image }} style={{ width: W, height: 320 }} contentFit="cover" transition={200} />
+        <ProductPhoto uri={product.image} style={{ width: W, height: 320 }} transition={200} />
         {product.badge ? (
           <View style={{ position: 'absolute', top: 12, left: Spacing.three }}>
             <Badge label={td(product.badge)} color={badgeColor} />
@@ -196,7 +196,7 @@ export default function ProductScreen() {
             <Ionicons name="add" size={18} color={Colors.text} />
           </Pressable>
         </View>
-        <Button title={product.inStock ? t('add_cart', { p: formatPrice(product.price * qty) }) : t('out_of_stock')} icon="cart-outline" onPress={add} disabled={!product.inStock} style={{ flex: 1 }} />
+        <Button title={!product.price ? t('price_tba') : product.inStock ? t('add_cart', { p: formatPrice(product.price * qty) }) : t('out_of_stock')} icon="cart-outline" onPress={add} disabled={!product.inStock || !product.price} style={{ flex: 1 }} />
       </View>
     </Screen>
   );

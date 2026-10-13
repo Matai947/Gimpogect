@@ -280,6 +280,7 @@ export function formatDateLong(iso: string): string {
 }
 
 export function formatPrice(n: number): string {
+  if (!n) return translate(getLang(), 'price_tba');
   return `${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} ₸`;
 }
 

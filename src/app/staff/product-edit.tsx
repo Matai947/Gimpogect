@@ -78,7 +78,7 @@ export default function ProductEditScreen() {
       price: priceN,
       oldPrice: oldPrice ? parseInt(oldPrice.replace(/\D/g, ''), 10) || undefined : undefined,
       unit: unit.trim() || undefined,
-      image: image || 'https://images.unsplash.com/photo-1593188543121-6441d07ad2e5?w=800&q=80&fit=crop',
+      image,
       rating: existing?.rating ?? 0,
       reviews: existing?.reviews ?? 0,
       description: description.trim(),

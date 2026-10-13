@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Badge, Button, Card, Chip, ChipRow, Divider, EmptyState, Row, Screen, SectionHeader, T } from '@/components/ui';
+import { ProductPhoto } from '@/components/product-photo';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubById, clubHours, clubs, formatPrice } from '@/data/mock';
 import { useApp, useCartSummary, useI18n, useMembershipInfo } from '@/store/app-context';
@@ -70,7 +70,7 @@ export default function CartScreen() {
         {summary.lines.map((l) => (
           <Card key={l.key} padded={false} style={{ flexDirection: 'row', overflow: 'hidden' }}>
             <Pressable onPress={() => router.push(`/product/${l.productId}`)}>
-              <Image source={{ uri: l.product.image }} style={styles.img} contentFit="cover" transition={200} />
+              <ProductPhoto uri={l.product.image} style={styles.img} transition={200} />
             </Pressable>
             <View style={{ flex: 1, padding: 12, gap: 4 }}>
               <T type="small" color={Colors.textMuted}>
