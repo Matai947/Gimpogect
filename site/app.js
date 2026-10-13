@@ -152,7 +152,7 @@ function render() {
   $('#trainerGrid').innerHTML = trainers.map((r) => `
     <article class="trainer reveal">
       <div class="ava"><img src="trainers/${r.img}.jpg" alt="${r.name}" loading="lazy" /></div>
-      <div>
+      <div class="info">
         <h3>${r.name}</h3>
         <p class="sp">${r.sp}</p>
         <p class="bio">${r.bio}</p>
