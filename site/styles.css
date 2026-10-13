@@ -145,6 +145,12 @@ p { margin: 0; }
 .trainer .sp { color: var(--muted); font-size: 14px; margin: 4px 0 8px; }
 .trainer .st { font-size: 13px; color: #333; display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .trainer .st b { color: var(--gold-d); }
+.trainer .st a { color: inherit; text-decoration: none; }
+.trainer .st a:hover { text-decoration: underline; }
+.trainer .bio { font-size: 13px; color: #444; line-height: 1.5; margin: 0 0 10px; }
+.ava { overflow: hidden; }
+.ava img { width: 100%; height: 100%; object-fit: cover; }
+.trainer { align-items: flex-start; }
 
 /* app */
 .app { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; }

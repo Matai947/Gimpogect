@@ -16,13 +16,10 @@ const plans = [
 ];
 
 const trainers = [
-  { name: 'Айдар Сериков', sp: ['sp_strength', 'sp_crossfit', 'sp_mass'], rating: '4,9', exp: 8, price: 12000, pro: true },
-  { name: 'Динара Ахметова', sp: ['sp_yoga', 'sp_pilates', 'sp_stretch'], rating: '5,0', exp: 10, price: 10000 },
-  { name: 'Руслан Бекжанов', sp: ['sp_box', 'sp_kick', 'sp_func'], rating: '4,8', exp: 12, price: 11000, pro: true },
-  { name: 'Алина Ким', sp: ['sp_loss', 'sp_cardio', 'sp_nutrition'], rating: '4,9', exp: 6, price: 10000, pro: true },
-  { name: 'Ерлан Нурланов', sp: ['sp_swim', 'sp_aqua', 'sp_tri'], rating: '4,7', exp: 9, price: 9000 },
-  { name: 'Мадина Оспанова', sp: ['sp_dance', 'sp_zumba', 'sp_cycle'], rating: '4,8', exp: 5, price: 8000 },
-];
+  { name: 'Буенбаев Аскар Адилханович', img: 'askar', sp: 'Пауэрлифтинг • Жим лёжа • Бокс', bio: 'КМС по пауэрлифтингу (жим лёжа), федерации WRPF, WPC, NAP. КМС по подъёму на бицепс. КМС по боксу.', phone: '+7 775 286 5723' },
+  { name: 'Мамыт Ерсін', img: 'ersin', sp: 'Вольная борьба • Пауэрлифтинг • Жим лёжа', bio: 'Кандидат мастера спорта по вольной борьбе, мастер спорта по пауэрлифтингу и жиму штанги лёжа.', phone: '+7 747 038 5849' },
+  { name: 'Повчун Никита', img: 'nikita', sp: 'Жим лёжа • Пауэрлифтинг • Армрестлинг • Дзюдо', bio: 'Мастер спорта по жиму лёжа (WRPF, WPC, НАП) и пауэрлифтингу, международный мастер спорта по подъёму на бицепс, кандидат в мастера спорта по армрестлингу и дзюдо. Многократный призёр Казахстана, Азии и Евразии.', phone: '+7 747 255 55 08' },
+]
 
 const dict = {
   ru: {
@@ -154,11 +151,12 @@ function render() {
 
   $('#trainerGrid').innerHTML = trainers.map((r) => `
     <article class="trainer reveal">
-      <div class="ava">${initials(r.name)}</div>
+      <div class="ava"><img src="trainers/${r.img}.jpg" alt="${r.name}" loading="lazy" /></div>
       <div>
-        <h3>${r.name}${r.pro ? '<span class="pro">PRO</span>' : ''}</h3>
-        <p class="sp">${r.sp.map((s) => t(s)).join(' • ')}</p>
-        <p class="st"><span><b>★ ${r.rating}</b></span><span>${t('tr_exp', { n: r.exp })}</span><span>${t('tr_price', { n: money(r.price) })}</span></p>
+        <h3>${r.name}</h3>
+        <p class="sp">${r.sp}</p>
+        <p class="bio">${r.bio}</p>
+        <p class="st"><a href="tel:${r.phone.replace(/\s/g, '')}"><b>${r.phone}</b></a><a href="https://wa.me/${r.phone.replace(/\D/g, '')}" target="_blank" rel="noopener">WhatsApp</a></p>
       </div>
     </article>`).join('');
 
