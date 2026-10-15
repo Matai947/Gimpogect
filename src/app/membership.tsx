@@ -88,7 +88,7 @@ export default function MembershipScreen() {
         <View style={{ marginTop: Spacing.four }}>
           <SectionHeader title={info.active ? t('home_extend') : t('plans')} />
           <View style={{ gap: Spacing.two }}>
-            {plans.filter((p) => !p.trial).map((p) => {
+            {plans.filter((p) => !p.trial && !p.partner).map((p) => {
               const active = p.id === selected;
               return (
                 <Pressable key={p.id} onPress={() => setSelected(p.id)} style={[styles.plan, active && styles.planActive]}>

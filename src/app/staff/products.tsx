@@ -9,7 +9,7 @@ import { StaffHeader } from '@/components/staff-header';
 import { Badge, Chip, ChipRow, Row, T } from '@/components/ui';
 import { ProductPhoto } from '@/components/product-photo';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { formatPrice } from '@/data/mock';
+import { formatPrice, priceLabel } from '@/data/mock';
 import { shopCategories, type ShopCategory } from '@/data/shop';
 import { useApp, useCatalog, useI18n } from '@/store/app-context';
 
@@ -77,7 +77,7 @@ export default function StaffProductsScreen() {
                 </T>
                 <Row gap={8}>
                   <T type="label" color={StaffAccent} style={{ fontSize: 14 }}>
-                    {formatPrice(p.price)}
+                    {priceLabel(p.price)}
                   </T>
                   {p.oldPrice ? (
                     <T type="small" color={Colors.textMuted} style={{ textDecorationLine: 'line-through' }}>

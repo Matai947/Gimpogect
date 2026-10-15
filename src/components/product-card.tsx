@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ProductPhoto } from '@/components/product-photo';
 import { Badge, Row, Stars, T } from '@/components/ui';
 import { Colors, Radius } from '@/constants/theme';
-import { formatPrice } from '@/data/mock';
+import { formatPrice, priceLabel } from '@/data/mock';
 import type { Product } from '@/data/shop';
 import { useI18n } from '@/store/app-context';
 
@@ -45,7 +45,7 @@ export function ProductCard({ product: p, width, onAdd }: { product: Product; wi
         <Row style={{ justifyContent: 'space-between', marginTop: 'auto' }}>
           <View>
             <T type="label" color={Colors.accent} style={{ fontSize: 14 }}>
-              {formatPrice(p.price)}
+              {priceLabel(p.price)}
             </T>
             {p.oldPrice ? (
               <T type="small" color={Colors.textMuted} style={{ textDecorationLine: 'line-through', fontSize: 11 }}>

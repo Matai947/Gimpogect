@@ -8,7 +8,7 @@ import { ProductCard } from '@/components/product-card';
 import { Badge, Button, Card, EmptyState, IconButton, Row, Screen, SectionHeader, Stars, T } from '@/components/ui';
 import { ProductPhoto } from '@/components/product-photo';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { formatPrice } from '@/data/mock';
+import { formatPrice, priceLabel } from '@/data/mock';
 import { MEMBER_DISCOUNT } from '@/data/shop';
 import { useApp, useCartSummary, useCatalog, useI18n, useMembershipInfo } from '@/store/app-context';
 
@@ -97,7 +97,7 @@ export default function ProductScreen() {
         <Card style={{ marginTop: Spacing.three, gap: 6 }}>
           <Row gap={8} style={{ alignItems: 'flex-end' }}>
             <T type="display" style={{ fontSize: 30, lineHeight: 34 }}>
-              {formatPrice(product.price)}
+              {priceLabel(product.price)}
             </T>
             {product.oldPrice ? (
               <T type="body" color={Colors.textMuted} style={{ textDecorationLine: 'line-through', marginBottom: 4 }}>

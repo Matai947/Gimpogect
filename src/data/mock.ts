@@ -82,6 +82,7 @@ export type Plan = {
   trial?: boolean; // free trial, hidden from the price list; 3 days
   days?: number; // fixed-length pass instead of months
   staffOnly?: boolean; // issued only at the front desk
+  partner?: boolean; // paid by a partner (1Fit): sold at the register for 0, hidden from clients
   legacy?: boolean; // hidden from sale but still shown on members
   visits?: number; // visits included; unset = unlimited
   freezeDays?: number; // total freeze days given with the plan
@@ -237,6 +238,7 @@ export const plans: Plan[] = [
   { id: 'trial', name: 'Пробный', months: 0, price: 0, perMonth: 0, features: ['3 дня тренировок', 'Без обязательств', 'Можно без тренера'], trial: true, days: 3 },
   { id: 'guest', name: 'Гостевой', months: 0, days: 1, price: 0, perMonth: 0, features: ['Разовый вход на сегодня'], trial: true, staffOnly: true },
   { id: 'i9', name: 'Разовая тренировка', months: 0, days: 1, price: 3500, perMonth: 3500, visits: 1, features: ['1 посещение','Срок: 1 день'] },
+  { id: 'i10', name: 'Разовая тренировка 1Fit', months: 0, days: 1, price: 0, perMonth: 0, visits: 1, partner: true, features: ['Партнёр 1Fit', '1 посещение'] },
   { id: 'i3', name: 'Дневной абонемент 12 посещений', months: 1, days: 31, price: 15000, perMonth: 15000, visits: 12, freezeDays: 5, dayOnly: true, features: ['12 посещений','Срок: 31 дн.','Вход с 07:00 до 17:00','Заморозка: 1 раз, 5 дн.'] },
   { id: 'i4', name: 'Дневной абонемент Безлимитный', months: 1, days: 31, price: 17000, perMonth: 17000, freezeDays: 5, dayOnly: true, features: ['Безлимит','Срок: 31 дн.','Вход с 07:00 до 17:00','Заморозка: 1 раз, 5 дн.'] },
   { id: 'i1', name: 'Полный день 12 посещений', months: 1, days: 31, price: 17000, perMonth: 17000, visits: 12, freezeDays: 5, features: ['12 посещений','Срок: 31 дн.','Заморозка: 1 раз, 5 дн.'] },
@@ -319,8 +321,12 @@ export function formatDateLong(iso: string): string {
   return `${d.getDate()} ${monthShort.get(d.getMonth())} ${d.getFullYear()}`;
 }
 
+/** Price for a shop product; "price on request" until the front desk sets one. */
+export function priceLabel(n: number): string {
+  return n ? formatPrice(n) : translate(getLang(), 'price_tba');
+}
+
 export function formatPrice(n: number): string {
-  if (!n) return translate(getLang(), 'price_tba');
   return `${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} ₸`;
 }
 

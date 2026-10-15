@@ -131,7 +131,7 @@ export default function HomeScreen() {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }} style={{ flexGrow: 0, flexShrink: 0 }}>
           {plans
-            .filter((p) => !p.trial)
+            .filter((p) => !p.trial && !p.partner)
             .map((p) => (
               <Pressable key={p.id} onPress={() => router.push(`/membership?plan=${p.id}`)} style={[styles.price, p.popular && { borderColor: Colors.accent }]}>
                 <Row style={{ justifyContent: 'space-between' }}>

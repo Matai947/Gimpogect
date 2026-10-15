@@ -219,7 +219,7 @@ export default function StaffPosScreen() {
         <View style={styles.grid}>
           {cat === PLANS_TAB
             ? plans
-                .filter((p) => !p.staffOnly && p.price > 0)
+                .filter((p) => !p.staffOnly && (p.price > 0 || p.partner))
                 .map((p) => (
                   <Pressable key={p.id} onPress={() => add({ key: `plan:${p.id}`, title: t('pos_plan_line', { name: td(p.name) }), price: p.price, planId: p.id })} style={styles.item}>
                     <Ionicons name="card-outline" size={20} color={StaffAccent} />
@@ -230,7 +230,7 @@ export default function StaffPosScreen() {
                       {planLength(p)}
                     </T>
                     <T type="subheading" color={StaffAccent}>
-                      {formatPrice(p.price)}
+                      {p.partner ? '1Fit' : formatPrice(p.price)}
                     </T>
                   </Pressable>
                 ))
