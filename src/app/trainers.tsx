@@ -1,14 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { Badge, Card, Chip, ChipRow, Row, Screen, Stars, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { trainers } from '@/data/mock';
+import { formatPrice, trainers } from '@/data/mock';
 import { useI18n } from '@/store/app-context';
 
-const specialties = ['Все', 'Пауэрлифтинг', 'Жим лёжа', 'Бокс', 'Вольная борьба', 'Армрестлинг'];
+const specialties = ['Все', 'Пауэрлифтинг', 'Жим лёжа', 'Бокс', 'Вольная борьба', 'Армрестлинг', 'Снижение веса', 'Набор массы'];
 
 export default function TrainersScreen() {
   const { t, td } = useI18n();
@@ -42,6 +43,7 @@ export default function TrainersScreen() {
       <View style={{ paddingHorizontal: Spacing.three, gap: Spacing.two }}>
         {list.map((tr) => (
           <Card key={tr.id} onPress={() => router.push(`/trainer/${tr.id}`)} style={{ flexDirection: 'row', gap: Spacing.three }}>
+            {tr.photo ? <Image source={tr.photo} style={styles.avatar} contentFit="cover" contentPosition="top" transition={200} /> : null}
             <View style={{ flex: 1, gap: 4 }}>
               <Row style={{ justifyContent: 'space-between' }}>
                 <Row gap={6} style={{ flex: 1 }}>
@@ -52,9 +54,14 @@ export default function TrainersScreen() {
                 </Row>
                 {tr.rating ? <Stars rating={tr.rating} /> : null}
               </Row>
-              <T type="small" color={Colors.textSecondary} numberOfLines={1}>
+              <T type="small" color={Colors.textSecondary} numberOfLines={2}>
                 {tr.specialties.map(td).join(' • ')}
               </T>
+              {tr.pricePerSession ? (
+                <T type="label" color={Colors.accent}>
+                  {formatPrice(tr.pricePerSession)} • {t('per_session')}
+                </T>
+              ) : null}
               {tr.phone ? (
                 <Row gap={6}>
                   <Ionicons name="call-outline" size={13} color={Colors.accent} />
@@ -87,4 +94,5 @@ const styles = StyleSheet.create({
     height: 48,
   },
   searchInput: { flex: 1, color: Colors.text, fontSize: 16 },
+  avatar: { width: 84, height: 112, borderRadius: Radius.md, backgroundColor: Colors.surfaceAlt },
 });

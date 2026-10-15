@@ -1,3 +1,5 @@
+import type { ImageSourcePropType } from 'react-native';
+
 import { getLang, monthNames, translate, weekdayNames } from '@/i18n';
 
 export type Club = {
@@ -32,7 +34,10 @@ export type Trainer = {
   experienceYears: number;
   pricePerSession: number;
   phone?: string;
-  bio: string;
+  photo?: ImageSourcePropType;
+  services?: string[]; // what the trainer helps with
+  experience?: string;
+  bio: string; // qualifications, one per line
   pro?: boolean;
   audience: string;
 };
@@ -169,13 +174,25 @@ export const trainers: Trainer[] = [
     id: 't3',
     name: 'Повчун Никита',
     clubId: '', // works in both clubs
-    specialties: ['Жим лёжа','Пауэрлифтинг','Армрестлинг','Дзюдо'],
+    specialties: ['Жим лёжа', 'Армрестлинг', 'Снижение веса', 'Набор массы'],
     rating: 0,
     reviews: 0,
     experienceYears: 0,
-    pricePerSession: 0,
+    pricePerSession: 25000,
+    photo: require('../../assets/images/trainers/nikita.jpg'),
     phone: '+7 747 255 55 08',
-    bio: 'Мастер спорта по жиму лёжа (WRPF, WPC, НАП) и пауэрлифтингу, международный мастер спорта по подъёму на бицепс, кандидат в мастера спорта по армрестлингу и дзюдо. Многократный призёр Казахстана, Азии и Евразии.',
+    bio: 'МС по жиму лёжа (WRPF, WPC, НАП)\nМС по жиму лёжа в софт экипировке\nМСМК по подъёму на бицепс\nКМС по армрестлингу\nКМС по дзюдо',
+    services: [
+      'Снижение веса и коррекция фигуры',
+      'Набор мышечной массы и развитие силовых показателей',
+      'Индивидуальные программы тренировок с учётом целей и физической подготовки',
+      'Подготовка к соревнованиям',
+      'Подготовка к сдаче спортивных нормативов',
+      'ЛФК',
+      'Развитие силы, выносливости, гибкости и общей физической подготовки',
+      'Работа с мужчинами и женщинами любого возраста и уровня подготовки',
+    ],
+    experience: 'Более 20 лет личного тренировочного стажа и более 10 лет тренерской практики',
     audience: '',
   },
 ];
