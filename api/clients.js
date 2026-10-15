@@ -258,7 +258,8 @@ module.exports = async function handler(req, res) {
     }
 
     /* ---- payments and visits for the reports ---- */
-    const SALE_KINDS = ['plan', 'shop', 'personal', 'debt', 'debt_payment', 'refund'];
+    // The register may only report what it sells; refunds and debt payments exist only through their own ops (refund is owner-only).
+    const SALE_KINDS = ['plan', 'shop', 'personal', 'debt'];
     const METHODS = ['kaspi', 'card', 'cash', 'split', 'desk'];
     const int = (v, max) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
 
@@ -272,7 +273,6 @@ module.exports = async function handler(req, res) {
       const sale = { id, ts, kind, title: str(body.title, 120), name: str(body.name, 60), memberId: str(body.memberId, 20), amount: int(body.amount, 10000000), clubId: body.clubId, method: METHODS.includes(body.method) ? body.method : 'cash', staff: str(body.staff, 40) };
       if (/^t\d{1,3}$/.test(String(body.trainerId))) sale.trainerId = body.trainerId;
       if (kind === 'debt') sale.remaining = Math.min(sale.amount, int(body.remaining ?? body.amount, 10000000));
-      if (body.refundOf) sale.refundOf = str(body.refundOf, 24);
       await sb('sales?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ id, ts, data: sale }) });
       return res.status(200).json({ ok: true });
     }
