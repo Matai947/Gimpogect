@@ -328,7 +328,7 @@ module.exports = async function handler(req, res) {
       const ts = date ? Date.parse(date + 'T12:00:00+05:00') : NaN;
       if (!trainerId || !['c1', 'c2'].includes(body.clubId) || !(sessions >= 1 && sessions <= 30) || !(ts > now - 120 * 86400000 && ts < now + 86400000)) return res.status(400).json({ error: 'bad data' });
       const id = 'L' + now.toString(36) + Math.random().toString(36).slice(2, 5);
-      await sb('trainer_sessions', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id, ts, data: { id, trainerId, clubId: body.clubId, date, sessions, note: str(body.note, 120), staff: str(body.staff, 40) } }) });
+      await sb('trainer_sessions', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id, ts, data: { id, trainerId, clubId: body.clubId, date, sessions, note: str(body.note, 120), staff: str(body.staff, 40), at: now } }) });
       return res.status(200).json({ ok: true, id });
     }
 
@@ -341,6 +341,11 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST' && op === 'load-del') {
       const id = str(body.id, 24);
       if (!/^L[a-z0-9]{3,23}$/.test(id)) return res.status(400).json({ error: 'bad id' });
+      // Staff may only undo a fresh entry (a typo); older entries are the owner's records and only the owner removes them.
+      const rows = await sb(`trainer_sessions?id=eq.${id}&select=data`);
+      const entry = rows[0]?.data;
+      if (!entry) return res.status(404).json({ error: 'unknown entry' });
+      if (!isOwner(req) && !(entry.at && Date.now() - entry.at < 86400000)) return res.status(403).json({ error: 'too old' });
       await sb(`trainer_sessions?id=eq.${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
       return res.status(200).json({ ok: true });
     }
