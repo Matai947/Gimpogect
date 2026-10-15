@@ -5,7 +5,7 @@ import { OwnerAccent, OwnerHeader } from '@/components/owner-header';
 import { Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubs, formatDateHuman, formatPrice, toISODate, trainers, weekdayShort } from '@/data/mock';
-import { fetchVisits, type VisitRow } from '@/lib/api';
+import { fetchLoads, fetchVisits, type TrainerLoad, type VisitRow } from '@/lib/api';
 import { useApp, useI18n, useNow, useRawSales } from '@/store/app-context';
 
 const ALMATY = 5 * 3600000; // the clubs' clock: UTC+5
@@ -21,11 +21,13 @@ export default function OwnerReports() {
   const [days, setDays] = useState<7 | 30>(30);
   const [club, setClub] = useState<string>('all');
   const [visits, setVisits] = useState<VisitRow[] | null>(null);
+  const [loads, setLoads] = useState<TrainerLoad[]>([]);
 
   useEffect(() => {
     if (!staffCode) return;
     let live = true;
     fetchVisits(staffCode, 60).then((v) => live && v && setVisits(v));
+    fetchLoads(staffCode, 60).then((l) => live && l && setLoads(l));
     void refreshSales();
     return () => {
       live = false;
@@ -33,6 +35,7 @@ export default function OwnerReports() {
   }, [staffCode, refreshSales]);
 
   const from = now - days * 86400000;
+  const fromDay = new Date(from + ALMATY).toISOString().slice(0, 10); // trainer sessions are entered by calendar day
   const inClub = (c: string) => club === 'all' || c === club;
 
   const attendance = useMemo(() => {
@@ -49,16 +52,17 @@ export default function OwnerReports() {
       const mine = rows.filter((x) => x.trainerId === tr.id);
       const bought = mine.filter((x) => x.kind === 'personal');
       const refunded = mine.filter((x) => x.kind === 'refund').reduce((s, x) => s + x.amount, 0);
-      return { id: tr.id, name: tr.name, clients: new Set(bought.map((x) => x.memberId)).size, packs: bought.length, income: bought.reduce((s, x) => s + x.amount, 0) - refunded };
+      const worked = loads.filter((l) => l.trainerId === tr.id && l.date >= fromDay && inClub(l.clubId));
+      return { id: tr.id, name: tr.name, sessions: worked.reduce((s, l) => s + l.sessions, 0), clients: new Set(bought.map((x) => x.memberId)).size, packs: bought.length, income: bought.reduce((s, x) => s + x.amount, 0) - refunded };
     });
     const byClub = clubs.map((c) => ({ id: c.id, name: c.name.replace('Seven Gym ', ''), income: rows.filter((x) => x.clubId === c.id).reduce((s, x) => s + (x.kind === 'refund' ? -x.amount : x.kind === 'personal' ? x.amount : 0), 0) }));
     return { perTrainer, byClub, total: perTrainer.reduce((s, x) => s + x.income, 0) };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sales, from, club]);
+  }, [sales, loads, from, fromDay, club]);
 
   const debts = useMemo(() => sales.filter((x) => x.kind === 'debt' && (x.remaining ?? 0) > 0 && inClub(x.clubId)).sort((a, b) => a.ts - b.ts), [sales, club]); // eslint-disable-line react-hooks/exhaustive-deps
   const refunds = useMemo(() => sales.filter((x) => x.kind === 'refund' && x.ts >= from && inClub(x.clubId)), [sales, from, club]); // eslint-disable-line react-hooks/exhaustive-deps
-  const maxTrainer = Math.max(1, ...personal.perTrainer.map((x) => Math.max(x.clients, x.packs)));
+  const maxTrainer = Math.max(1, ...personal.perTrainer.map((x) => Math.max(x.sessions, x.clients, x.packs)));
   const date = (ts: number) => formatDateHuman(toISODate(new Date(ts)));
 
   return (
@@ -96,6 +100,7 @@ export default function OwnerReports() {
         <View style={styles.card}>
           <T type="subheading">{t('rep_trainers')}</T>
           <Row gap={14}>
+            <Legend color={Colors.success} label={t('rep_tr_sessions')} />
             <Legend color={Colors.textMuted} label={t('rep_tr_clients')} />
             <Legend color={OwnerAccent} label={t('rep_tr_packs')} />
           </Row>
@@ -109,6 +114,7 @@ export default function OwnerReports() {
                   {formatPrice(tr.income)}
                 </T>
               </Row>
+              <Bar value={tr.sessions} max={maxTrainer} color={Colors.success} />
               <Bar value={tr.clients} max={maxTrainer} color={Colors.textMuted} />
               <Bar value={tr.packs} max={maxTrainer} color={OwnerAccent} />
             </View>

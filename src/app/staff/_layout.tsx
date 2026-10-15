@@ -35,7 +35,7 @@ export default function StaffLayout() {
       <Tabs.Screen name="index" options={{ title: t('staff_tab_scan'), tabBarIcon: (p: IconProps) => <TabIcon name="scan" outline="scan-outline" {...p} /> }} />
       <Tabs.Screen name="pos" options={{ title: t('staff_tab_pos'), tabBarIcon: (p: IconProps) => <TabIcon name="calculator" outline="calculator-outline" {...p} /> }} />
       <Tabs.Screen name="today" options={{ title: t('staff_tab_today'), tabBarIcon: (p: IconProps) => <TabIcon name="speedometer" outline="speedometer-outline" {...p} /> }} />
-      <Tabs.Screen name="classes" options={{ title: t('staff_tab_classes'), tabBarIcon: (p: IconProps) => <TabIcon name="people" outline="people-outline" {...p} /> }} />
+      <Tabs.Screen name="classes" options={{ title: t('staff_tab_trainers'), tabBarIcon: (p: IconProps) => <TabIcon name="people" outline="people-outline" {...p} /> }} />
       <Tabs.Screen name="orders" options={{ title: t('staff_tab_orders'), tabBarIcon: (p: IconProps) => <TabIcon name="cube" outline="cube-outline" {...p} />, tabBarBadge: pending > 0 ? pending : undefined }} />
       <Tabs.Screen name="products" options={{ title: t('staff_tab_products'), tabBarIcon: (p: IconProps) => <TabIcon name="pricetags" outline="pricetags-outline" {...p} /> }} />
       <Tabs.Screen name="members" options={{ title: t('staff_tab_members'), tabBarIcon: (p: IconProps) => <TabIcon name="id-card" outline="id-card-outline" {...p} /> }} />

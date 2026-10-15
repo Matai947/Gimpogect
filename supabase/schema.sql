@@ -35,3 +35,12 @@ create index if not exists visits_ts on visits (ts);
 
 alter table sales enable row level security;
 alter table visits enable row level security;
+
+-- Sessions each trainer worked, entered by hand by the administrators.
+create table if not exists trainer_sessions (
+  id text primary key,
+  ts bigint not null,
+  data jsonb not null
+);
+create index if not exists trainer_sessions_ts on trainer_sessions (ts);
+alter table trainer_sessions enable row level security;

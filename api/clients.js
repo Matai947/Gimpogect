@@ -319,6 +319,32 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    /* ---- trainer load, entered by the administrators ---- */
+    if (req.method === 'POST' && op === 'load') {
+      const trainerId = /^t\d{1,3}$/.test(String(body.trainerId)) ? String(body.trainerId) : '';
+      const date = DAY.test(String(body.date)) ? String(body.date) : '';
+      const sessions = Math.round(Number(body.sessions));
+      const now = Date.now();
+      const ts = date ? Date.parse(date + 'T12:00:00+05:00') : NaN;
+      if (!trainerId || !['c1', 'c2'].includes(body.clubId) || !(sessions >= 1 && sessions <= 30) || !(ts > now - 120 * 86400000 && ts < now + 86400000)) return res.status(400).json({ error: 'bad data' });
+      const id = 'L' + now.toString(36) + Math.random().toString(36).slice(2, 5);
+      await sb('trainer_sessions', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id, ts, data: { id, trainerId, clubId: body.clubId, date, sessions, note: str(body.note, 120), staff: str(body.staff, 40) } }) });
+      return res.status(200).json({ ok: true, id });
+    }
+
+    if (req.method === 'GET' && op === 'loads') {
+      const days = Math.max(1, Math.min(400, Number(req.query.days) || 60));
+      const rows = await pageAll(`trainer_sessions?select=data&ts=gte.${Date.now() - days * 86400000}&order=ts.desc`);
+      return res.status(200).json({ loads: rows.map((r) => r.data) });
+    }
+
+    if (req.method === 'POST' && op === 'load-del') {
+      const id = str(body.id, 24);
+      if (!/^L[a-z0-9]{3,23}$/.test(id)) return res.status(400).json({ error: 'bad id' });
+      await sb(`trainer_sessions?id=eq.${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+      return res.status(200).json({ ok: true });
+    }
+
     return res.status(404).json({ error: 'unknown op' });
   } catch (e) {
     return res.status(500).json({ error: 'server' });

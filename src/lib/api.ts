@@ -65,6 +65,12 @@ export const refundRemote = (code: string, saleId: string, amount?: number) => c
 /** Front desk: the client pays (part of) a debt. */
 export const settleRemote = (code: string, debtId: string, amount: number, method: string, staff: string) => call<{ ok: true }>('settle', { method: 'POST', code, body: { debtId, amount, method, staff } });
 
+export type TrainerLoad = { id: string; trainerId: string; clubId: string; date: string; sessions: number; note?: string; staff?: string };
+/** Administrators record how many sessions a trainer worked (the schedule itself is not in the system). */
+export const postLoad = (code: string, b: { trainerId: string; clubId: string; date: string; sessions: number; note: string; staff: string }) => call<{ ok: true; id: string }>('load', { method: 'POST', code, body: b });
+export const fetchLoads = async (code: string, days = 60) => (await call<{ loads: TrainerLoad[] }>('loads', { code, query: `&days=${days}` }))?.loads ?? null;
+export const deleteLoad = (code: string, id: string) => call<{ ok: true }>('load-del', { method: 'POST', code, body: { id } });
+
 export const grantRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('grant', { method: 'POST', code, body: c });
 
 export const checkinRemote = (code: string, id: string, clubId: string) => call<{ ok: true; visitsLeft?: number }>('checkin', { method: 'POST', code, body: { id, clubId } });
