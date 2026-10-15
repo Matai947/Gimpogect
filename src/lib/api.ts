@@ -1,3 +1,4 @@
+import type { ClubConfig } from '@/data/mock';
 import type { Sale } from '@/data/owner';
 
 // Client registry API (functions/api/clients.js on Cloudflare Pages). Every call is best effort:
@@ -70,6 +71,11 @@ export type TrainerLoad = { id: string; trainerId: string; clubId: string; date:
 export const postLoad = (code: string, b: { trainerId: string; clubId: string; date: string; sessions: number; note: string; staff: string }) => call<{ ok: true; id: string }>('load', { method: 'POST', code, body: b });
 export const fetchLoads = async (code: string, days = 60) => (await call<{ loads: TrainerLoad[] }>('loads', { code, query: `&days=${days}` }))?.loads ?? null;
 export const deleteLoad = (code: string, id: string) => call<{ ok: true }>('load-del', { method: 'POST', code, body: { id } });
+
+/** The network's clubs, as the owner set them (empty until the owner saves a list). */
+export const fetchClubs = async () => (await call<{ clubs: ClubConfig[] }>('clubs'))?.clubs ?? null;
+/** Owner only: adds or edits branches. */
+export const saveClubs = (code: string, clubs: ClubConfig[]) => call<{ ok: true }>('clubs-save', { method: 'POST', code, body: { clubs } });
 
 export const grantRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('grant', { method: 'POST', code, body: c });
 

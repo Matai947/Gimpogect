@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { ClubEditor } from '@/components/club-editor';
 import { OwnerAccent, OwnerHeader } from '@/components/owner-header';
 import { Fact, hm } from '@/components/member-result';
 import { ProgressBar, Row, T } from '@/components/ui';
@@ -29,6 +30,7 @@ export default function OwnerClubs() {
     <View style={styles.root}>
       <OwnerHeader title={t('tab_clubs_o')} />
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        <ClubEditor />
         {clubs.map((c) => {
           const mine = list.filter((m) => m.homeClubId === c.id);
           const occ = occupancyLabel(c.occupancy);

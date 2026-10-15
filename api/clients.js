@@ -40,6 +40,25 @@ async function pageAll(query, cap = 30000) {
   return all;
 }
 
+// The network's clubs live in the settings table so the owner can add a branch without a deploy.
+// Until the owner saves a list, the two original clubs are valid.
+let clubCache = { at: 0, list: [] };
+async function getClubs() {
+  if (Date.now() - clubCache.at < 30000) return clubCache.list;
+  let list = [];
+  try {
+    list = (await sb('settings?key=eq.clubs&select=data'))[0]?.data?.clubs ?? [];
+  } catch {
+    // table not created yet: fall back to the defaults
+  }
+  clubCache = { at: Date.now(), list };
+  return list;
+}
+async function validClub(id) {
+  const list = await getClubs();
+  return list.length ? list.some((c) => c.id === id && c.active !== false) : ['c1', 'c2'].includes(id);
+}
+
 const logVisit = (club, member, kind) => sb('visits', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ ts: Date.now(), club, member, kind }) }).catch(() => {}); // best effort: a missing log must never block an entry
 
 /** Every client, paged because PostgREST returns at most 1000 rows per request. */
@@ -122,10 +141,13 @@ module.exports = async function handler(req, res) {
       const digits = digitsOf(phone);
       if (name.length < 2 || digits.length < 10 || digits.length > 12) return res.status(400).json({ error: 'bad data' });
       const day = new Date().toISOString().slice(0, 10);
-      const lead = { name, phone, clubId: ['c1', 'c2'].includes(body.clubId) ? body.clubId : '', lang: ['ru', 'kk', 'en'].includes(body.lang) ? body.lang : 'ru', ts: Date.now() };
+      const lead = { name, phone, clubId: (await validClub(body.clubId)) ? body.clubId : '', lang: ['ru', 'kk', 'en'].includes(body.lang) ? body.lang : 'ru', ts: Date.now() };
       await sb('leads?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ id: `${day}-${digits}`, ts: lead.ts, data: lead }) });
       return res.status(200).json({ ok: true });
     }
+
+    // The list of clubs is public (the site and the app show it); only the owner changes it.
+    if (req.method === 'GET' && op === 'clubs') return res.status(200).json({ clubs: await getClubs() });
 
     // Sign in with phone + password. Accounts created before passwords existed take the first password offered.
     if (req.method === 'POST' && op === 'login') {
@@ -218,7 +240,7 @@ module.exports = async function handler(req, res) {
       if (d.length === 10) d = '7' + d;
       else if (d.length === 11 && d[0] === '8') d = '7' + d.slice(1);
       const phoneOk = d.length === 11;
-      const clubId = ['c1', 'c2'].includes(body.clubId) ? body.clubId : 'c1';
+      const clubId = (await validClub(body.clubId)) ? body.clubId : 'c1';
       let id = phoneOk ? 'u_' + d : '';
       let c = id ? await read(id) : null;
       const now = Date.now();
@@ -267,7 +289,7 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST' && op === 'sale') {
       const id = str(body.id, 24);
       const kind = SALE_KINDS.includes(body.kind) ? body.kind : '';
-      if (!/^[A-Za-z0-9]{3,24}$/.test(id) || !kind || !['c1', 'c2'].includes(body.clubId)) return res.status(400).json({ error: 'bad data' });
+      if (!/^[A-Za-z0-9]{3,24}$/.test(id) || !kind || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
       const now = Date.now();
       const ts = Number(body.ts) > now - 30 * 86400000 && Number(body.ts) < now + 3600000 ? Math.round(Number(body.ts)) : now;
       const sale = { id, ts, kind, title: str(body.title, 120), name: str(body.name, 60), memberId: str(body.memberId, 20), amount: int(body.amount, 10000000), clubId: body.clubId, method: METHODS.includes(body.method) ? body.method : 'cash', staff: str(body.staff, 40) };
@@ -319,6 +341,21 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    /* ---- the network's clubs: owner only ---- */
+    if (req.method === 'POST' && op === 'clubs-save') {
+      if (!isOwner(req)) return res.status(403).json({ error: 'owner only' });
+      const input = Array.isArray(body.clubs) ? body.clubs.slice(0, 30) : [];
+      const list = input.map((c) => ({ id: str(c?.id, 6), name: str(c?.name, 60), city: str(c?.city, 40), address: str(c?.address, 120), hours: str(c?.hours, 40), phone: str(c?.phone, 25), active: c?.active !== false }));
+      if (!list.length || list.some((c) => !/^c\d{1,3}$/.test(c.id) || c.name.length < 2) || new Set(list.map((c) => c.id)).size !== list.length) return res.status(400).json({ error: 'bad data' });
+      // A club is never deleted, only switched off, so old payments keep their branch.
+      const old = await getClubs();
+      const required = old.length ? old.map((o) => o.id) : ['c1', 'c2'];
+      if (required.some((id) => !list.some((c) => c.id === id))) return res.status(400).json({ error: 'cannot remove a club' });
+      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'clubs', data: { clubs: list } }) });
+      clubCache = { at: Date.now(), list };
+      return res.status(200).json({ ok: true });
+    }
+
     /* ---- trainer load, entered by the administrators ---- */
     if (req.method === 'POST' && op === 'load') {
       const trainerId = /^t\d{1,3}$/.test(String(body.trainerId)) ? String(body.trainerId) : '';
@@ -326,7 +363,7 @@ module.exports = async function handler(req, res) {
       const sessions = Math.round(Number(body.sessions));
       const now = Date.now();
       const ts = date ? Date.parse(date + 'T12:00:00+05:00') : NaN;
-      if (!trainerId || !['c1', 'c2'].includes(body.clubId) || !(sessions >= 1 && sessions <= 30) || !(ts > now - 120 * 86400000 && ts < now + 86400000)) return res.status(400).json({ error: 'bad data' });
+      if (!trainerId || !(await validClub(body.clubId)) || !(sessions >= 1 && sessions <= 30) || !(ts > now - 120 * 86400000 && ts < now + 86400000)) return res.status(400).json({ error: 'bad data' });
       const id = 'L' + now.toString(36) + Math.random().toString(36).slice(2, 5);
       await sb('trainer_sessions', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id, ts, data: { id, trainerId, clubId: body.clubId, date, sessions, note: str(body.note, 120), staff: str(body.staff, 40), at: now } }) });
       return res.status(200).json({ ok: true, id });

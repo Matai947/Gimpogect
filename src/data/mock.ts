@@ -4,6 +4,7 @@ import { getLang, monthNames, translate, weekdayNames } from '@/i18n';
 
 export type Club = {
   id: string;
+  active?: boolean; // switched off by the owner: kept for history, hidden from choices
   name: string;
   city: string;
   address: string;
@@ -97,7 +98,7 @@ export type NewsItem = {
   body: string;
 };
 
-export const clubs: Club[] = [
+const defaultClubs: Club[] = [
   {
     id: 'c1',
     name: 'Seven Gym Akkent',
@@ -148,6 +149,28 @@ export const clubs: Club[] = [
     reviewsList: [{ name: 'Динара А.', when: '3 недели назад', text: 'Йога-студия с панорамой на Алатау, это лучшее утро в Алматы.', stars: 5 }, { name: 'Timur B.', when: '1 месяц назад', text: 'Премиальный уровень, сайкл-студия как в Европе.', stars: 5 }],
   },
 ];
+
+export type ClubConfig = { id: string; name: string; city: string; address: string; hours: string; phone: string; active: boolean };
+
+/** Every club ever created (for history) and the ones that are open now (for choices). Both are updated in place when the owner's list arrives. */
+export const allClubs: Club[] = [...defaultClubs];
+export const clubs: Club[] = [...defaultClubs];
+
+/** Applies the network's club list from the server: edits to the built-in clubs, brand-new branches and switched-off ones. */
+export function applyClubConfig(cfg: ClubConfig[]) {
+  if (!cfg.length) return;
+  const t = defaultClubs[0];
+  const list = cfg.map((c): Club => {
+    const base = defaultClubs.find((d) => d.id === c.id) ?? { ...t, id: c.id, photos: t.photos.slice(0, 2), amenities: ['Тренажёрный зал'], description: '', areaM2: 0, machines: 0, rating: 0, reviews: 0, occupancy: 0, distanceKm: 0, liked: [], reviewsList: [] };
+    return { ...base, name: c.name, city: c.city || base.city, address: c.address, hours: c.hours, is24h: false, hoursDetail: [c.hours, c.hours, c.hours], phone: c.phone, active: c.active };
+  });
+  allClubs.splice(0, allClubs.length, ...list);
+  clubs.splice(0, clubs.length, ...list.filter((c) => c.active !== false));
+}
+
+export function currentClubConfig(): ClubConfig[] {
+  return allClubs.map((c) => ({ id: c.id, name: c.name, city: c.city, address: c.address, hours: c.hours, phone: c.phone, active: c.active !== false }));
+}
 
 export const trainers: Trainer[] = [
   {
@@ -357,7 +380,7 @@ export function sessionStart(s: ClassSession): Date {
 }
 
 export function clubById(id: string) {
-  return clubs.find((c) => c.id === id);
+  return allClubs.find((c) => c.id === id);
 }
 
 export function trainerById(id: string) {

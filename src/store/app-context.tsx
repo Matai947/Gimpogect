@@ -5,10 +5,10 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile, type Goal } from '@/data/fitness';
 import { members, mockOrders, type Member } from '@/data/members';
 import { mockSales, saleValue, type Sale } from '@/data/owner';
-import { addDays, planById, plans, sessionById, toISODate } from '@/data/mock';
+import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { checkinRemote, checkoutRemote, fetchClients, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient } from '@/lib/api';
+import { checkinRemote, checkoutRemote, fetchClients, fetchClubs, saveClubs, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -72,6 +72,7 @@ type State = {
   token: string; // the client's own access token from the server (password sign-in)
   remote: RemoteClient[]; // clients registered from any device, fetched while staff or owner is signed in
   serverSales: Sale[] | null; // the shared books from the server (null until first loaded)
+  clubConfig: ClubConfig[]; // the network's clubs as the owner set them, kept for the next start
   sales: Sale[]; // payments recorded on this device when staff issue plans
   staffLog: CheckinEntry[];
   attendance: Record<string, string[]>; // sessionId -> memberIds marked present
@@ -103,6 +104,7 @@ type Actions = {
   grantPlan: (memberId: string, planId: string) => void;
   recordSale: (sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff' | 'synced'>) => void;
   refreshSales: () => Promise<void>;
+  saveClubConfig: (list: ClubConfig[]) => Promise<boolean>;
   setPlanPrice: (planId: string, price: number, oldPrice?: number) => void;
   freezeMembership: (days: number) => void;
   unfreezeMembership: () => void;
@@ -158,6 +160,7 @@ const initialState: State = {
   token: '',
   remote: [],
   serverSales: null,
+  clubConfig: [],
   sales: [],
   staffLog: [],
   attendance: {},
@@ -220,6 +223,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const saved = JSON.parse(raw) as Partial<State>;
           setRuntimeApiKey(saved.coachApiKey ?? null);
           setCurrentLang(saved.lang ?? 'ru');
+          applyClubConfig(saved.clubConfig ?? []);
           setState({ ...initialState, ...saved, hydrated: true });
           return;
         }
@@ -236,6 +240,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const { hydrated: _h, remote: _r, serverSales: _ss, ...persist } = state;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(persist)).catch(() => {});
   }, [state]);
+
+  // Branches added by the owner: fetched at start and whenever the app comes back to the foreground.
+  useEffect(() => {
+    if (!state.hydrated) return;
+    let live = true;
+    const load = () =>
+      fetchClubs().then((list) => {
+        if (!live || !list || !list.length) return;
+        applyClubConfig(list);
+        setState((s) => ({ ...s, clubConfig: list }));
+      });
+    void load();
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && void load());
+    return () => {
+      live = false;
+      sub.remove();
+    };
+  }, [state.hydrated]);
 
   // Register this client in the shared registry whenever the account or profile changes.
   const user = state.user;
@@ -500,6 +522,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
   }, [state.hydrated, state.staffCode, state.sales]);
 
+  /** Owner: save the list of clubs (add a branch, edit one, switch one off). */
+  const saveClubConfig = useCallback(
+    async (list: ClubConfig[]) => {
+      if (!state.staffCode) return false;
+      const ok = await saveClubs(state.staffCode, list);
+      if (ok) {
+        applyClubConfig(list);
+        setState((s) => ({ ...s, clubConfig: list }));
+      }
+      return !!ok;
+    },
+    [state.staffCode],
+  );
+
   const setPlanPrice = useCallback((planId: string, price: number, oldPrice?: number) => {
     setState((s) => ({ ...s, planPrices: { ...s.planPrices, [planId]: { price, oldPrice } } }));
   }, []);
@@ -614,6 +650,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       grantPlan,
       recordSale,
       refreshSales,
+      saveClubConfig,
       setPlanPrice,
       freezeMembership,
       unfreezeMembership,
@@ -646,7 +683,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, recordSale, refreshSales, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, recordSale, refreshSales, saveClubConfig, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

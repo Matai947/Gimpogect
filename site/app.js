@@ -161,7 +161,7 @@ function render() {
     <article class="club reveal" style="background-image:url('${IMG(c.img)}')">
       <div class="tags">${c.rating ? `<span class="tag gold">★ ${c.rating}</span>` : ''}${c.am.map((a) => `<span class="tag">${t(a)}</span>`).join('')}</div>
       <h3>${c.name}</h3>
-      <p class="addr">${t(c.city)}, ${c.addr}</p>
+      <p class="addr">${c.cityText || t(c.city)}, ${c.addr}</p>
       <p class="meta"><span><b>${c.h === 'h247' ? t('h247') : c.h}</b></span>${c.area ? `<span><b>${money(c.area)}</b> ${t('club_area')}</span>` : ''}${c.machines ? `<span><b>${c.machines}+</b> ${t('club_machines')}</span>` : ''}</p>
       <div class="cta" style="margin-top:18px"><a class="btn btn-main" href="#lead" data-club="${c.id}">${t('club_pick')}</a><a class="btn btn-ghost" href="tel:${c.phone.replace(/\s/g, '')}">${t('club_call')}</a></div>
     </article>`).join('');
@@ -266,3 +266,15 @@ document.addEventListener('click', (e) => {
   window.open('https://web.whatsapp.com/send?phone=' + a.href.split('wa.me/')[1], '_blank', 'noopener');
 });
 
+
+// Branches the owner adds in the admin panel appear here without a code change; the two above are the fallback.
+fetch(API + '?op=clubs')
+  .then((r) => (r.ok ? r.json() : null))
+  .then((d) => {
+    const live = d && Array.isArray(d.clubs) ? d.clubs.filter((c) => c.active !== false) : [];
+    if (!live.length) return;
+    const known = clubs.slice();
+    clubs.splice(0, clubs.length, ...live.map((c) => ({ id: c.id, name: c.name, city: 'city_alm', cityText: c.city && c.city !== 'Алматы' ? c.city : '', addr: c.address, h: c.hours, area: 0, machines: 0, rating: '', phone: c.phone || '+7 705 555 39 32', img: (known.find((k) => k.id === c.id) || known[0]).img, am: ['am_gym'] })));
+    render();
+  })
+  .catch(() => {});

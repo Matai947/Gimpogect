@@ -44,3 +44,10 @@ create table if not exists trainer_sessions (
 );
 create index if not exists trainer_sessions_ts on trainer_sessions (ts);
 alter table trainer_sessions enable row level security;
+
+-- Network settings edited by the owner without a code change (the list of clubs).
+create table if not exists settings (
+  key text primary key,
+  data jsonb not null
+);
+alter table settings enable row level security;
