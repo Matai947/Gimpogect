@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { OwnerAccent, OwnerHeader } from '@/components/owner-header';
+import { TrainerClicks } from '@/components/trainer-clicks';
 import { Chip, ChipRow, ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { addDays, clubById, clubs, formatPrice, toISODate } from '@/data/mock';
@@ -130,6 +131,7 @@ export default function OwnerOverview() {
             <Share key={title} label={td(title)} value={v} total={revenue} />
           ))}
         </View>
+        <TrainerClicks accent={OwnerAccent} />
       </ScrollView>
     </View>
   );

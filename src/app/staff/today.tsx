@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { StaffAccent, hm } from '@/components/member-result';
 import { StaffHeader } from '@/components/staff-header';
+import { TrainerClicks } from '@/components/trainer-clicks';
 import { Card, ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { mockOrders } from '@/data/members';
@@ -131,6 +132,7 @@ export default function StaffTodayScreen() {
             ))}
           </Card>
         )}
+        <TrainerClicks accent={StaffAccent} />
       </ScrollView>
     </View>
   );

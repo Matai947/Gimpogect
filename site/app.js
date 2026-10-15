@@ -1,5 +1,6 @@
 // Seven Gym marketing site: content, 3 languages (RU / KZ / EN), lead form.
-const API = 'https://gym.matai.kz/api/clients';
+// ponytail: switch to https://gym.matai.kz/api/clients once that domain points to Cloudflare.
+const API = 'https://gym-project-c2r.pages.dev/api/clients';
 const IMG = (id, w = 1000) => `https://images.unsplash.com/photo-${id}?w=${w}&q=80`;
 
 const clubs = [
@@ -17,21 +18,21 @@ const plans = [
 
 const trainers = [
   {
-    name: 'Буенбаев Аскар Адилханович', img: 'askar', sp: 'Снижение веса • Набор массы • ЛФК • Функциональный тренинг • ОФП', price: 28000, phone: '+7 775 286 5723',
+    name: 'Буенбаев Аскар Адилханович', img: 'askar', id: 't1', sp: 'Снижение веса • Набор массы • ЛФК • Функциональный тренинг • ОФП', price: 28000, phone: '+7 775 286 5723',
     quals: ['Фитнес-тренер клуба', 'Дипломированный и сертифицированный фитнес-тренер'],
     services: ['Индивидуальные занятия для мужчин и женщин', 'Снижение лишнего веса', 'Набор мышечной массы', 'ЛФК (лечебная физкультура)', 'Функциональный тренинг', 'ОФП', 'Построение красивого и атлетичного тела'],
     exp: 'Тренерский стаж 8 лет',
     ages: 'Девушки от 12 до 60 лет • Мужчины от 8 до 60 лет',
   },
   {
-    name: 'Мамыт Ерсін', img: 'ersin', sp: 'Снижение веса • Набор массы • Вольная борьба • Пауэрлифтинг • Жим лёжа', price: 25000, phone: '+7 747 038 5849',
+    name: 'Мамыт Ерсін', img: 'ersin', id: 't2', sp: 'Снижение веса • Набор массы • Вольная борьба • Пауэрлифтинг • Жим лёжа', price: 25000, phone: '+7 747 038 5849',
     quals: ['Профессиональный фитнес-тренер', 'КМС по вольной борьбе', 'МС по пауэрлифтингу и жиму лёжа'],
     services: ['Снижение веса и сжигание жира', 'Набор мышечной массы', 'Развитие силы и выносливости', 'Коррекция фигуры', 'Развитие физических качеств', 'Индивидуальные программы тренировок'],
     why: ['Индивидуальный подход к каждому клиенту', 'Индивидуальная программа под ваши цели', 'Контроль техники выполнения упражнений', 'Постепенное увеличение нагрузок', 'Контроль прогресса и результата'],
     exp: 'Стаж работы более 7 лет',
   },
   {
-    name: 'Повчун Никита', img: 'nikita', sp: 'Жим лёжа • Армрестлинг • Снижение веса • Набор массы', price: 25000, phone: '+7 747 255 55 08',
+    name: 'Повчун Никита', img: 'nikita', id: 't3', sp: 'Жим лёжа • Армрестлинг • Снижение веса • Набор массы', price: 25000, phone: '+7 747 255 55 08',
     quals: ['МС по жиму лёжа (WRPF, WPC, НАП)', 'МС по жиму лёжа в софт экипировке', 'МСМК по подъёму на бицепс', 'КМС по армрестлингу', 'КМС по дзюдо'],
     services: ['Снижение веса и коррекция фигуры', 'Набор мышечной массы и развитие силовых показателей', 'Индивидуальные программы тренировок', 'Подготовка к соревнованиям и сдаче нормативов', 'ЛФК', 'Развитие силы, выносливости, гибкости и ОФП', 'Мужчины и женщины любого возраста и уровня'],
     exp: 'Более 20 лет личного тренировочного стажа и более 10 лет тренерской практики',
@@ -180,7 +181,7 @@ function render() {
         ${r.ages ? `<p class="bio">Возраст клиентов: <b>${r.ages}</b></p>` : ''}
         ${r.schedule ? `<p class="bio">График: <b>${r.schedule}</b></p>` : ''}
         ${r.price ? `<p class="price">${money(r.price)} ₸ <span>в месяц</span></p>` : ''}
-        <p class="st"><a href="tel:${r.phone.replace(/\s/g, '')}"><b>${r.phone}</b></a><a href="https://wa.me/${r.phone.replace(/\D/g, '')}" target="_blank" rel="noopener">WhatsApp</a></p>
+        <p class="st"><a href="tel:${r.phone.replace(/\s/g, '')}" data-track="call" data-target="${r.id}"><b>${r.phone}</b></a><a href="https://wa.me/${r.phone.replace(/\D/g, '')}" target="_blank" rel="noopener" data-track="whatsapp" data-target="${r.id}">WhatsApp</a></p>
       </div>
     </article>`).join('');
 
@@ -253,4 +254,10 @@ document.addEventListener('click', (e) => {
   if (!a || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) return;
   e.preventDefault();
   window.open('https://web.whatsapp.com/send?phone=' + a.href.split('wa.me/')[1], '_blank', 'noopener');
+});
+
+// Count taps on a trainer's phone and WhatsApp links for the staff chart.
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[data-track]');
+  if (a) fetch(API + '?op=track', { method: 'POST', keepalive: true, body: JSON.stringify({ kind: a.dataset.track, target: a.dataset.target, src: 'site' }) }).catch(() => {});
 });

@@ -1,12 +1,14 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
 import { Dimensions, Linking, StyleSheet, View } from 'react-native';
 
 import { Badge, Button, Card, Chip, EmptyState, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { clubById, formatPrice, trainerById } from '@/data/mock';
 import { openWhatsApp } from '@/lib/whatsapp';
+import { trackClick } from '@/lib/api';
 import { useI18n } from '@/store/app-context';
 
 const W = Dimensions.get('window').width;
@@ -15,6 +17,10 @@ export default function TrainerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const trainer = trainerById(id);
   const { t, td } = useI18n();
+
+  useEffect(() => {
+    if (trainer) trackClick('view', trainer.id);
+  }, [trainer]);
 
   if (!trainer) {
     return (
@@ -132,8 +138,14 @@ export default function TrainerScreen() {
 
       {trainer.phone ? (
         <View style={styles.footer}>
-          <Button title={t('call')} icon="call-outline" onPress={() => Linking.openURL(`tel:+${digits}`)} style={{ flex: 1 }} />
-          <Button title="WhatsApp" icon="logo-whatsapp" variant="secondary" onPress={() => openWhatsApp(trainer.phone ?? '')} style={{ flex: 1 }} />
+          <Button title={t('call')} icon="call-outline" onPress={() => {
+              trackClick('call', trainer.id);
+              Linking.openURL(`tel:+${digits}`);
+            }} style={{ flex: 1 }} />
+          <Button title="WhatsApp" icon="logo-whatsapp" variant="secondary" onPress={() => {
+              trackClick('whatsapp', trainer.id);
+              openWhatsApp(trainer.phone ?? '');
+            }} style={{ flex: 1 }} />
         </View>
       ) : null}
     </Screen>

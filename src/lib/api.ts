@@ -42,6 +42,13 @@ export const loginClient = async (id: string, password: string) => {
 
 export const fetchMyMembership = (id: string, token: string) => call<RemoteMe>('me', { query: `&id=${id}`, token });
 
+export type Click = { ts: number; kind: 'view' | 'call' | 'whatsapp'; target: string; src: string };
+
+/** Fire and forget: counts a trainer view or contact tap for the staff chart. */
+export const trackClick = (kind: Click['kind'], target: string) => void call('track', { method: 'POST', body: { kind, target, src: 'app' } });
+
+export const fetchClicks = async (code: string) => (await call<{ clicks: Click[] }>('clicks', { code }))?.clicks ?? null;
+
 export const fetchLeads = async (code: string) => (await call<{ leads: Lead[] }>('leads', { code }))?.leads ?? null;
 
 export const fetchClients = async (code: string) => (await call<{ clients: RemoteClient[] }>('list', { code }))?.clients ?? null;
