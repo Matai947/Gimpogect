@@ -1,3 +1,5 @@
+import type { Sale } from '@/data/owner';
+
 // Client registry API (functions/api/clients.js on Cloudflare Pages). Every call is best effort:
 // the app keeps working offline and just stops syncing.
 // The web build talks to the server it was loaded from; native builds use the public address.
@@ -49,6 +51,19 @@ export const fetchClients = async (code: string) => (await call<{ clients: Remot
 
 /** Front desk: a 1Fit member walks in. Creates the card if needed and records one 1Fit visit for the day. */
 export const onefitRemote = (code: string, b: { name: string; phone: string; clubId: string }) => call<{ ok: true; id: string; name: string; duplicate?: boolean }>('onefit', { method: 'POST', code, body: b });
+
+/** Register payments, kept on the server so every device and the owner see the same books. */
+export const postSale = (code: string, s: Sale) => call<{ ok: true }>('sale', { method: 'POST', code, body: s });
+export const fetchSales = async (code: string, days = 120) => (await call<{ sales: Sale[] }>('sales', { code, query: `&days=${days}` }))?.sales ?? null;
+
+export type VisitRow = { ts: number; club: string; member: string; kind: string };
+export const fetchVisits = async (code: string, days = 60) => (await call<{ visits: VisitRow[] }>('visits', { code, query: `&days=${days}` }))?.visits ?? null;
+
+/** Owner only: return money for a sale (the whole rest, or a part). */
+export const refundRemote = (code: string, saleId: string, amount?: number) => call<{ ok: true }>('refund', { method: 'POST', code, body: { saleId, amount } });
+
+/** Front desk: the client pays (part of) a debt. */
+export const settleRemote = (code: string, debtId: string, amount: number, method: string, staff: string) => call<{ ok: true }>('settle', { method: 'POST', code, body: { debtId, amount, method, staff } });
 
 export const grantRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('grant', { method: 'POST', code, body: c });
 

@@ -7,22 +7,25 @@ import { StaffAccent } from '@/components/member-result';
 import { StaffHeader } from '@/components/staff-header';
 import { Avatar, Badge, Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { formatPrice, planLength } from '@/data/mock';
+import { formatPrice, planLength, trainers } from '@/data/mock';
+import { settleRemote } from '@/lib/api';
 import type { PayMethod } from '@/data/owner';
 import { MEMBER_DISCOUNT } from '@/data/shop';
-import { useApp, useCatalog, useI18n, useMembers, usePlans, type MemberInfo } from '@/store/app-context';
+import { useApp, useCatalog, useI18n, useMembers, usePlans, useRawSales, type MemberInfo } from '@/store/app-context';
 
-type Line = { key: string; title: string; price: number; qty: number; planId?: string; productId?: string };
-type Receipt = { id: string; ts: number; lines: Line[]; subtotal: number; discount: number; total: number; method: PayMethod; client?: MemberInfo };
+type Line = { key: string; title: string; price: number; qty: number; planId?: string; productId?: string; trainerId?: string };
+type Receipt = { id: string; ts: number; lines: Line[]; subtotal: number; discount: number; total: number; debt?: number; method: PayMethod; client?: MemberInfo };
 
 const PLANS_TAB = '__plans';
+const TRAINERS_TAB = '__trainers';
 // Kept outside the component so the compiler's purity rule does not see Date.now() in render.
 const newTs = () => Date.now();
 
 export default function StaffPosScreen() {
   const { t, td } = useI18n();
   const plans = usePlans();
-  const { staff, recordSale, grantPlan } = useApp();
+  const { staff, staffCode, recordSale, grantPlan, refreshSales } = useApp();
+  const rawSales = useRawSales();
   const { products } = useCatalog();
   const { list: members } = useMembers();
 
@@ -35,6 +38,8 @@ export default function StaffPosScreen() {
   const [cash, setCash] = useState('');
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [partial, setPartial] = useState(false);
+  const [settle, setSettle] = useState('');
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -48,12 +53,18 @@ export default function StaffPosScreen() {
 
   const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
   // Member discount applies to goods only; plans are already priced for members.
-  const goods = lines.filter((l) => !l.planId).reduce((s, l) => s + l.price * l.qty, 0);
+  const goods = lines.filter((l) => !l.planId && !l.trainerId).reduce((s, l) => s + l.price * l.qty, 0);
   const discount = client?.active ? Math.round(goods * MEMBER_DISCOUNT) : 0;
   const total = subtotal - discount;
   const received = Number(cash.replace(/\D/g, '')) || 0;
   const change = received - total; // negative = not enough cash
-  const cashShort = method === 'cash' && lines.length > 0 && received < total;
+  // Part payment: the client pays some now and the rest stays a debt on their card.
+  const partialMode = partial && !!client && lines.length > 0;
+  const debtAmt = partialMode ? Math.max(0, total - received) : 0;
+  const cashShort = !partialMode && method === 'cash' && lines.length > 0 && received < total;
+  const debts = client ? rawSales.filter((x) => x.kind === 'debt' && x.memberId === client.id && (x.remaining ?? 0) > 0).sort((a, b) => a.ts - b.ts) : [];
+  const debtTotal = debts.reduce((sum, d) => sum + (d.remaining ?? 0), 0);
+  const settleValue = Number(settle.replace(/\D/g, '')) || 0;
 
   const add = (l: Omit<Line, 'qty'>) => {
     setError(null);
@@ -64,7 +75,8 @@ export default function StaffPosScreen() {
   const pay = () => {
     if (lines.length === 0 || cashShort) return;
     const planLines = lines.filter((l) => l.planId);
-    if (planLines.length && !client) {
+    const trainerLines = lines.filter((l) => l.trainerId);
+    if ((planLines.length || trainerLines.length || debtAmt > 0) && !client) {
       setError(t('pos_need_client'));
       return;
     }
@@ -72,13 +84,31 @@ export default function StaffPosScreen() {
     planLines.forEach((l) => {
       for (let i = 0; i < l.qty; i++) grantPlan(client!.id, l.planId!);
     });
-    const goodLines = lines.filter((l) => !l.planId);
+    // Personal training: one sale per package, tied to the trainer for the owner's reports.
+    trainerLines.forEach((l) => {
+      for (let i = 0; i < l.qty; i++) recordSale({ memberId: client!.id, name: client!.name, title: l.title, kind: 'personal', amount: l.price, method, trainerId: l.trainerId });
+    });
+    const goodLines = lines.filter((l) => !l.planId && !l.trainerId);
     if (goodLines.length) {
       recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: goods - discount, method });
     }
+    if (debtAmt > 0) recordSale({ memberId: client!.id, name: client!.name, title: t('pos_debt_title'), kind: 'debt', amount: debtAmt, remaining: debtAmt, method });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     const ts = newTs();
-    setReceipt({ id: ts.toString(36).toUpperCase(), ts, lines, subtotal, discount, total, method, client: client ?? undefined });
+    setReceipt({ id: ts.toString(36).toUpperCase(), ts, lines, subtotal, discount, total, debt: debtAmt || undefined, method, client: client ?? undefined });
+  };
+
+  /** The client brings money for an old debt: oldest debts first. */
+  const settleDebts = async () => {
+    let left = Math.min(settleValue, debtTotal);
+    if (!staffCode || left <= 0) return;
+    for (const d of debts) {
+      const part = Math.min(left, d.remaining ?? 0);
+      if (part > 0 && (await settleRemote(staffCode, d.id, part, 'cash', staff?.name ?? ''))) left -= part;
+    }
+    await refreshSales();
+    setSettle('');
+    setError(null);
   };
 
   const reset = () => {
@@ -88,6 +118,7 @@ export default function StaffPosScreen() {
     setQuery('');
     setCash('');
     setError(null);
+    setPartial(false);
   };
 
   const clientSearch = (
@@ -114,7 +145,7 @@ export default function StaffPosScreen() {
       ))}
     </View>
   );
-  const needsClient = !client && lines.some((l) => l.planId);
+  const needsClient = !client && lines.some((l) => l.planId || l.trainerId);
 
   const methodLabel: Record<PayMethod, string> = { kaspi: t('pay_kaspi'), card: t('pay_card'), cash: t('pay_cash'), split: t('pay_split'), desk: t('pay_desk') };
 
@@ -151,6 +182,7 @@ export default function StaffPosScreen() {
             <View style={styles.dash} />
             {receipt.discount ? <Sum label={t('pos_discount')} value={`−${formatPrice(receipt.discount)}`} /> : null}
             <Sum label={t('pos_total')} value={formatPrice(receipt.total)} big />
+            {receipt.debt ? <Sum label={t('pos_debt_title')} value={formatPrice(receipt.debt)} /> : null}
             {receipt.method === 'cash' && received >= receipt.total ? (
               <>
                 <Sum label={t('pos_received')} value={formatPrice(received)} />
@@ -191,16 +223,28 @@ export default function StaffPosScreen() {
         ) : (
           clientSearch
         )}
+        {debts.length > 0 ? (
+          <View style={styles.debtBox}>
+            <T type="label" color={Colors.danger}>
+              {t('pos_client_debt', { sum: formatPrice(debtTotal) })}
+            </T>
+            <Row gap={Spacing.two}>
+              <TextInput value={settle} onChangeText={setSettle} placeholder={t('pos_settle_ph')} placeholderTextColor={Colors.textMuted} keyboardType="number-pad" style={[styles.searchInput, { height: 44, flex: 1 }]} />
+              <Button title={t('pos_settle')} size="sm" onPress={() => void settleDebts()} disabled={settleValue <= 0} style={{ backgroundColor: StaffAccent }} />
+            </Row>
+          </View>
+        ) : null}
 
         {/* catalogue */}
         <ChipRow>
           <Chip label={t('all')} active={cat === 'all'} onPress={() => setCat('all')} />
           <Chip label={t('pos_plans')} icon="card-outline" active={cat === PLANS_TAB} onPress={() => setCat(PLANS_TAB)} />
+          <Chip label={t('pos_trainers')} icon="person-outline" active={cat === TRAINERS_TAB} onPress={() => setCat(TRAINERS_TAB)} />
           {categories.map((c) => (
             <Chip key={c} label={td(c)} active={cat === c} onPress={() => setCat(c)} />
           ))}
         </ChipRow>
-        {cat !== PLANS_TAB ? (
+        {cat !== PLANS_TAB && cat !== TRAINERS_TAB ? (
           <Row gap={Spacing.two} style={styles.customRow}>
             <Ionicons name="pricetag-outline" size={18} color={StaffAccent} />
             <TextInput value={custom} onChangeText={setCustom} placeholder={t('pos_custom_ph')} placeholderTextColor={Colors.textMuted} keyboardType="number-pad" style={[styles.searchInput, { height: 40 }]} />
@@ -217,7 +261,24 @@ export default function StaffPosScreen() {
           </Row>
         ) : null}
         <View style={styles.grid}>
-          {cat === PLANS_TAB
+          {cat === TRAINERS_TAB
+            ? trainers
+                .filter((tr) => tr.pricePerSession > 0)
+                .map((tr) => (
+                  <Pressable key={tr.id} onPress={() => add({ key: `tr:${tr.id}`, title: t('pos_personal_line', { name: tr.name }), price: tr.pricePerSession, trainerId: tr.id })} style={styles.item}>
+                    <Ionicons name="person-outline" size={20} color={StaffAccent} />
+                    <T type="small" style={{ fontWeight: '600', marginTop: 6 }} numberOfLines={3}>
+                      {tr.name}
+                    </T>
+                    <T type="small" color={Colors.textSecondary}>
+                      {t('pos_per_month')}
+                    </T>
+                    <T type="subheading" color={StaffAccent}>
+                      {formatPrice(tr.pricePerSession)}
+                    </T>
+                  </Pressable>
+                ))
+            : cat === PLANS_TAB
             ? plans
                 .filter((p) => !p.staffOnly && (p.price > 0 || p.partner))
                 .map((p) => (
@@ -286,11 +347,12 @@ export default function StaffPosScreen() {
               {(['kaspi', 'card', 'cash'] as PayMethod[]).map((m) => (
                 <Chip key={m} label={methodLabel[m]} active={method === m} onPress={() => setMethod(m)} />
               ))}
+              {client ? <Chip label={t('pos_partial')} icon="time-outline" active={partial} onPress={() => setPartial((v) => !v)} /> : null}
             </Row>
-            {method === 'cash' ? (
+            {method === 'cash' || partialMode ? (
               <View style={styles.cashBox}>
                 <T type="label" color={Colors.textSecondary}>
-                  {t('pos_given')}
+                  {partialMode ? t('pos_paid_now') : t('pos_given')}
                 </T>
                 <Row gap={Spacing.two}>
                   <TextInput value={cash} onChangeText={setCash} placeholder="0" placeholderTextColor={Colors.textMuted} keyboardType="number-pad" style={styles.cashInput} />
@@ -303,13 +365,23 @@ export default function StaffPosScreen() {
                     <Chip key={i} label={i === 0 ? t('pos_exact') : formatPrice(v)} onPress={() => setCash(String(v))} />
                   ))}
                 </Row>
-                {received > 0 ? (
+                {received > 0 && !partialMode ? (
                   <Row style={[styles.changeRow, { backgroundColor: cashShort ? 'rgba(214,59,71,0.1)' : 'rgba(31,138,76,0.12)' }]}>
                     <T type="subheading" color={cashShort ? Colors.danger : Colors.success}>
                       {cashShort ? t('pos_short') : t('pos_change')}
                     </T>
                     <T type="display" color={cashShort ? Colors.danger : Colors.success} style={{ fontSize: 28, lineHeight: 34 }}>
                       {formatPrice(Math.abs(change))}
+                    </T>
+                  </Row>
+                ) : null}
+                {partialMode && debtAmt > 0 ? (
+                  <Row style={[styles.changeRow, { backgroundColor: 'rgba(214,59,71,0.1)' }]}>
+                    <T type="subheading" color={Colors.danger}>
+                      {t('pos_debt_title')}
+                    </T>
+                    <T type="display" color={Colors.danger} style={{ fontSize: 28, lineHeight: 34 }}>
+                      {formatPrice(debtAmt)}
                     </T>
                   </Row>
                 ) : null}
@@ -328,7 +400,7 @@ export default function StaffPosScreen() {
                 {error}
               </T>
             ) : null}
-            <Button title={t('pos_pay', { sum: formatPrice(total) })} icon="checkmark-circle-outline" size="lg" onPress={pay} disabled={cashShort || needsClient} style={{ backgroundColor: StaffAccent }} />
+            <Button title={t('pos_pay', { sum: formatPrice(partialMode && debtAmt > 0 ? received : total) })} icon="checkmark-circle-outline" size="lg" onPress={pay} disabled={cashShort || needsClient} style={{ backgroundColor: StaffAccent }} />
           </>
         )}
       </View>
@@ -350,6 +422,7 @@ function Sum({ label, value, big }: { label: string; value: string; big?: boolea
 }
 
 const styles = StyleSheet.create({
+  debtBox: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.md, borderWidth: 1, borderColor: 'rgba(214,59,71,0.4)', backgroundColor: 'rgba(214,59,71,0.06)' },
   root: { flex: 1, backgroundColor: Colors.background },
   body: { padding: Spacing.three, gap: Spacing.two, paddingBottom: 320 },
   search: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: Spacing.three, height: 46 },

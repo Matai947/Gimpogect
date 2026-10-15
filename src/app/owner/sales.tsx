@@ -1,16 +1,34 @@
 import { Fragment, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 
 import { OwnerAccent, OwnerHeader } from '@/components/owner-header';
 import { Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubById, formatDateHuman, formatPrice, toISODate } from '@/data/mock';
 import type { PayMethod } from '@/data/owner';
-import { useI18n, useSales } from '@/store/app-context';
+import { refundRemote } from '@/lib/api';
+import { useApp, useI18n, useSales } from '@/store/app-context';
 
 export default function OwnerSales() {
   const { t, td } = useI18n();
   const sales = useSales();
+  const { staffCode, refreshSales } = useApp();
+
+  const refund = (s: (typeof sales)[number]) => {
+    const left = s.amount - (s.refunded ?? 0);
+    Alert.alert(t('refund_confirm_title'), t('refund_confirm_body', { name: s.name, sum: formatPrice(left) }), [
+      { text: t('cancel'), style: 'cancel' },
+      {
+        text: t('refund_btn'),
+        style: 'destructive',
+        onPress: async () => {
+          const ok = await refundRemote(staffCode, s.id);
+          if (ok) await refreshSales();
+          else Alert.alert(t('refund_failed'));
+        },
+      },
+    ]);
+  };
   const [method, setMethod] = useState<PayMethod | 'all'>('all');
   const [shown, setShown] = useState(60);
 
@@ -54,7 +72,7 @@ export default function OwnerSales() {
                     {s.name}
                   </T>
                   <T type="small" color={Colors.textSecondary} numberOfLines={1}>
-                    {td(s.title)} • {clubById(s.clubId)?.name.replace('Seven Gym ', '')}
+                    {td(s.title)} • {clubById(s.clubId)?.name.replace('Seven Gym ', '')}{s.refunded ? ` • ${t('refunded_label', { sum: formatPrice(s.refunded) })}` : ''}
                   </T>
                   <T type="small" color={Colors.textMuted} numberOfLines={1}>
                     {new Date(s.ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} • {methodLabel[s.method]}
@@ -64,6 +82,11 @@ export default function OwnerSales() {
                 <T type="subheading" color={s.kind === 'shop' ? Colors.text : OwnerAccent}>
                   {formatPrice(s.amount)}
                 </T>
+                {['plan', 'shop', 'personal'].includes(s.kind) && s.amount - (s.refunded ?? 0) > 0 ? (
+                  <T type="small" color={Colors.danger} style={{ fontWeight: '700', paddingLeft: 10 }} onPress={() => refund(s)}>
+                    {t('refund_btn')}
+                  </T>
+                ) : null}
               </View>
             </Fragment>
           );

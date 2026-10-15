@@ -1,14 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile, type Goal } from '@/data/fitness';
 import { members, mockOrders, type Member } from '@/data/members';
-import { mockSales, type Sale } from '@/data/owner';
+import { mockSales, saleValue, type Sale } from '@/data/owner';
 import { addDays, planById, plans, sessionById, toISODate } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { checkinRemote, checkoutRemote, fetchClients, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient } from '@/lib/api';
+import { checkinRemote, checkoutRemote, fetchClients, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -71,6 +71,7 @@ type State = {
   staffCode: string; // code typed at staff/owner login, sent to the API to read the client list
   token: string; // the client's own access token from the server (password sign-in)
   remote: RemoteClient[]; // clients registered from any device, fetched while staff or owner is signed in
+  serverSales: Sale[] | null; // the shared books from the server (null until first loaded)
   sales: Sale[]; // payments recorded on this device when staff issue plans
   staffLog: CheckinEntry[];
   attendance: Record<string, string[]>; // sessionId -> memberIds marked present
@@ -100,7 +101,8 @@ type Actions = {
   updateUser: (patch: Partial<User>) => void;
   completeOnboarding: (profile: FitnessProfile) => void;
   grantPlan: (memberId: string, planId: string) => void;
-  recordSale: (sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff'>) => void;
+  recordSale: (sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff' | 'synced'>) => void;
+  refreshSales: () => Promise<void>;
   setPlanPrice: (planId: string, price: number, oldPrice?: number) => void;
   freezeMembership: (days: number) => void;
   unfreezeMembership: () => void;
@@ -155,6 +157,7 @@ const initialState: State = {
   staffCode: '',
   token: '',
   remote: [],
+  serverSales: null,
   sales: [],
   staffLog: [],
   attendance: {},
@@ -230,7 +233,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!state.hydrated) return;
     // The client registry is fetched live and never kept on the device.
-    const { hydrated: _h, remote: _r, ...persist } = state;
+    const { hydrated: _h, remote: _r, serverSales: _ss, ...persist } = state;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(persist)).catch(() => {});
   }, [state]);
 
@@ -255,6 +258,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (staffSignedIn && staffCode) {
         const clients = await fetchClients(staffCode);
         if (live && clients) setState((s) => ({ ...s, remote: clients }));
+        const books = await fetchSales(staffCode);
+        if (live && books) setState((s) => ({ ...s, serverSales: books }));
       }
       if (uid && token) {
         const m = (await fetchMyMembership(uid, token))?.membership;
@@ -455,7 +460,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         grantRemote(state.staffCode, { id: memberId, name: isSelf ? state.user!.name : remote!.name, phone: isSelf ? state.user!.phone : remote!.phone, membership: next });
       }
       setState((s) => {
-        const sold = (name: string): Sale[] => ((s.planPrices[planId]?.price ?? plan.price) > 0 ? [{ id: `S${Date.now()}`, ts: Date.now(), memberId, name, title: plan.name, kind: 'plan', amount: s.planPrices[planId]?.price ?? plan.price, clubId: s.staff?.clubId ?? 'c1', method: 'desk', staff: s.staff?.name ?? '' }, ...s.sales] : s.sales);
+        const sold = (name: string): Sale[] => ((s.planPrices[planId]?.price ?? plan.price) > 0 ? [{ id: `S${Date.now()}${Math.random().toString(36).slice(2, 5)}`, ts: Date.now(), memberId, name, title: plan.name, kind: 'plan', amount: s.planPrices[planId]?.price ?? plan.price, clubId: s.staff?.clubId ?? 'c1', method: 'desk', staff: s.staff?.name ?? '' }, ...s.sales] : s.sales);
         if (s.user?.id === memberId) return { ...s, sales: sold(s.user.name), trialUsed: s.trialUsed || (!!plan.trial && !plan.staffOnly), membership: extendMembership(s.membership, planId) };
         const r = s.remote.find((x) => x.id === memberId);
         if (r) {
@@ -473,13 +478,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [state.user, state.remote, state.membership, state.staffCode],
   );
 
+  /** Reloads the shared books right now (after a refund or a debt payment). */
+  const refreshSales = useCallback(async () => {
+    if (!state.staffCode) return;
+    const books = await fetchSales(state.staffCode);
+    if (books) setState((s) => ({ ...s, serverSales: books }));
+  }, [state.staffCode]);
+
+  // Every payment made on this device goes to the server once; the flag keeps retries honest after a restart.
+  const posting = useRef(new Set<string>());
+  useEffect(() => {
+    if (!state.hydrated || !state.staffCode) return;
+    state.sales
+      .filter((x) => !x.synced && !posting.current.has(x.id))
+      .forEach((x) => {
+        posting.current.add(x.id);
+        postSale(state.staffCode, x).then((r) => {
+          posting.current.delete(x.id);
+          if (r) setState((s) => ({ ...s, sales: s.sales.map((y) => (y.id === x.id ? { ...y, synced: true } : y)) }));
+        });
+      });
+  }, [state.hydrated, state.staffCode, state.sales]);
+
   const setPlanPrice = useCallback((planId: string, price: number, oldPrice?: number) => {
     setState((s) => ({ ...s, planPrices: { ...s.planPrices, [planId]: { price, oldPrice } } }));
   }, []);
 
   /** Cash register: one receipt per sale, shown to the owner under payments. */
   const recordSale = useCallback((sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff'>) => {
-    setState((s) => ({ ...s, sales: [{ ...sale, id: `R${Date.now().toString(36).toUpperCase()}`, ts: Date.now(), clubId: s.staff?.clubId ?? 'c1', staff: s.staff?.name ?? '' }, ...s.sales] }));
+    setState((s) => ({ ...s, sales: [{ ...sale, id: `R${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 5)}`, ts: Date.now(), clubId: s.staff?.clubId ?? 'c1', staff: s.staff?.name ?? '' }, ...s.sales] }));
   }, []);
 
   const freezeMembership = useCallback((days: number) => {
@@ -586,6 +613,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       completeOnboarding,
       grantPlan,
       recordSale,
+      refreshSales,
       setPlanPrice,
       freezeMembership,
       unfreezeMembership,
@@ -618,7 +646,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, recordSale, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, recordSale, refreshSales, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -817,9 +845,21 @@ export function usePlans() {
 }
 
 /** All payments: demo history plus those recorded on this device. Newest first. */
+/** Raw payment rows: what this device recorded plus the shared books; the server copy wins. Newest first. */
+export function useRawSales() {
+  const { sales, serverSales } = useApp();
+  return useMemo(() => {
+    const byId = new Map<string, Sale>();
+    [...sales, ...mockSales].forEach((x) => byId.set(x.id, x));
+    (serverSales ?? []).forEach((x) => byId.set(x.id, x));
+    return [...byId.values()].sort((a, b) => b.ts - a.ts);
+  }, [sales, serverSales]);
+}
+
+/** Payments with `amount` already meaning income: refunds and open debts are negative, so every sum on screen is net. */
 export function useSales() {
-  const { sales } = useApp();
-  return useMemo(() => [...sales, ...mockSales].sort((a, b) => b.ts - a.ts), [sales]);
+  const raw = useRawSales();
+  return useMemo(() => raw.map((x) => ({ ...x, amount: saleValue(x) })), [raw]);
 }
 
 /** Fitness profile with derived metrics; null until onboarding is done. */

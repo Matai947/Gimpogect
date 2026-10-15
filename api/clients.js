@@ -29,6 +29,19 @@ async function read(id) {
 
 const write = (id, data) => sb('clients?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ id, data, updated_at: new Date().toISOString() }) });
 
+/** Pages through any REST query: PostgREST returns at most 1000 rows per request. */
+async function pageAll(query, cap = 30000) {
+  const all = [];
+  for (let from = 0; from < cap; from += 1000) {
+    const rows = await sb(`${query}&limit=1000&offset=${from}`);
+    all.push(...rows);
+    if (rows.length < 1000) break;
+  }
+  return all;
+}
+
+const logVisit = (club, member, kind) => sb('visits', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ ts: Date.now(), club, member, kind }) }).catch(() => {}); // best effort: a missing log must never block an entry
+
 /** Every client, paged because PostgREST returns at most 1000 rows per request. */
 async function readAll() {
   const all = [];
@@ -38,6 +51,8 @@ async function readAll() {
     if (rows.length < 1000) return all;
   }
 }
+
+const isOwner = (req) => !!OWNER_CODE && String(req.headers['x-code'] || '') === OWNER_CODE;
 
 const authed = (req) => {
   const code = String(req.headers['x-code'] || '');
@@ -190,6 +205,7 @@ module.exports = async function handler(req, res) {
       // A plan with a visit counter loses one visit per calendar day (Almaty time) on the first check-in of that day.
       const day = (ts) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10);
       let membership = prev.membership;
+      if (op === 'checkin' && !(prev.session && day(prev.session.inTs) === day(Date.now()))) await logVisit(session.clubId, id, 'qr');
       if (op === 'checkin' && membership && membership.visitsLeft > 0 && !(prev.session && day(prev.session.inTs) === day(Date.now()))) membership = { ...membership, visitsLeft: membership.visitsLeft - 1 };
       await write(id, { ...prev, session, ...(membership ? { membership } : {}) });
       return res.status(200).json({ ok: true, visitsLeft: membership?.visitsLeft });
@@ -216,6 +232,7 @@ module.exports = async function handler(req, res) {
       }
       const visits = Array.isArray(c.onefit) ? c.onefit : [];
       if (visits.some((v) => v.d === dayOf(now))) return res.status(200).json({ ok: true, duplicate: true, id, name: c.name });
+      await logVisit(clubId, id, 'onefit');
       await write(id, { ...c, onefit: [...visits, { d: dayOf(now), c: clubId, ts: now }].slice(-300), session: { clubId, inTs: now } });
       return res.status(200).json({ ok: true, id, name: c.name });
     }
@@ -237,6 +254,68 @@ module.exports = async function handler(req, res) {
       if (!ID.test(id) || !membership) return res.status(400).json({ error: 'bad data' });
       const prev = (await read(id)) || { id, name: str(body.name, 60) || 'Гость', phone: str(body.phone, 20), homeClubId: 'c1', since: new Date().toISOString().slice(0, 10) };
       await write(id, { ...prev, membership });
+      return res.status(200).json({ ok: true });
+    }
+
+    /* ---- payments and visits for the reports ---- */
+    const SALE_KINDS = ['plan', 'shop', 'personal', 'debt', 'debt_payment', 'refund'];
+    const METHODS = ['kaspi', 'card', 'cash', 'split', 'desk'];
+    const int = (v, max) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
+
+    // The register reports every payment here; a retry with the same id changes nothing.
+    if (req.method === 'POST' && op === 'sale') {
+      const id = str(body.id, 24);
+      const kind = SALE_KINDS.includes(body.kind) ? body.kind : '';
+      if (!/^[A-Za-z0-9]{3,24}$/.test(id) || !kind || !['c1', 'c2'].includes(body.clubId)) return res.status(400).json({ error: 'bad data' });
+      const now = Date.now();
+      const ts = Number(body.ts) > now - 30 * 86400000 && Number(body.ts) < now + 3600000 ? Math.round(Number(body.ts)) : now;
+      const sale = { id, ts, kind, title: str(body.title, 120), name: str(body.name, 60), memberId: str(body.memberId, 20), amount: int(body.amount, 10000000), clubId: body.clubId, method: METHODS.includes(body.method) ? body.method : 'cash', staff: str(body.staff, 40) };
+      if (/^t\d{1,3}$/.test(String(body.trainerId))) sale.trainerId = body.trainerId;
+      if (kind === 'debt') sale.remaining = Math.min(sale.amount, int(body.remaining ?? body.amount, 10000000));
+      if (body.refundOf) sale.refundOf = str(body.refundOf, 24);
+      await sb('sales?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ id, ts, data: sale }) });
+      return res.status(200).json({ ok: true });
+    }
+
+    if (req.method === 'GET' && op === 'sales') {
+      const days = Math.max(1, Math.min(400, Number(req.query.days) || 120));
+      const rows = await pageAll(`sales?select=data&ts=gte.${Date.now() - days * 86400000}&order=ts.desc`);
+      return res.status(200).json({ sales: rows.map((r) => r.data) });
+    }
+
+    if (req.method === 'GET' && op === 'visits') {
+      const days = Math.max(1, Math.min(400, Number(req.query.days) || 60));
+      return res.status(200).json({ visits: await pageAll(`visits?select=ts,club,member,kind&ts=gte.${Date.now() - days * 86400000}&order=ts.desc`) });
+    }
+
+    // Client pays (part of) a debt at the desk. The cash counts as income on the day it arrives.
+    if (req.method === 'POST' && op === 'settle') {
+      const debtId = str(body.debtId, 24);
+      const rows = await sb(`sales?id=eq.${encodeURIComponent(debtId)}&select=data`);
+      const debt = rows[0]?.data;
+      const amount = int(body.amount, 10000000);
+      if (!debt || debt.kind !== 'debt' || amount < 1 || amount > debt.remaining) return res.status(400).json({ error: 'bad data' });
+      const now = Date.now();
+      const pay = { id: 'P' + now.toString(36) + Math.random().toString(36).slice(2, 5), ts: now, kind: 'debt_payment', title: 'Оплата долга', name: debt.name, memberId: debt.memberId, amount, clubId: debt.clubId, method: METHODS.includes(body.method) ? body.method : 'cash', staff: str(body.staff, 40), refundOf: debtId };
+      await sb('sales', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: pay.id, ts: now, data: pay }) });
+      await sb(`sales?id=eq.${encodeURIComponent(debtId)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...debt, remaining: debt.remaining - amount } }) });
+      return res.status(200).json({ ok: true });
+    }
+
+    // Only the owner returns money.
+    if (req.method === 'POST' && op === 'refund') {
+      if (!isOwner(req)) return res.status(403).json({ error: 'owner only' });
+      const saleId = str(body.saleId, 24);
+      const rows = await sb(`sales?id=eq.${encodeURIComponent(saleId)}&select=data`);
+      const sale = rows[0]?.data;
+      if (!sale || !['plan', 'shop', 'personal'].includes(sale.kind)) return res.status(400).json({ error: 'bad data' });
+      const left = sale.amount - (sale.refunded || 0);
+      const amount = body.amount == null ? left : int(body.amount, 10000000);
+      if (amount < 1 || amount > left) return res.status(400).json({ error: 'bad amount' });
+      const now = Date.now();
+      const ref = { id: 'F' + now.toString(36) + Math.random().toString(36).slice(2, 5), ts: now, kind: 'refund', title: 'Возврат: ' + sale.title, name: sale.name, memberId: sale.memberId, amount, clubId: sale.clubId, method: sale.method, staff: 'owner', refundOf: saleId, ...(sale.trainerId ? { trainerId: sale.trainerId } : {}) };
+      await sb('sales', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: ref.id, ts: now, data: ref }) });
+      await sb(`sales?id=eq.${encodeURIComponent(saleId)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...sale, refunded: (sale.refunded || 0) + amount } }) });
       return res.status(200).json({ ok: true });
     }
 

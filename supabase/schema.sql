@@ -14,3 +14,24 @@ create table if not exists leads (
 
 alter table clients enable row level security;
 alter table leads enable row level security;
+
+-- Register payments (plans, goods, personal training, debts, refunds) for the owner's reports.
+create table if not exists sales (
+  id text primary key,
+  ts bigint not null,
+  data jsonb not null
+);
+create index if not exists sales_ts on sales (ts);
+
+-- One row per club entry, for attendance by day and hour.
+create table if not exists visits (
+  id bigint generated always as identity primary key,
+  ts bigint not null,
+  club text not null,
+  member text not null,
+  kind text not null default 'qr'
+);
+create index if not exists visits_ts on visits (ts);
+
+alter table sales enable row level security;
+alter table visits enable row level security;
