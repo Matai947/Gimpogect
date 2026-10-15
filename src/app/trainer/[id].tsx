@@ -6,6 +6,7 @@ import { Dimensions, Linking, StyleSheet, View } from 'react-native';
 import { Badge, Button, Card, Chip, EmptyState, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { clubById, formatPrice, trainerById } from '@/data/mock';
+import { openWhatsApp } from '@/lib/whatsapp';
 import { useI18n } from '@/store/app-context';
 
 const W = Dimensions.get('window').width;
@@ -132,7 +133,7 @@ export default function TrainerScreen() {
       {trainer.phone ? (
         <View style={styles.footer}>
           <Button title={t('call')} icon="call-outline" onPress={() => Linking.openURL(`tel:+${digits}`)} style={{ flex: 1 }} />
-          <Button title="WhatsApp" icon="logo-whatsapp" variant="secondary" onPress={() => Linking.openURL(`https://wa.me/${digits}`)} style={{ flex: 1 }} />
+          <Button title="WhatsApp" icon="logo-whatsapp" variant="secondary" onPress={() => openWhatsApp(trainer.phone ?? '')} style={{ flex: 1 }} />
         </View>
       ) : null}
     </Screen>

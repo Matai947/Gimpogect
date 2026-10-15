@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Alert, Linking, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { LangSwitch } from '@/components/lang-switch';
 import { Avatar, Badge, Card, Divider, ListRow, Row, Screen, StatTile, T } from '@/components/ui';
@@ -8,6 +8,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { goalTitle, levelTitle } from '@/data/fitness';
 import { clubById, clubs, formatDateLong } from '@/data/mock';
 import { languages } from '@/i18n';
+import { openWhatsApp } from '@/lib/whatsapp';
 import { useApp, useFitnessProfile, useI18n, useMembershipInfo, useVisitStats } from '@/store/app-context';
 
 const achievements = [
@@ -153,7 +154,7 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <Card padded={false}>
-          <ListRow icon="logo-whatsapp" title={t('support')} subtitle={`${t('whatsapp')} • ${homeClub?.phone ?? ''}`} onPress={() => Linking.openURL(`https://wa.me/${(homeClub?.phone ?? '').replace(/\D/g, '')}`)} />
+          <ListRow icon="logo-whatsapp" title={t('support')} subtitle={`${t('whatsapp')} • ${homeClub?.phone ?? ''}`} onPress={() => openWhatsApp(homeClub?.phone ?? '')} />
           <Divider />
           <ListRow icon="document-text-outline" title={t('rules')} onPress={() => Alert.alert(t('documents'), t('rules_alert'))} />
           <Divider />

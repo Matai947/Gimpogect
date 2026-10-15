@@ -246,3 +246,11 @@ $('#leadForm').addEventListener('submit', async (e) => {
 });
 
 render();
+
+// Phones open the WhatsApp app through wa.me; on a desktop wa.me stops on a chooser page, so go straight to WhatsApp Web.
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href^="https://wa.me/"]');
+  if (!a || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) return;
+  e.preventDefault();
+  window.open('https://web.whatsapp.com/send?phone=' + a.href.split('wa.me/')[1], '_blank', 'noopener');
+});

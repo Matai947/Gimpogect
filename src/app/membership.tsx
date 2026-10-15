@@ -2,11 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { Badge, Button, Card, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubById, formatDateLong, formatPrice } from '@/data/mock';
+import { openWhatsApp } from '@/lib/whatsapp';
 import { useApp, useI18n, useMembershipInfo, usePlans } from '@/store/app-context';
 
 export default function MembershipScreen() {
@@ -19,7 +20,7 @@ export default function MembershipScreen() {
   const plan = plans.find((p) => p.id === selected)!;
 
   const club = clubById(user?.homeClubId ?? 'c1');
-  const writeDesk = () => Linking.openURL(`https://wa.me/${(club?.phone ?? '').replace(/\D/g, '')}`);
+  const writeDesk = () => openWhatsApp(club?.phone ?? '');
 
   const freeze = () => {
     if (!membership) return;

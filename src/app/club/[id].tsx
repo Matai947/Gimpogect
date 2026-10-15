@@ -7,6 +7,7 @@ import { Alert, Dimensions, Linking, Pressable, ScrollView, StyleSheet, View } f
 import { Badge, Button, Card, Chip, EmptyState, IconButton, ProgressBar, Row, Screen, SectionHeader, Stars, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { clubById, clubHours, occupancyLabel, sessionsForDate, toISODate, trainerById, trainers } from '@/data/mock';
+import { openWhatsApp } from '@/lib/whatsapp';
 import { useApp, useI18n } from '@/store/app-context';
 
 const W = Dimensions.get('window').width;
@@ -67,7 +68,7 @@ export default function ClubScreen() {
         <Row gap={Spacing.two} style={{ marginTop: Spacing.three }}>
           <Button title={t('route')} onPress={openRoute} style={{ flex: 1 }} />
           <Button title={t('call')} variant="secondary" onPress={call} style={{ flex: 1 }} />
-          <IconButton icon="logo-whatsapp" size={52} color="#25D366" bg="rgba(37,211,102,0.16)" onPress={() => Linking.openURL(`https://wa.me/${club.phone.replace(/\D/g, '')}`)} />
+          <IconButton icon="logo-whatsapp" size={52} color="#25D366" bg="rgba(37,211,102,0.16)" onPress={() => openWhatsApp(club.phone)} />
         </Row>
 
         <Card style={{ marginTop: Spacing.three, gap: Spacing.two }}>
