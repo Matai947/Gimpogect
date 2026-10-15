@@ -37,6 +37,8 @@ export type Trainer = {
   photo?: ImageSourcePropType;
   services?: string[]; // what the trainer helps with
   experience?: string;
+  ages?: string; // client age range
+  schedule?: string; // working days and hours
   bio: string; // qualifications, one per line
   pro?: boolean;
   audience: string;
@@ -148,13 +150,25 @@ export const trainers: Trainer[] = [
     id: 't1',
     name: 'Буенбаев Аскар Адилханович',
     clubId: '', // works in both clubs
-    specialties: ['Пауэрлифтинг','Жим лёжа','Бокс'],
+    specialties: ['Снижение веса', 'Набор массы', 'ЛФК', 'Функциональный тренинг', 'ОФП'],
     rating: 0,
     reviews: 0,
     experienceYears: 0,
-    pricePerSession: 0,
+    pricePerSession: 28000,
+    photo: require('../../assets/images/trainers/askar.jpg'),
     phone: '+7 775 286 5723',
-    bio: 'КМС по пауэрлифтингу (жим лёжа), федерации WRPF, WPC, NAP. КМС по подъёму на бицепс. КМС по боксу.',
+    bio: 'Фитнес-тренер клуба\nДипломированный и сертифицированный фитнес-тренер',
+    services: [
+      'Индивидуальные занятия для мужчин и женщин',
+      'Снижение лишнего веса',
+      'Набор мышечной массы',
+      'ЛФК (лечебная физкультура)',
+      'Функциональный тренинг',
+      'ОФП',
+      'Построение красивого и атлетичного тела',
+    ],
+    experience: 'Тренерский стаж 8 лет',
+    ages: 'Девушки от 12 до 60 лет • Мужчины от 8 до 60 лет',
     audience: '',
   },
   {

@@ -100,6 +100,20 @@ export default function TrainerScreen() {
             <T type="body">{trainer.experience}</T>
           </View>
         ) : null}
+
+        {trainer.ages ? (
+          <View style={{ marginTop: Spacing.four }}>
+            <SectionHeader title={t('trainer_ages')} />
+            <T type="body">{trainer.ages}</T>
+          </View>
+        ) : null}
+
+        {trainer.schedule ? (
+          <View style={{ marginTop: Spacing.four }}>
+            <SectionHeader title={t('trainer_schedule')} />
+            <T type="body">{trainer.schedule}</T>
+          </View>
+        ) : null}
       </View>
 
       {trainer.phone ? (

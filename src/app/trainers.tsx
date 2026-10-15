@@ -9,7 +9,7 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice, trainers } from '@/data/mock';
 import { useI18n } from '@/store/app-context';
 
-const specialties = ['Все', 'Пауэрлифтинг', 'Жим лёжа', 'Бокс', 'Вольная борьба', 'Армрестлинг', 'Снижение веса', 'Набор массы'];
+const specialties = ['Все', 'Снижение веса', 'Набор массы', 'ЛФК', 'Жим лёжа', 'Пауэрлифтинг', 'Вольная борьба', 'Армрестлинг'];
 
 export default function TrainersScreen() {
   const { t, td } = useI18n();
