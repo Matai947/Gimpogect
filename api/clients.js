@@ -69,6 +69,51 @@ function cleanDeep(v, depth = 0) {
   }
   throw new Error('type');
 }
+/** Sanity bounds per section, so a typo or a leaked code cannot publish a free plan or a 1000% discount. */
+function checkSection(section, d) {
+  const num = (v, lo, hi) => {
+    if (v == null) return;
+    if (typeof v !== 'number' || v < lo || v > hi) throw new Error('range');
+  };
+  const planFields = (p) => {
+    num(p.price, 0, 5000000);
+    num(p.oldPrice, 0, 5000000);
+    num(p.days, 1, 800);
+    num(p.visits, 0, 1000);
+    num(p.freezeDays, 0, 365);
+  };
+  // Pictures that appear on public pages must be real https addresses, nothing else (no javascript: or data:).
+  const https = (v) => {
+    if (v == null || v === '') return;
+    if (typeof v !== 'string' || !SAFE_URL.test(v)) throw new Error('url');
+  };
+  if (section === 'photos') Object.values(d).forEach((list) => (Array.isArray(list) ? list : [list]).forEach(https));
+  if (section === 'trainers') {
+    Object.values(d.overrides || {}).forEach((t) => https(t.photoUrl));
+    (d.custom || []).forEach((t) => https(t.photoUrl));
+  }
+  if (section === 'plans') {
+    Object.values(d.overrides || {}).forEach(planFields);
+    (d.custom || []).forEach(planFields);
+  }
+  if (section === 'promos') {
+    (Array.isArray(d) ? d : d.list || []).forEach((p) => {
+      if (p.kind === 'percent') num(p.value, 0, 100);
+      else num(p.value, 0, 1000000);
+      if (!DAY.test(String(p.start)) || !DAY.test(String(p.end)) || p.start > p.end) throw new Error('dates');
+      if (p.code != null && !/^[A-Z0-9_-]{0,20}$/.test(String(p.code))) throw new Error('code');
+      https(p.image);
+    });
+  }
+  if (section === 'catalog') {
+    (d.custom || []).forEach((p) => num(p.price, 0, 5000000));
+    Object.values(d.overrides || {}).forEach((p) => num(p.price, 0, 5000000));
+  }
+  if (section === 'trainers') {
+    Object.values(d.overrides || {}).forEach((t) => num(t.pricePerSession, 0, 5000000));
+    (d.custom || []).forEach((t) => num(t.pricePerSession, 0, 5000000));
+  }
+}
 let contentCache = { at: 0, data: {} };
 async function getContent() {
   if (Date.now() - contentCache.at < 15000) return contentCache.data;
@@ -393,11 +438,12 @@ module.exports = async function handler(req, res) {
       let data;
       try {
         data = cleanDeep(body.data);
+        checkSection(section, data);
       } catch (e) {
         return res.status(400).json({ error: 'bad content: ' + e.message });
       }
       if (JSON.stringify(data).length > 300000) return res.status(400).json({ error: 'too big' });
-      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'content:' + section, data: { v: data, at: Date.now(), by: str(body.by, 40) } }) });
+      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'content:' + section, data: { v: data, at: Date.now(), by: isOwner(req) ? 'owner' : 'staff ' + str(body.by, 30) } }) });
       contentCache = { at: 0, data: {} };
       return res.status(200).json({ ok: true });
     }

@@ -1,6 +1,7 @@
 // Seven Gym marketing site: content, 3 languages (RU / KZ / EN), lead form.
 // ponytail: switch to https://gym.matai.kz/api/clients once that domain points to Cloudflare.
 const API = 'https://gym-project-c2r.pages.dev/api/clients';
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const IMG = (id, w = 1000) => `https://images.unsplash.com/photo-${id}?w=${w}&q=80`;
 
 const clubs = [
@@ -9,15 +10,15 @@ const clubs = [
 ];
 
 const plans = [
-  { name: "Разовая тренировка", months: 0, days: 1, price: 3500, f: [['ft_visits', 1]] },
-  { name: "Дневной абонемент 12 посещений", months: 1, days: 31, price: 15000, per: 15000, f: [['ft_visits', 12], ['ft_day'], ['ft_freeze', '5']] },
-  { name: "Дневной абонемент Безлимитный", months: 1, days: 31, price: 17000, per: 17000, f: [['ft_unl'], ['ft_day'], ['ft_freeze', '5']] },
-  { name: "Полный день 12 посещений", months: 1, days: 31, price: 17000, per: 17000, f: [['ft_visits', 12], ['ft_freeze', '5']] },
-  { name: "Полный день Безлимитный", months: 1, days: 31, price: 19000, per: 19000, f: [['ft_unl'], ['ft_freeze', '5']] },
-  { name: "Абонемент безлимитный", months: 1, days: 31, price: 19000, per: 19000, f: [['ft_unl'], ['ft_freeze', '5']] },
-  { name: "3 Месяца Безлимитный", months: 3, days: 90, price: 50000, per: 16667, f: [['ft_unl'], ['ft_freeze', '7']] },
-  { name: "6 Месяцев Безлимитный", months: 6, days: 180, price: 90000, per: 15000, f: [['ft_unl'], ['ft_freeze', '10']] },
-  { name: "12 Месяцев Безлимитный", months: 12, days: 365, price: 170000, per: 14167, f: [['ft_unl'], ['ft_freeze', '2×7']] },
+  { id: 'i9', name: "Разовая тренировка", months: 0, days: 1, price: 3500, f: [['ft_visits', 1]] },
+  { id: 'i3', name: "Дневной абонемент 12 посещений", months: 1, days: 31, price: 15000, per: 15000, f: [['ft_visits', 12], ['ft_day'], ['ft_freeze', '5']] },
+  { id: 'i4', name: "Дневной абонемент Безлимитный", months: 1, days: 31, price: 17000, per: 17000, f: [['ft_unl'], ['ft_day'], ['ft_freeze', '5']] },
+  { id: 'i1', name: "Полный день 12 посещений", months: 1, days: 31, price: 17000, per: 17000, f: [['ft_visits', 12], ['ft_freeze', '5']] },
+  { id: 'i2', name: "Полный день Безлимитный", months: 1, days: 31, price: 19000, per: 19000, f: [['ft_unl'], ['ft_freeze', '5']] },
+  { id: 'i5', name: "Абонемент безлимитный", months: 1, days: 31, price: 19000, per: 19000, f: [['ft_unl'], ['ft_freeze', '5']] },
+  { id: 'i6', name: "3 Месяца Безлимитный", months: 3, days: 90, price: 50000, per: 16667, f: [['ft_unl'], ['ft_freeze', '7']] },
+  { id: 'i7', name: "6 Месяцев Безлимитный", months: 6, days: 180, price: 90000, per: 15000, f: [['ft_unl'], ['ft_freeze', '10']] },
+  { id: 'i8', name: "12 Месяцев Безлимитный", months: 12, days: 365, price: 170000, per: 14167, f: [['ft_unl'], ['ft_freeze', '2×7']] },
 ];
 
 const trainers = [
@@ -57,6 +58,7 @@ const dict = {
     why3_t: 'Персональные тренеры', why3_p: 'Тренеры с опытом и званиями, понятная цена за месяц. Связь в один тап: звонок или WhatsApp.',
     why4_t: 'Магазин спортпита', why4_p: 'Протеин, добавки и аксессуары. Заказал в приложении, забрал в клубе со скидкой.',
     trial_eyebrow: 'Без обязательств', trial_title: '3 дня пробных тренировок', trial_p: 'Бесплатно, можно без тренера. Оставь заявку, администратор активирует пробный период, и QR появится в приложении.', trial_cta: 'Попробовать',
+    promo_eyebrow: 'Акции', promo_title: 'Выгодные предложения', promo_until: 'до {d}', promo_code: 'промокод {c}',
     price_eyebrow: 'Тарифы', price_title: 'Абонементы на любой срок', price_note: 'Оплата и выдача абонемента на ресепшене любого клуба. После оплаты QR-пропуск сразу появляется в приложении. Все клубы сети входят в абонемент.',
     pl_start: 'Старт', pl_formula: 'Формула', pl_progress: 'Прогресс', pl_champ: 'Чемпион', pl_day: 'Дневной', pl_pop: 'Популярный', per_mo: '{n} ₸ в месяц',
     ft_visits: 'посещений: {n}', ft_unl: 'Безлимит',
@@ -89,6 +91,7 @@ const dict = {
     why3_t: 'Жеке жаттықтырушылар', why3_p: 'Тәжірибелі, атақты жаттықтырушылар, айлық бағасы түсінікті. Бір басумен байланыс: қоңырау немесе WhatsApp.',
     why4_t: 'Спорттық тамақ дүкені', why4_p: 'Протеин, қоспалар және аксессуарлар. Қосымшада тапсырыс беріп, клубтан жеңілдікпен алыңыз.',
     trial_eyebrow: 'Міндеттемесіз', trial_title: '3 күндік сынақ жаттығулары', trial_p: 'Тегін, жаттықтырушысыз да болады. Өтінім қалдырыңыз, әкімші сынақ мерзімін қосады және QR қосымшада пайда болады.', trial_cta: 'Байқап көру',
+    promo_eyebrow: 'Акциялар', promo_title: 'Тиімді ұсыныстар', promo_until: '{d} дейін', promo_code: 'промокод {c}',
     price_eyebrow: 'Тарифтер', price_title: 'Кез келген мерзімге абонементтер', price_note: 'Абонементті кез келген клубтың ресепшенінде төлеп аласыз. Төлемнен кейін QR-рұқсат қосымшада бірден пайда болады. Желідегі барлық клуб абонементке кіреді.',
     pl_start: 'Бастау', pl_formula: 'Формула', pl_progress: 'Прогресс', pl_champ: 'Чемпион', pl_day: 'Күндізгі', pl_pop: 'Танымал', per_mo: 'айына {n} ₸',
     ft_visits: 'келу саны: {n}', ft_unl: 'Шектеусіз',
@@ -121,6 +124,7 @@ const dict = {
     why3_t: 'Personal trainers', why3_p: 'Experienced, titled trainers and a clear price per month. One tap to call or WhatsApp.',
     why4_t: 'Sports nutrition shop', why4_p: 'Protein, supplements and accessories. Order in the app, pick up at the club with a discount.',
     trial_eyebrow: 'No commitment', trial_title: '3 days of free trial training', trial_p: 'Free, and you can come without a trainer. Leave a request, the administrator activates the trial and your QR appears in the app.', trial_cta: 'Try it',
+    promo_eyebrow: 'Promotions', promo_title: 'Special offers', promo_until: 'until {d}', promo_code: 'promo code {c}',
     price_eyebrow: 'Prices', price_title: 'Memberships for any length', price_note: 'You pay and receive the membership at the front desk of any club. Right after payment the QR pass appears in the app. All clubs of the network are included.',
     pl_start: 'Start', pl_formula: 'Formula', pl_progress: 'Progress', pl_champ: 'Champion', pl_day: 'Daytime', pl_pop: 'Popular', per_mo: '{n} ₸ per month',
     ft_visits: 'visits: {n}', ft_unl: 'Unlimited',
@@ -158,7 +162,7 @@ function render() {
   document.querySelectorAll('#lang button').forEach((b) => b.classList.toggle('on', b.dataset.lang === lang));
 
   $('#clubGrid').innerHTML = clubs.map((c) => `
-    <article class="club reveal" style="background-image:url('${IMG(c.img)}')">
+    <article class="club reveal" style="background-image:url('${sitePhotos[c.id] || IMG(c.img)}')">
       <div class="tags">${c.rating ? `<span class="tag gold">★ ${c.rating}</span>` : ''}${c.am.map((a) => `<span class="tag">${t(a)}</span>`).join('')}</div>
       <h3>${c.name}</h3>
       <p class="addr">${c.cityText || t(c.city)}, ${c.addr}</p>
@@ -177,9 +181,24 @@ function render() {
       <ul>${p.f.map(([k, n]) => `<li>${t(k, { n })}</li>`).join('')}</ul>
     </article>`).join('');
 
+  const promoBox = $('#promos');
+  if (promoBox) {
+    promoBox.hidden = promos.length === 0;
+    $('#promoGrid').innerHTML = promos.map((p) => `
+      <article class="promo-card reveal">
+        ${p.image ? `<img src="${p.image}" alt="" loading="lazy" />` : ''}
+        <div class="body">
+          ${p.kind !== 'info' ? `<span class="off">${p.kind === 'percent' ? '−' + p.value + '%' : '−' + money(p.value) + ' ₸'}</span>` : ''}
+          <h3>${p.title}</h3>
+          ${p.text ? `<p>${p.text}</p>` : ''}
+          <p class="until">${p.club ? p.club + ' • ' : ''}${t('promo_until', { d: p.end })}${p.code ? ' • ' + t('promo_code', { c: p.code }) : ''}</p>
+        </div>
+      </article>`).join('');
+  }
+
   $('#trainerGrid').innerHTML = trainers.map((r) => `
     <article class="trainer reveal">
-      ${r.img ? `<div class="ava"><img src="trainers/${r.img}.jpg" alt="${r.name}" loading="lazy" /></div>` : ''}
+      ${r.photo || r.img ? `<div class="ava"><img src="${r.photo || 'trainers/' + r.img + '.jpg'}" alt="${r.name}" loading="lazy" /></div>` : ''}
       <div class="info">
         <h3>${r.name}</h3>
         <p class="sp">${r.sp}</p>
@@ -187,6 +206,7 @@ function render() {
         ${r.bio ? `<p class="bio">${r.bio}</p>` : ''}
         ${r.services ? `<ul class="tl dots">${r.services.map((q) => `<li>${q}</li>`).join('')}</ul>` : ''}
         ${r.why ? `<p class="bio"><b>Почему стоит заниматься:</b></p><ul class="tl chk">${r.why.map((q) => `<li>${q}</li>`).join('')}</ul>` : ''}
+        ${r.schedule ? `<p class="bio">График: <b>${r.schedule}</b></p>` : ''}
         ${r.exp ? `<p class="bio"><b>${r.exp}</b></p>` : ''}
         ${r.ages ? `<p class="bio">Возраст клиентов: <b>${r.ages}</b></p>` : ''}
         ${r.schedule ? `<p class="bio">График: <b>${r.schedule}</b></p>` : ''}
@@ -256,7 +276,6 @@ $('#leadForm').addEventListener('submit', async (e) => {
   btn.disabled = false;
 });
 
-render();
 
 // Phones open the WhatsApp app through wa.me; on a desktop wa.me stops on a chooser page, so go straight to WhatsApp Web.
 document.addEventListener('click', (e) => {
@@ -275,9 +294,79 @@ fetch(API + '?op=clubs')
     if (!live.length) return;
     const known = clubs.slice();
     // Everything below goes into innerHTML: escape the text, keep only phone characters, accept only c<number> ids.
-    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
     const tel = (v) => String(v ?? '').replace(/[^\d+()\-\s]/g, '');
     clubs.splice(0, clubs.length, ...live.filter((c) => /^c\d{1,3}$/.test(c.id)).map((c) => ({ id: c.id, name: esc(c.name), city: 'city_alm', cityText: c.city && c.city !== 'Алматы' ? esc(c.city) : '', addr: esc(c.address), h: esc(c.hours), area: 0, machines: 0, rating: '', phone: tel(c.phone) || '+7 705 555 39 32', img: (known.find((k) => k.id === c.id) || known[0]).img, am: ['am_gym'] })));
     render();
   })
+  .catch(() => {});
+
+// ---- Content the administrators set in the admin panel (plans, trainers, promotions, club photos).
+// Everything from the server is escaped or checked here, because it ends up in innerHTML.
+const BASE_PLANS = plans.map((p) => ({ ...p }));
+const BASE_TRAINERS = trainers.map((tr) => ({ ...tr }));
+const promos = [];
+const sitePhotos = {};
+const safeUrl = (u) => (/^https:\/\/[A-Za-z0-9._/%?=&:~+@-]+$/.test(String(u ?? '')) ? String(u) : '');
+const txt = (v) => esc(String(v ?? '').slice(0, 600));
+
+function sitePlan(p) {
+  const f = [p.visits ? ['ft_visits', Number(p.visits) || 0] : ['ft_unl']];
+  if (p.dayOnly) f.push(['ft_day']);
+  if (p.freezeDays) f.push(['ft_freeze', String(Number(p.freezeDays) || 0)]);
+  const months = Number(p.months) || 0;
+  const price = Number(p.price) || 0;
+  return { id: txt(p.id), name: txt(p.name), months, days: Number(p.days) || 1, price, old: Number(p.oldPrice) || 0, per: months ? Math.round(price / months) : 0, f };
+}
+
+function siteTrainer(o, b) {
+  const lines = (s) => String(s ?? '').split('\n').map((x) => x.trim()).filter(Boolean).map(txt);
+  const photo = o.photoUrl === '' ? '' : safeUrl(o.photoUrl) || b.photo || '';
+  return {
+    ...b,
+    id: o.id ? txt(o.id) : b.id,
+    name: o.name != null ? txt(o.name) : b.name,
+    sp: Array.isArray(o.specialties) ? o.specialties.map(txt).join(' • ') : b.sp,
+    quals: o.bio != null ? lines(o.bio) : b.quals,
+    services: Array.isArray(o.services) ? o.services.map(txt) : b.services,
+    why: Array.isArray(o.why) ? o.why.map(txt) : b.why,
+    exp: o.experience != null ? txt(o.experience) : b.exp,
+    ages: o.ages != null ? txt(o.ages) : b.ages,
+    schedule: o.schedule != null ? txt(o.schedule) : b.schedule,
+    price: o.pricePerSession != null ? Number(o.pricePerSession) || 0 : b.price,
+    photo,
+    img: o.photoUrl === '' ? '' : b.img,
+  };
+}
+
+function applySiteContent(c) {
+  const pc = c.plans;
+  if (pc) {
+    const hidden = pc.hidden || [];
+    const base = BASE_PLANS.map((b) => {
+      const o = pc.overrides && pc.overrides[b.id];
+      if (!o) return b;
+      return o.days ? sitePlan({ name: b.name, ...o, id: b.id }) : { ...b, price: Number(o.price) || b.price, old: Number(o.oldPrice) || 0, per: b.months ? Math.round((Number(o.price) || b.price) / b.months) : 0 };
+    });
+    plans.splice(0, plans.length, ...base.concat((pc.custom || []).map(sitePlan)).filter((p) => !hidden.includes(p.id)));
+  }
+  const tc = c.trainers;
+  if (tc) {
+    const hidden = tc.hidden || [];
+    const base = BASE_TRAINERS.map((b) => (tc.overrides && tc.overrides[b.id] ? siteTrainer(tc.overrides[b.id], b) : b));
+    trainers.splice(0, trainers.length, ...base.concat((tc.custom || []).map((o) => siteTrainer(o, {}))).filter((tr) => !hidden.includes(tr.id)));
+  }
+  // Promotions that are on today (the clubs' calendar day, UTC+5).
+  const today = new Date(Date.now() + 5 * 3600000).toISOString().slice(0, 10);
+  promos.splice(0, promos.length, ...(c.promos || []).filter((p) => p.active && p.start <= today && today <= p.end).map((p) => ({ title: txt(p.title), text: txt(p.text), kind: p.kind, value: Number(p.value) || 0, code: txt(p.code || ''), end: txt(p.end), image: safeUrl(p.image), club: p.clubId === 'all' ? '' : (clubs.find((k) => k.id === p.clubId) || {}).name || '' })));
+  Object.keys(sitePhotos).forEach((k) => delete sitePhotos[k]);
+  Object.entries(c.photos || {}).forEach(([id, list]) => Array.isArray(list) && safeUrl(list[0]) && (sitePhotos[id] = safeUrl(list[0])));
+  render();
+}
+
+// First paint: every table and helper above is initialised by now.
+render();
+
+fetch(API + '?op=content')
+  .then((r) => (r.ok ? r.json() : null))
+  .then((d) => d && d.content && applySiteContent(d.content))
   .catch(() => {});
