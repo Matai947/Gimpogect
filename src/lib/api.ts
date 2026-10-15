@@ -1,3 +1,4 @@
+import type { Content, ContentSection } from '@/data/content';
 import type { ClubConfig } from '@/data/mock';
 import type { Sale } from '@/data/owner';
 
@@ -71,6 +72,12 @@ export type TrainerLoad = { id: string; trainerId: string; clubId: string; date:
 export const postLoad = (code: string, b: { trainerId: string; clubId: string; date: string; sessions: number; note: string; staff: string }) => call<{ ok: true; id: string }>('load', { method: 'POST', code, body: b });
 export const fetchLoads = async (code: string, days = 60) => (await call<{ loads: TrainerLoad[] }>('loads', { code, query: `&days=${days}` }))?.loads ?? null;
 export const deleteLoad = (code: string, id: string) => call<{ ok: true }>('load-del', { method: 'POST', code, body: { id } });
+
+/** Editable content (prices, plans, trainers, rules, schedule, promotions, photos), as the administrators set it. */
+export const fetchContent = async () => (await call<{ content: Content }>('content'))?.content ?? null;
+export const saveContentRemote = (code: string, section: ContentSection, data: unknown, by: string) => call<{ ok: true }>('content-save', { method: 'POST', code, body: { section, data, by } });
+/** Uploads a photo (base64) to the public media bucket and returns its address. */
+export const uploadPhoto = async (code: string, ext: string, base64: string) => (await call<{ url: string }>('upload', { method: 'POST', code, body: { ext, data: base64 } }))?.url ?? null;
 
 /** The network's clubs, as the owner set them (empty until the owner saves a list). */
 export const fetchClubs = async () => (await call<{ clubs: ClubConfig[] }>('clubs'))?.clubs ?? null;

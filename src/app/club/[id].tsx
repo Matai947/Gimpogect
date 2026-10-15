@@ -15,9 +15,9 @@ const W = Dimensions.get('window').width;
 export default function ClubScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const club = clubById(id);
-  const { favorites, toggleFavorite, user, updateUser } = useApp();
+  const { favorites, toggleFavorite, user, updateUser, content } = useApp();
   const { t, tp, td } = useI18n();
-  const todaySessions = useMemo(() => sessionsForDate(toISODate(new Date())).filter((s) => s.clubId === id), [id]);
+  const todaySessions = useMemo(() => sessionsForDate(toISODate(new Date())).filter((s) => s.clubId === id), [id, content.classes]); // eslint-disable-line react-hooks/exhaustive-deps
   const clubTrainers = trainers.filter((tr) => !tr.clubId || tr.clubId === id);
 
   if (!club) {

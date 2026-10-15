@@ -7,8 +7,9 @@ import { StaffAccent } from '@/components/member-result';
 import { StaffHeader } from '@/components/staff-header';
 import { Avatar, Badge, Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { formatPrice, planLength, trainers } from '@/data/mock';
+import { formatPrice, planLength, toISODate, trainers } from '@/data/mock';
 import { settleRemote } from '@/lib/api';
+import { promoByCode, promoDiscount } from '@/data/content';
 import type { PayMethod } from '@/data/owner';
 import { MEMBER_DISCOUNT } from '@/data/shop';
 import { useApp, useCatalog, useI18n, useMembers, usePlans, useRawSales, type MemberInfo } from '@/store/app-context';
@@ -39,6 +40,7 @@ export default function StaffPosScreen() {
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [partial, setPartial] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
   const [settle, setSettle] = useState('');
 
   const matches = useMemo(() => {
@@ -54,7 +56,14 @@ export default function StaffPosScreen() {
   const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
   // Member discount applies to goods only; plans are already priced for members.
   const goods = lines.filter((l) => !l.planId && !l.trainerId).reduce((s, l) => s + l.price * l.qty, 0);
-  const discount = client?.active ? Math.round(goods * MEMBER_DISCOUNT) : 0;
+  const memberDisc = client?.active ? Math.round(goods * MEMBER_DISCOUNT) : 0;
+  // A promo code takes money off the whole check; it applies when it is better than the member discount.
+  const promo = promoCode.trim() ? promoByCode(promoCode, toISODate(new Date()), staff?.clubId) : undefined;
+  const promoDisc = promo ? promoDiscount(promo, subtotal) : 0;
+  const usePromo = promoDisc > memberDisc;
+  const discount = usePromo ? promoDisc : memberDisc;
+  // With a promo every sale row carries its share of the discount; with the member discount only goods do.
+  const share = usePromo && subtotal > 0 ? (subtotal - discount) / subtotal : 1;
   const total = subtotal - discount;
   const received = Number(cash.replace(/\D/g, '')) || 0;
   const change = received - total; // negative = not enough cash
@@ -82,15 +91,15 @@ export default function StaffPosScreen() {
     }
     // Plans go through grantPlan so the client gets access and the owner sees the sale; goods are one receipt.
     planLines.forEach((l) => {
-      for (let i = 0; i < l.qty; i++) grantPlan(client!.id, l.planId!);
+      for (let i = 0; i < l.qty; i++) grantPlan(client!.id, l.planId!, usePromo ? Math.round(l.price * share) : undefined);
     });
     // Personal training: one sale per package, tied to the trainer for the owner's reports.
     trainerLines.forEach((l) => {
-      for (let i = 0; i < l.qty; i++) recordSale({ memberId: client!.id, name: client!.name, title: l.title, kind: 'personal', amount: l.price, method, trainerId: l.trainerId });
+      for (let i = 0; i < l.qty; i++) recordSale({ memberId: client!.id, name: client!.name, title: l.title, kind: 'personal', amount: usePromo ? Math.round(l.price * share) : l.price, method, trainerId: l.trainerId });
     });
     const goodLines = lines.filter((l) => !l.planId && !l.trainerId);
     if (goodLines.length) {
-      recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: goods - discount, method });
+      recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: usePromo ? Math.round(goodLines.reduce((sum, l) => sum + l.price * l.qty, 0) * share) : goods - memberDisc, method });
     }
     if (debtAmt > 0) recordSale({ memberId: client!.id, name: client!.name, title: t('pos_debt_title'), kind: 'debt', amount: debtAmt, remaining: debtAmt, method });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -119,6 +128,7 @@ export default function StaffPosScreen() {
     setCash('');
     setError(null);
     setPartial(false);
+    setPromoCode('');
   };
 
   const clientSearch = (
@@ -343,6 +353,15 @@ export default function StaffPosScreen() {
             <View style={styles.dash} />
             {discount ? <Sum label={t('pos_discount')} value={`−${formatPrice(discount)}`} /> : null}
             <Sum label={t('pos_total')} value={formatPrice(total)} big />
+            <Row gap={Spacing.two} style={{ alignItems: 'center' }}>
+              <Ionicons name="pricetag-outline" size={16} color={StaffAccent} />
+              <TextInput value={promoCode} onChangeText={setPromoCode} placeholder={t('pos_promo_ph')} placeholderTextColor={Colors.textMuted} autoCapitalize="characters" style={[styles.searchInput, { height: 38, flex: 1 }]} />
+              {promoCode.trim() ? (
+                <T type="small" color={promo ? Colors.success : Colors.danger} style={{ fontWeight: '700' }}>
+                  {promo ? promo.title : t('pos_promo_bad')}
+                </T>
+              ) : null}
+            </Row>
             <Row gap={6} style={{ flexWrap: 'wrap' }}>
               {(['kaspi', 'card', 'cash'] as PayMethod[]).map((m) => (
                 <Chip key={m} label={methodLabel[m]} active={method === m} onPress={() => setMethod(m)} />

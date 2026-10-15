@@ -5,10 +5,11 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile, type Goal } from '@/data/fitness';
 import { members, mockOrders, type Member } from '@/data/members';
 import { mockSales, saleValue, type Sale } from '@/data/owner';
+import { applyContent, promoByCode, promoDiscount, type Content, type ContentSection } from '@/data/content';
 import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { checkinRemote, checkoutRemote, fetchClients, fetchClubs, saveClubs, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient } from '@/lib/api';
+import { checkinRemote, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -73,6 +74,8 @@ type State = {
   remote: RemoteClient[]; // clients registered from any device, fetched while staff or owner is signed in
   serverSales: Sale[] | null; // the shared books from the server (null until first loaded)
   clubConfig: ClubConfig[]; // the network's clubs as the owner set them, kept for the next start
+  content: Content; // prices, plans, trainers, rules, schedule, promotions, photos set by the administrators
+  contentStatus: 'idle' | 'saving' | 'ok' | 'fail'; // last save to the server (not kept on the device)
   sales: Sale[]; // payments recorded on this device when staff issue plans
   staffLog: CheckinEntry[];
   attendance: Record<string, string[]>; // sessionId -> memberIds marked present
@@ -101,10 +104,11 @@ type Actions = {
   logout: () => void;
   updateUser: (patch: Partial<User>) => void;
   completeOnboarding: (profile: FitnessProfile) => void;
-  grantPlan: (memberId: string, planId: string) => void;
+  grantPlan: (memberId: string, planId: string, amount?: number) => void;
   recordSale: (sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff' | 'synced'>) => void;
   refreshSales: () => Promise<void>;
   saveClubConfig: (list: ClubConfig[]) => Promise<boolean>;
+  saveContent: (section: ContentSection, data: unknown) => void;
   setPlanPrice: (planId: string, price: number, oldPrice?: number) => void;
   freezeMembership: (days: number) => void;
   unfreezeMembership: () => void;
@@ -161,6 +165,8 @@ const initialState: State = {
   remote: [],
   serverSales: null,
   clubConfig: [],
+  content: {},
+  contentStatus: 'idle',
   sales: [],
   staffLog: [],
   attendance: {},
@@ -224,6 +230,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setRuntimeApiKey(saved.coachApiKey ?? null);
           setCurrentLang(saved.lang ?? 'ru');
           applyClubConfig(saved.clubConfig ?? []);
+          applyContent(saved.content ?? {});
           setState({ ...initialState, ...saved, hydrated: true });
           return;
         }
@@ -237,7 +244,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!state.hydrated) return;
     // The client registry is fetched live and never kept on the device.
-    const { hydrated: _h, remote: _r, serverSales: _ss, ...persist } = state;
+    const { hydrated: _h, remote: _r, serverSales: _ss, contentStatus: _cs, ...persist } = state;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(persist)).catch(() => {});
   }, [state]);
 
@@ -251,8 +258,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         applyClubConfig(list);
         setState((s) => ({ ...s, clubConfig: list }));
       });
+    const loadContent = () =>
+      fetchContent().then((c) => {
+        if (!live || !c) return;
+        applyContent(c);
+        // The shop catalogue lives in its own state fields; the server copy replaces them.
+        setState((s) => ({ ...s, content: c, ...(c.catalog ? { customProducts: c.catalog.custom, productOverrides: c.catalog.overrides, hiddenProducts: c.catalog.hidden } : {}) }));
+      });
     void load();
-    const sub = AppState.addEventListener('change', (st) => st === 'active' && void load());
+    void loadContent();
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && (void load(), void loadContent()));
     return () => {
       live = false;
       sub.remove();
@@ -471,7 +486,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   /** Staff issues a plan at the front desk: the user's own account, a client registered from another device, or a demo member. */
   const grantPlan = useCallback(
-    (memberId: string, planId: string) => {
+    (memberId: string, planId: string, amount?: number) => {
       const plan = planById(planId);
       if (!plan) return;
       // Clients that exist on the server get the new plan there too, so their own phone picks it up.
@@ -482,7 +497,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         grantRemote(state.staffCode, { id: memberId, name: isSelf ? state.user!.name : remote!.name, phone: isSelf ? state.user!.phone : remote!.phone, membership: next });
       }
       setState((s) => {
-        const sold = (name: string): Sale[] => ((s.planPrices[planId]?.price ?? plan.price) > 0 ? [{ id: `S${Date.now()}${Math.random().toString(36).slice(2, 5)}`, ts: Date.now(), memberId, name, title: plan.name, kind: 'plan', amount: s.planPrices[planId]?.price ?? plan.price, clubId: s.staff?.clubId ?? 'c1', method: 'desk', staff: s.staff?.name ?? '' }, ...s.sales] : s.sales);
+        const sold = (name: string): Sale[] => ((amount ?? s.planPrices[planId]?.price ?? plan.price) > 0 ? [{ id: `S${Date.now()}${Math.random().toString(36).slice(2, 5)}`, ts: Date.now(), memberId, name, title: plan.name, kind: 'plan', amount: amount ?? s.planPrices[planId]?.price ?? plan.price, clubId: s.staff?.clubId ?? 'c1', method: 'desk', staff: s.staff?.name ?? '' }, ...s.sales] : s.sales);
         if (s.user?.id === memberId) return { ...s, sales: sold(s.user.name), trialUsed: s.trialUsed || (!!plan.trial && !plan.staffOnly), membership: extendMembership(s.membership, planId) };
         const r = s.remote.find((x) => x.id === memberId);
         if (r) {
@@ -522,6 +537,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
   }, [state.hydrated, state.staffCode, state.sales]);
 
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  });
+  const pushTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  /** Administrators change content: it shows on this device at once and goes to the server after the last edit. */
+  const saveContent = useCallback((section: ContentSection, data: unknown) => {
+    const content = { ...stateRef.current.content, [section]: data } as Content;
+    applyContent(content);
+    setState((s) => ({ ...s, content, contentStatus: 'saving' }));
+    clearTimeout(pushTimers.current[section]);
+    pushTimers.current[section] = setTimeout(async () => {
+      const { staffCode, staff } = stateRef.current;
+      const ok = staffCode ? await saveContentRemote(staffCode, section, data, staff?.name ?? 'owner') : null;
+      setState((s) => ({ ...s, contentStatus: ok ? 'ok' : 'fail' }));
+    }, 700);
+  }, []);
+
+  // Shop edits (stored in their own fields) travel to the server as the "catalog" section.
+  useEffect(() => {
+    if (!state.hydrated || !state.staffCode) return;
+    const cur = { custom: state.customProducts, overrides: state.productOverrides, hidden: state.hiddenProducts };
+    const known = state.content.catalog ?? { custom: [], overrides: {}, hidden: [] };
+    if (JSON.stringify(cur) !== JSON.stringify(known)) saveContent('catalog', cur);
+  }, [state.hydrated, state.staffCode, state.customProducts, state.productOverrides, state.hiddenProducts, state.content.catalog, saveContent]);
+
   /** Owner: save the list of clubs (add a branch, edit one, switch one off). */
   const saveClubConfig = useCallback(
     async (list: ClubConfig[]) => {
@@ -536,9 +578,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [state.staffCode],
   );
 
-  const setPlanPrice = useCallback((planId: string, price: number, oldPrice?: number) => {
-    setState((s) => ({ ...s, planPrices: { ...s.planPrices, [planId]: { price, oldPrice } } }));
-  }, []);
+  const setPlanPrice = useCallback(
+    (planId: string, price: number, oldPrice?: number) => {
+      const cur = stateRef.current.content.plans ?? { overrides: {}, custom: [], hidden: [] };
+      const isCustom = cur.custom.some((p) => p.id === planId);
+      const next = isCustom
+        ? { ...cur, custom: cur.custom.map((p) => (p.id === planId ? { ...p, price, oldPrice } : p)) }
+        : { ...cur, overrides: { ...cur.overrides, [planId]: { ...cur.overrides[planId], price, oldPrice } } };
+      saveContent('plans', next);
+    },
+    [saveContent],
+  );
 
   /** Cash register: one receipt per sale, shown to the owner under payments. */
   const recordSale = useCallback((sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff'>) => {
@@ -651,6 +701,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       recordSale,
       refreshSales,
       saveClubConfig,
+      saveContent,
       setPlanPrice,
       freezeMembership,
       unfreezeMembership,
@@ -683,7 +734,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, recordSale, refreshSales, saveClubConfig, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, recordSale, refreshSales, saveClubConfig, saveContent, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -874,11 +925,9 @@ export function useMembers() {
 
 /** Membership plans with the front desk's price edits applied. */
 export function usePlans() {
-  const { planPrices } = useApp();
-  return useMemo(() => plans.filter((p) => !p.legacy).map((p) => {
-    const o = planPrices[p.id];
-    return o ? { ...p, price: o.price, oldPrice: o.oldPrice, perMonth: p.months ? Math.round(o.price / p.months) : o.price } : p;
-  }), [planPrices]);
+  const { content } = useApp();
+  // The module list is edited in place by applyContent; this re-reads it whenever the plan content changes.
+  return useMemo(() => plans.filter((p) => !p.legacy), [content.plans]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 /** All payments: demo history plus those recorded on this device. Newest first. */
@@ -962,18 +1011,21 @@ export function useCartSummary(promo?: string) {
       .map((c) => ({ ...c, product: byId(c.productId) }))
       .filter((l): l is typeof l & { product: NonNullable<typeof l.product> } => !!l.product);
     const subtotal = lines.reduce((sum, l) => sum + l.product.price * l.qty, 0);
-    const promoRate = promo ? PROMO_CODES[promo.trim().toUpperCase()] ?? 0 : 0;
+    const code = promo ? promo.trim().toUpperCase() : '';
+    const live = code ? promoByCode(code, toISODate(new Date())) : undefined;
+    const promoRate = code ? PROMO_CODES[code] ?? 0 : 0;
     const memberRate = membership.active ? MEMBER_DISCOUNT : 0;
-    const rate = Math.max(memberRate, promoRate);
-    const discount = Math.round(subtotal * rate);
+    const promoOff = Math.max(Math.round(subtotal * promoRate), live ? promoDiscount(live, subtotal) : 0);
+    const memberOff = Math.round(subtotal * memberRate);
+    const discount = Math.max(memberOff, promoOff);
     return {
       lines,
       count: cart.reduce((n, c) => n + c.qty, 0),
       subtotal,
       discount,
       total: subtotal - discount,
-      discountSource: rate === 0 ? null : promoRate > memberRate ? ('promo' as const) : ('member' as const),
-      promoValid: promoRate > 0,
+      discountSource: discount === 0 ? null : promoOff > memberOff ? ('promo' as const) : ('member' as const),
+      promoValid: promoOff > 0,
     };
   }, [cart, membership.active, promo, byId]);
 }

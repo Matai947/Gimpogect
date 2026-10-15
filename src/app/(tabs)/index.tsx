@@ -9,8 +9,9 @@ import { MemberPass } from '@/components/member-pass';
 import { ProductCard } from '@/components/product-card';
 import { Badge, Button, Card, IconButton, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { activePromos } from '@/data/content';
 import { goalTip, goalTitle } from '@/data/fitness';
-import { clubById, clubHours, clubs, formatDateHuman, formatPrice, news, occupancyLabel, sessionById, sessionStart, trainerById, trainers, planLength } from '@/data/mock';
+import { clubById, clubHours, clubs, formatDateHuman, formatPrice, news, toISODate, occupancyLabel, sessionById, sessionStart, trainerById, trainers, planLength } from '@/data/mock';
 import { useApp, useCatalog, useFitnessProfile, useI18n, useMembershipInfo, usePlans, useVisitStats } from '@/store/app-context';
 
 export default function HomeScreen() {
@@ -123,6 +124,34 @@ export default function HomeScreen() {
           </Pressable>
         ))}
       </View>
+
+      {/* Promotions set by the administrators */}
+      {activePromos(toISODate(new Date()), user?.homeClubId).length > 0 ? (
+        <View style={{ marginBottom: Spacing.four, paddingHorizontal: Spacing.three, gap: Spacing.two }}>
+          <SectionHeader title={t('promos_title')} />
+          {activePromos(toISODate(new Date()), user?.homeClubId).map((p) => (
+            <Card key={p.id} style={{ gap: 4 }}>
+              {p.image ? <Image source={{ uri: p.image }} style={{ width: '100%', height: 140, borderRadius: Radius.md, marginBottom: 6 }} contentFit="cover" /> : null}
+              <Row style={{ justifyContent: 'space-between' }}>
+                <T type="subheading" style={{ flex: 1 }}>
+                  {p.title}
+                </T>
+                {p.kind !== 'info' ? <Badge label={p.kind === 'percent' ? `−${p.value}%` : `−${formatPrice(p.value)}`} color={Colors.success} /> : null}
+              </Row>
+              {p.text ? (
+                <T type="small" color={Colors.textSecondary}>
+                  {p.text}
+                </T>
+              ) : null}
+              {p.code ? (
+                <T type="small" color={Colors.accent} style={{ fontWeight: '700' }}>
+                  {t('promo_code_is', { c: p.code })}
+                </T>
+              ) : null}
+            </Card>
+          ))}
+        </View>
+      ) : null}
 
       {/* Price list, like "Галерея абонементов" on s89 */}
       <View style={{ marginBottom: Spacing.four }}>

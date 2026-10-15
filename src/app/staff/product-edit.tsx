@@ -11,6 +11,7 @@ import { StaffAccent } from '@/components/member-result';
 import { Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { shopCategories, type Product, type ShopCategory } from '@/data/shop';
+import { uploadPhoto } from '@/lib/api';
 import { useApp, useCatalog, useI18n } from '@/store/app-context';
 
 const badges: (NonNullable<Product['badge']> | 'none')[] = ['none', 'Хит', 'Новинка', 'Скидка'];
@@ -20,7 +21,7 @@ export default function ProductEditScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { t, td } = useI18n();
   const { byId, isCustom } = useCatalog();
-  const { upsertProduct, deleteProduct } = useApp();
+  const { upsertProduct, deleteProduct, staffCode } = useApp();
   const existing = id ? byId(id) : undefined;
 
   const [name, setName] = useState(existing?.name ?? '');
@@ -53,9 +54,14 @@ export default function ProductEditScreen() {
         if (!perm.granted) return;
       }
       const res = camera
-        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7 })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7 });
-      if (!res.canceled && res.assets[0]) setImage(res.assets[0].uri);
+        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.6, base64: true })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.6, base64: true });
+      if (!res.canceled && res.assets[0]) {
+        const a = res.assets[0];
+        // A device-local address is useless to other phones: send the picture to the server and keep its public address.
+        const link = staffCode && a.base64 ? await uploadPhoto(staffCode, (a.mimeType?.split('/')[1] ?? 'jpg').replace('jpeg', 'jpg').slice(0, 4), a.base64) : null;
+        setImage(link ?? a.uri);
+      }
     } catch (e) {
       Alert.alert(t('failed'), e instanceof Error ? e.message : String(e));
     }

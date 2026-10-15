@@ -51,3 +51,6 @@ create table if not exists settings (
   data jsonb not null
 );
 alter table settings enable row level security;
+
+-- Public bucket for photos uploaded by the administrators (clubs, trainers, promotions).
+insert into storage.buckets (id, name, public) values ('media', 'media', true) on conflict (id) do nothing;

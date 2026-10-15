@@ -7,21 +7,24 @@ import { StyleSheet, TextInput, View } from 'react-native';
 import { Badge, Card, Chip, ChipRow, Row, Screen, Stars, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice, trainers } from '@/data/mock';
-import { useI18n } from '@/store/app-context';
-
-const specialties = ['Все', 'Снижение веса', 'Набор массы', 'ЛФК', 'Жим лёжа', 'Пауэрлифтинг', 'Вольная борьба', 'Армрестлинг'];
+import { useApp, useI18n } from '@/store/app-context';
 
 export default function TrainersScreen() {
   const { t, td } = useI18n();
+  const { content } = useApp();
   const [query, setQuery] = useState('');
   const [spec, setSpec] = useState('Все');
+
+  // The directions come from the trainers themselves, so a new trainer's directions appear as filters.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const specialties = useMemo(() => ['Все', ...new Set(trainers.flatMap((tr) => tr.specialties))], [content.trainers]);
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
     return trainers
       .filter((tr) => (spec === 'Все' ? true : tr.specialties.includes(spec)))
       .filter((tr) => (q ? tr.name.toLowerCase().includes(q) || tr.specialties.some((s) => s.toLowerCase().includes(q) || td(s).toLowerCase().includes(q)) : true));
-  }, [query, spec, td]);
+  }, [query, spec, td, content.trainers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Screen edges={[]}>

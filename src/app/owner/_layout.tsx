@@ -33,6 +33,7 @@ export default function OwnerLayout() {
       <Tabs.Screen name="clients" options={{ title: t('tab_clients'), tabBarIcon: (p: IconProps) => <TabIcon name="people" outline="people-outline" {...p} /> }} />
       <Tabs.Screen name="sales" options={{ title: t('tab_sales'), tabBarIcon: (p: IconProps) => <TabIcon name="card" outline="card-outline" {...p} /> }} />
       <Tabs.Screen name="reports" options={{ title: t('tab_reports'), tabBarIcon: (p: IconProps) => <TabIcon name="bar-chart" outline="bar-chart-outline" {...p} /> }} />
+      <Tabs.Screen name="settings" options={{ title: t('tab_settings'), tabBarIcon: (p: IconProps) => <TabIcon name="settings" outline="settings-outline" {...p} /> }} />
       <Tabs.Screen name="clubs" options={{ title: t('tab_clubs_o'), tabBarIcon: (p: IconProps) => <TabIcon name="business" outline="business-outline" {...p} /> }} />
     </Tabs>
   );

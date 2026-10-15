@@ -153,6 +153,9 @@ const defaultClubs: Club[] = [
 export type ClubConfig = { id: string; name: string; city: string; address: string; hours: string; phone: string; active: boolean };
 
 /** Every club ever created (for history) and the ones that are open now (for choices). Both are updated in place when the owner's list arrives. */
+/** Photo addresses the administrators set per club (club id -> list); empty means the built-in photos. */
+export const clubPhotoOverrides: Record<string, string[]> = {};
+
 export const allClubs: Club[] = [...defaultClubs];
 export const clubs: Club[] = [...defaultClubs];
 
@@ -162,7 +165,7 @@ export function applyClubConfig(cfg: ClubConfig[]) {
   const t = defaultClubs[0];
   const list = cfg.map((c): Club => {
     const base = defaultClubs.find((d) => d.id === c.id) ?? { ...t, id: c.id, photos: t.photos.slice(0, 2), amenities: ['Тренажёрный зал'], description: '', areaM2: 0, machines: 0, rating: 0, reviews: 0, occupancy: 0, distanceKm: 0, liked: [], reviewsList: [] };
-    return { ...base, name: c.name, city: c.city || base.city, address: c.address, hours: c.hours, is24h: false, hoursDetail: [c.hours, c.hours, c.hours], phone: c.phone, active: c.active };
+    return { ...base, photos: clubPhotoOverrides[c.id] ?? base.photos, name: c.name, city: c.city || base.city, address: c.address, hours: c.hours, is24h: false, hoursDetail: [c.hours, c.hours, c.hours], phone: c.phone, active: c.active };
   });
   allClubs.splice(0, allClubs.length, ...list);
   clubs.splice(0, clubs.length, ...list.filter((c) => c.active !== false));

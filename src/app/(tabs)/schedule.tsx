@@ -9,7 +9,7 @@ import { addDays, categories, clubById, clubs, monthShort, sessionsForDate, sess
 import { useApp, useI18n } from '@/store/app-context';
 
 export default function ScheduleScreen() {
-  const { isBooked, user } = useApp();
+  const { isBooked, user, content } = useApp();
   const { t, td } = useI18n();
   const params = useLocalSearchParams<{ category?: string }>();
   const days = useMemo(() => Array.from({ length: 14 }, (_, i) => addDays(new Date(), i)), []);
@@ -34,7 +34,7 @@ export default function ScheduleScreen() {
       .filter((s) => (category === 'Все' ? true : s.category === category))
       .filter((s) => (clubId === 'all' ? true : s.clubId === clubId))
       .map((s) => ({ ...s, past: sessionStart(s) < now }));
-  }, [date, category, clubId]);
+  }, [date, category, clubId, content.classes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const today = toISODate(new Date());
 
