@@ -274,7 +274,10 @@ fetch(API + '?op=clubs')
     const live = d && Array.isArray(d.clubs) ? d.clubs.filter((c) => c.active !== false) : [];
     if (!live.length) return;
     const known = clubs.slice();
-    clubs.splice(0, clubs.length, ...live.map((c) => ({ id: c.id, name: c.name, city: 'city_alm', cityText: c.city && c.city !== 'Алматы' ? c.city : '', addr: c.address, h: c.hours, area: 0, machines: 0, rating: '', phone: c.phone || '+7 705 555 39 32', img: (known.find((k) => k.id === c.id) || known[0]).img, am: ['am_gym'] })));
+    // Everything below goes into innerHTML: escape the text, keep only phone characters, accept only c<number> ids.
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+    const tel = (v) => String(v ?? '').replace(/[^\d+()\-\s]/g, '');
+    clubs.splice(0, clubs.length, ...live.filter((c) => /^c\d{1,3}$/.test(c.id)).map((c) => ({ id: c.id, name: esc(c.name), city: 'city_alm', cityText: c.city && c.city !== 'Алматы' ? esc(c.city) : '', addr: esc(c.address), h: esc(c.hours), area: 0, machines: 0, rating: '', phone: tel(c.phone) || '+7 705 555 39 32', img: (known.find((k) => k.id === c.id) || known[0]).img, am: ['am_gym'] })));
     render();
   })
   .catch(() => {});

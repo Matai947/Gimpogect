@@ -346,7 +346,9 @@ module.exports = async function handler(req, res) {
       if (!isOwner(req)) return res.status(403).json({ error: 'owner only' });
       const input = Array.isArray(body.clubs) ? body.clubs.slice(0, 30) : [];
       const list = input.map((c) => ({ id: str(c?.id, 6), name: str(c?.name, 60), city: str(c?.city, 40), address: str(c?.address, 120), hours: str(c?.hours, 40), phone: str(c?.phone, 25), active: c?.active !== false }));
-      if (!list.length || list.some((c) => !/^c\d{1,3}$/.test(c.id) || c.name.length < 2) || new Set(list.map((c) => c.id)).size !== list.length) return res.status(400).json({ error: 'bad data' });
+      // This text goes into public pages: no markup or quote characters, and the phone is only digits and phone punctuation.
+      const plain = (v) => !/[<>"'`]/.test(v);
+      if (!list.length || list.some((c) => !/^c\d{1,3}$/.test(c.id) || c.name.length < 2 || !plain(c.name) || !plain(c.city) || !plain(c.address) || !plain(c.hours) || !/^[+\d()\-\s]*$/.test(c.phone)) || new Set(list.map((c) => c.id)).size !== list.length) return res.status(400).json({ error: 'bad data' });
       // A club is never deleted, only switched off, so old payments keep their branch.
       const old = await getClubs();
       const required = old.length ? old.map((o) => o.id) : ['c1', 'c2'];
