@@ -261,6 +261,6 @@ input:focus, select:focus { outline: none; border-color: var(--gold); box-shadow
 .trainer .tl { list-style: none; margin: 0 0 12px; padding: 0; font-size: 13px; color: #333; display: grid; gap: 4px; }
 .trainer .tl li::before { content: '★'; color: var(--gold-d); margin-right: 8px; }
 .trainer .tl.dots li::before { content: '•'; }
-.trainer .price { font: 800 22px 'Raleway'; margin: 4px 0 12px; }
-.trainer .price span { font: 500 13px 'Montserrat'; color: var(--muted); }
+.trainer .tprice { font: 800 22px 'Raleway'; margin: 4px 0 12px; }
+.trainer .tprice span { font: 500 13px 'Montserrat'; color: var(--muted); }
 .trainer .tl.chk li::before { content: '✓'; }

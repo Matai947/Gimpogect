@@ -62,14 +62,6 @@ export default function TrainersScreen() {
                   {formatPrice(tr.pricePerSession)} {t('per_month')}
                 </T>
               ) : null}
-              {tr.phone ? (
-                <Row gap={6}>
-                  <Ionicons name="call-outline" size={13} color={Colors.accent} />
-                  <T type="label" color={Colors.accent}>
-                    {tr.phone}
-                  </T>
-                </Row>
-              ) : null}
             </View>
           </Card>
         ))}

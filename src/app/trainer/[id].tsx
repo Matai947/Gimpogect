@@ -1,12 +1,11 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Dimensions, Linking, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 
-import { Badge, Button, Card, Chip, EmptyState, Row, Screen, SectionHeader, T } from '@/components/ui';
+import { Badge, Card, Chip, EmptyState, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { clubById, formatPrice, trainerById } from '@/data/mock';
-import { openWhatsApp } from '@/lib/whatsapp';
 import { useI18n } from '@/store/app-context';
 
 const W = Dimensions.get('window').width;
@@ -25,7 +24,6 @@ export default function TrainerScreen() {
   }
 
   const club = clubById(trainer.clubId);
-  const digits = (trainer.phone ?? '').replace(/\D/g, '');
   const sub = [club?.name, trainer.audience].filter(Boolean).join(' • ');
   const title = (
     <>
@@ -40,7 +38,7 @@ export default function TrainerScreen() {
   );
 
   return (
-    <Screen edges={[]} contentStyle={{ paddingBottom: 120 }}>
+    <Screen edges={[]} contentStyle={{ paddingBottom: 40 }}>
       <Stack.Screen options={{ title: trainer.name }} />
       {trainer.photo ? (
         <View style={{ height: 380 }}>
@@ -128,14 +126,13 @@ export default function TrainerScreen() {
             <T type="body">{trainer.schedule}</T>
           </View>
         ) : null}
-      </View>
 
-      {trainer.phone ? (
-        <View style={styles.footer}>
-          <Button title={t('call')} icon="call-outline" onPress={() => Linking.openURL(`tel:+${digits}`)} style={{ flex: 1 }} />
-          <Button title="WhatsApp" icon="logo-whatsapp" variant="secondary" onPress={() => openWhatsApp(trainer.phone ?? '')} style={{ flex: 1 }} />
-        </View>
-      ) : null}
+        <Card style={{ marginTop: Spacing.four }}>
+          <T type="body" style={{ fontWeight: '700' }}>
+            {t('trainer_book_admin')}
+          </T>
+        </Card>
+      </View>
     </Screen>
   );
 }
@@ -144,18 +141,4 @@ const styles = StyleSheet.create({
   heroText: { position: 'absolute', left: Spacing.three, right: Spacing.three, bottom: Spacing.two },
   head: { padding: Spacing.three, paddingBottom: 0, gap: 4 },
   body: { padding: Spacing.three },
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    padding: Spacing.three,
-    paddingBottom: Spacing.four,
-    backgroundColor: Colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
 });

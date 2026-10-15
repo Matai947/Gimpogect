@@ -160,7 +160,6 @@ export const trainers: Trainer[] = [
     experienceYears: 0,
     pricePerSession: 28000,
     photo: require('../../assets/images/trainers/askar.jpg'),
-    phone: '+7 775 286 5723',
     bio: 'Фитнес-тренер клуба\nДипломированный и сертифицированный фитнес-тренер',
     services: [
       'Индивидуальные занятия для мужчин и женщин',
@@ -185,7 +184,6 @@ export const trainers: Trainer[] = [
     experienceYears: 0,
     pricePerSession: 25000,
     photo: require('../../assets/images/trainers/ersin.jpg'),
-    phone: '+7 747 038 5849',
     bio: 'Профессиональный фитнес-тренер\nКМС по вольной борьбе\nМС по пауэрлифтингу и жиму лёжа',
     services: [
       'Снижение веса и сжигание жира',
@@ -215,7 +213,6 @@ export const trainers: Trainer[] = [
     experienceYears: 0,
     pricePerSession: 25000,
     photo: require('../../assets/images/trainers/nikita.jpg'),
-    phone: '+7 747 255 55 08',
     bio: 'МС по жиму лёжа (WRPF, WPC, НАП)\nМС по жиму лёжа в софт экипировке\nМСМК по подъёму на бицепс\nКМС по армрестлингу\nКМС по дзюдо',
     services: [
       'Снижение веса и коррекция фигуры',

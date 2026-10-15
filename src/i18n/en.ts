@@ -58,6 +58,7 @@ export const en: Record<TKey, string> = {
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
   trainer_quals: 'Qualifications',
+  trainer_book_admin: 'Booking and questions: ask the club administrator',
   onefit_open: 'Enter with 1Fit',
   onefit_title: 'Enter with 1Fit',
   onefit_hint: '1Fit guest: a name and phone are enough. Confirm the visit in the 1Fit app and let them in.',

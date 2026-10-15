@@ -58,6 +58,7 @@ export const kk: Record<TKey, string> = {
   auth_terms: 'Жалғастыра отырып, мүшелік шарттарымен және құпиялылық саясатымен келісесіз',
   rules_title: 'Клуб ережесі',
   trainer_quals: 'Біліктілігі',
+  trainer_book_admin: 'Жазылу және сұрақтар: клуб әкімшісінде',
   onefit_open: '1Fit бойынша кіру',
   onefit_title: '1Fit бойынша кіру',
   onefit_hint: '1Fit қонағы: аты мен телефоны жеткілікті. Визитті 1Fit қосымшасында растап, кіргізіңіз.',
