@@ -63,7 +63,7 @@ export const kk: Record<TKey, string> = {
   trainer_schedule: 'Жұмыс кестесі',
   trainer_services: 'Немен көмектеседі',
   trainer_experience: 'Тәжірибесі',
-  trainer_price: 'Сабақ құны',
+  trainer_price: 'Жаттықтырушы қызметі, айына',
   price_tba: 'Бағасы нақтылануда',
   rules_sub: 'Seven Gym-ге келу ережелері. Алғашқы жаттығу алдында танысыңыз.',
   auth_rules_agree: 'Мен клуб ережелерімен таныстым және келісемін',

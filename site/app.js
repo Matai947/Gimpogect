@@ -179,7 +179,7 @@ function render() {
         ${r.exp ? `<p class="bio"><b>${r.exp}</b></p>` : ''}
         ${r.ages ? `<p class="bio">Возраст клиентов: <b>${r.ages}</b></p>` : ''}
         ${r.schedule ? `<p class="bio">График: <b>${r.schedule}</b></p>` : ''}
-        ${r.price ? `<p class="price">${money(r.price)} ₸ <span>за занятие</span></p>` : ''}
+        ${r.price ? `<p class="price">${money(r.price)} ₸ <span>в месяц</span></p>` : ''}
         <p class="st"><a href="tel:${r.phone.replace(/\s/g, '')}"><b>${r.phone}</b></a><a href="https://wa.me/${r.phone.replace(/\D/g, '')}" target="_blank" rel="noopener">WhatsApp</a></p>
       </div>
     </article>`).join('');

@@ -59,7 +59,7 @@ export default function TrainersScreen() {
               </T>
               {tr.pricePerSession ? (
                 <T type="label" color={Colors.accent}>
-                  {formatPrice(tr.pricePerSession)} • {t('per_session')}
+                  {formatPrice(tr.pricePerSession)} {t('per_month')}
                 </T>
               ) : null}
               {tr.phone ? (

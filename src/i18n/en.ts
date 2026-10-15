@@ -63,7 +63,7 @@ export const en: Record<TKey, string> = {
   trainer_schedule: 'Working hours',
   trainer_services: 'How they help',
   trainer_experience: 'Experience',
-  trainer_price: 'Price per session',
+  trainer_price: 'Trainer service, per month',
   price_tba: 'Price on request',
   rules_sub: 'Seven Gym visiting rules. Please read them before your first workout.',
   auth_rules_agree: 'I have read the club rules and agree to them',

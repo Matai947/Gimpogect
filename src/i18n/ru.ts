@@ -64,7 +64,7 @@ export const ru = {
   trainer_schedule: 'График работы',
   trainer_services: 'Чем помогает',
   trainer_experience: 'Опыт',
-  trainer_price: 'Стоимость занятия',
+  trainer_price: 'Услуги тренера, в месяц',
   price_tba: 'Цена уточняется',
   rules_sub: 'Правила посещения Seven Gym. Пожалуйста, ознакомьтесь перед первой тренировкой.',
   auth_rules_agree: 'Я ознакомился с правилами клуба и согласен с ними',
