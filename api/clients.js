@@ -75,6 +75,7 @@ function cleanMembership(m) {
   const out = { planId: str(m.planId, 12), startDate: str(m.startDate, 10), endDate: str(m.endDate, 10), freezeDaysLeft: Math.max(0, Math.min(365, Number(m.freezeDaysLeft) || 0)) };
   if (!out.planId || !DAY.test(out.startDate) || !DAY.test(out.endDate)) return null;
   if (m.frozenUntil && DAY.test(String(m.frozenUntil))) out.frozenUntil = String(m.frozenUntil);
+  if (m.visitsLeft != null && Number.isFinite(Number(m.visitsLeft))) out.visitsLeft = Math.max(0, Math.min(1000, Math.round(Number(m.visitsLeft))));
   return out;
 }
 
@@ -200,8 +201,12 @@ module.exports = async function handler(req, res) {
       const prev = await read(id);
       if (!prev) return res.status(404).json({ error: 'unknown client' });
       const session = op === 'checkin' ? { clubId: str(body.clubId, 8) || 'c1', inTs: Date.now() } : prev.session ? { ...prev.session, outTs: Date.now() } : undefined;
-      await write(id, { ...prev, session });
-      return res.status(200).json({ ok: true });
+      // A plan with a visit counter loses one visit per calendar day (Almaty time) on the first check-in of that day.
+      const day = (ts) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10);
+      let membership = prev.membership;
+      if (op === 'checkin' && membership && membership.visitsLeft > 0 && !(prev.session && day(prev.session.inTs) === day(Date.now()))) membership = { ...membership, visitsLeft: membership.visitsLeft - 1 };
+      await write(id, { ...prev, session, ...(membership ? { membership } : {}) });
+      return res.status(200).json({ ok: true, visitsLeft: membership?.visitsLeft });
     }
 
     // Front desk: drop a forgotten password; the client sets a new one at the next sign-in.

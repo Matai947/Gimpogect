@@ -58,6 +58,8 @@ export const en: Record<TKey, string> = {
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
   trainer_quals: 'Qualifications',
+  member_no_visits: 'No visits left',
+  visits_left_n: 'Visits left: {n}',
   tc_title: 'Trainer clicks',
   tc_views: 'Views',
   tc_calls: 'Calls',

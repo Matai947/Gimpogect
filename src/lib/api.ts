@@ -3,7 +3,7 @@
 // The web build talks to the server it was loaded from; native builds use the public address.
 const BASE = process.env.EXPO_PUBLIC_API_URL ?? (typeof location !== 'undefined' && location.protocol === 'https:' ? location.origin : 'https://gym.matai.kz');
 
-export type RemoteMembership = { planId: string; startDate: string; endDate: string; freezeDaysLeft: number; frozenUntil?: string };
+export type RemoteMembership = { planId: string; startDate: string; endDate: string; freezeDaysLeft: number; frozenUntil?: string; visitsLeft?: number };
 export type RemoteProfile = { age?: number; goal?: string; heightCm?: number; weightKg?: number; targetWeightKg?: number; gender?: string; level?: string; daysPerWeek?: number };
 export type RemoteSession = { clubId: string; inTs: number; outTs?: number };
 export type RemoteClient = { id: string; name: string; phone: string; homeClubId: string; since: string; note?: string; membership?: RemoteMembership; profile?: RemoteProfile; session?: RemoteSession };
@@ -55,7 +55,7 @@ export const fetchClients = async (code: string) => (await call<{ clients: Remot
 
 export const grantRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('grant', { method: 'POST', code, body: c });
 
-export const checkinRemote = (code: string, id: string, clubId: string) => call<{ ok: true }>('checkin', { method: 'POST', code, body: { id, clubId } });
+export const checkinRemote = (code: string, id: string, clubId: string) => call<{ ok: true; visitsLeft?: number }>('checkin', { method: 'POST', code, body: { id, clubId } });
 
 export const checkoutRemote = (code: string, id: string) => call<{ ok: true }>('checkout', { method: 'POST', code, body: { id } });
 

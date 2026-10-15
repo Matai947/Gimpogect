@@ -58,6 +58,8 @@ export const kk: Record<TKey, string> = {
   auth_terms: 'Жалғастыра отырып, мүшелік шарттарымен және құпиялылық саясатымен келісесіз',
   rules_title: 'Клуб ережесі',
   trainer_quals: 'Біліктілігі',
+  member_no_visits: 'Келулер таусылды',
+  visits_left_n: 'Қалған келулер: {n}',
   tc_title: 'Жаттықтырушыларға басулар',
   tc_views: 'Қаралымдар',
   tc_calls: 'Қоңыраулар',

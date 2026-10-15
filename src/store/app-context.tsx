@@ -17,6 +17,7 @@ export type Membership = {
   endDate: string;
   frozenUntil?: string;
   freezeDaysLeft: number;
+  visitsLeft?: number; // only for plans with a visit counter
 };
 
 export type User = {
@@ -177,7 +178,8 @@ function extendMembership(cur: Membership | null, planId: string): Membership {
   if (plan.days) end.setDate(end.getDate() + plan.days);
   else end.setMonth(end.getMonth() + plan.months);
   const freezeDays = plan.trial ? 0 : (plan.freezeDays ?? 0);
-  return { planId, startDate: stillActive ? cur!.startDate : today, endDate: toISODate(end), freezeDaysLeft: (stillActive ? cur!.freezeDaysLeft : 0) + freezeDays };
+  const visitsLeft = plan.visits ? (stillActive && cur!.visitsLeft !== undefined ? cur!.visitsLeft : 0) + plan.visits : undefined;
+  return { planId, startDate: stillActive ? cur!.startDate : today, endDate: toISODate(end), freezeDaysLeft: (stillActive ? cur!.freezeDaysLeft : 0) + freezeDays, ...(visitsLeft !== undefined ? { visitsLeft } : {}) };
 }
 
 const AppContext = createContext<(State & Actions) | null>(null);
@@ -256,7 +258,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       if (uid && token) {
         const m = (await fetchMyMembership(uid, token))?.membership;
-        if (live && m && planById(m.planId)) setState((s) => (!s.membership || m.endDate > s.membership.endDate ? { ...s, membership: m } : s));
+        if (live && m && planById(m.planId)) setState((s) => (!s.membership || m.endDate > s.membership.endDate ? { ...s, membership: m } : m.endDate === s.membership.endDate && m.visitsLeft !== s.membership.visitsLeft ? { ...s, membership: { ...s.membership, visitsLeft: m.visitsLeft } } : s));
       }
     };
     tick();
@@ -338,7 +340,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (entry: Omit<CheckinEntry, 'ts'>) => {
     const ts = Date.now();
     const today = toISODate(new Date());
-    if (entry.ok && state.staffCode && state.remote.some((r) => r.id === entry.memberId)) checkinRemote(state.staffCode, entry.memberId, entry.clubId);
+    if (entry.ok && state.staffCode && state.remote.some((r) => r.id === entry.memberId)) {
+      // The server counts the visit; its answer updates the card right away.
+      checkinRemote(state.staffCode, entry.memberId, entry.clubId).then((r) => {
+        if (r && typeof r.visitsLeft === 'number') setState((s) => ({ ...s, remote: s.remote.map((c) => (c.id === entry.memberId && c.membership ? { ...c, membership: { ...c.membership, visitsLeft: r.visitsLeft } } : c)) }));
+      });
+    }
     setState((s) => {
       // A successful check-in of the device user also counts as their visit.
       const isSelf = s.user && entry.memberId === s.user.id && entry.ok;
@@ -646,7 +653,7 @@ export function useMembershipInfo() {
   const { membership } = useApp();
   return useMemo(() => {
     if (!membership) {
-      return { active: false, daysLeft: 0, frozen: false, plan: undefined, totalDays: 0, progress: 0, endDate: undefined as string | undefined };
+      return { active: false, daysLeft: 0, frozen: false, plan: undefined, totalDays: 0, progress: 0, endDate: undefined as string | undefined, visitsLeft: undefined as number | undefined };
     }
     const today = new Date();
     const end = new Date(membership.endDate);
@@ -662,6 +669,7 @@ export function useMembershipInfo() {
       totalDays,
       progress: Math.min(1, Math.max(0, 1 - daysLeft / totalDays)),
       endDate: membership.endDate,
+      visitsLeft: membership.visitsLeft,
     };
   }, [membership]);
 }
@@ -716,6 +724,7 @@ export type MemberInfo = {
   goal?: Goal;
   trainerId?: string;
   freezeDaysLeft: number;
+  visitsLeft?: number;
   bookingsToday: number;
   ordersReady: number;
   params?: string; // height / weight, known for the device user only
@@ -751,6 +760,7 @@ export function useMembers() {
         goal: m.goal,
         trainerId: m.trainerId,
         freezeDaysLeft: m.freezeDaysLeft,
+        visitsLeft: m.visitsLeft,
         bookingsToday: isSelf ? bookings.filter((b) => sessionById(b)?.date === todayIso).length : 0,
         ordersReady: (isSelf ? orders : mockOrders).filter((o) => o.status === 'Готов к выдаче' && (!isSelf ? o.memberId === m.id : true)).length,
         params: isSelf && user?.profile ? `${user.profile.heightCm} см • ${user.profile.weightKg} кг` : undefined,
@@ -764,7 +774,7 @@ export function useMembers() {
     const fresh = remote
       .filter((r) => r.id !== user?.id && !members.some((m) => m.id === r.id))
       .map((r) => {
-        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId, endDate: r.membership?.endDate, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, note: r.note, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0 }, false);
+        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId, endDate: r.membership?.endDate, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, note: r.note, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0, visitsLeft: r.membership?.visitsLeft }, false);
         info.params = r.profile?.heightCm ? `${r.profile.heightCm} см • ${r.profile.weightKg} кг` : undefined;
         return info;
       });
@@ -786,6 +796,7 @@ export function useMembers() {
         age: user.profile?.age ?? 0,
         goal: user.profile?.goal ?? 'tone',
         freezeDaysLeft: membership?.freezeDaysLeft ?? 0,
+        visitsLeft: membership?.visitsLeft,
       };
       list.unshift(build(self, true));
     }

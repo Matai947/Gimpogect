@@ -58,6 +58,11 @@ export default function MembershipScreen() {
                     {t('ms_freeze_left', { n: membership.freezeDaysLeft })}
                   </T>
                 </Row>
+                {info.visitsLeft !== undefined ? (
+                  <T type="body" style={{ fontWeight: '700' }}>
+                    {t('visits_left_n', { n: info.visitsLeft })}
+                  </T>
+                ) : null}
               </View>
               <Row gap={Spacing.two} style={{ marginTop: Spacing.three }}>
                 {info.frozen ? (

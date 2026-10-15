@@ -18,6 +18,7 @@ export type Member = {
   goal?: Goal;
   trainerId?: string;
   freezeDaysLeft: number;
+  visitsLeft?: number;
 };
 
 

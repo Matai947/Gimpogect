@@ -19,6 +19,7 @@ export function entryDecision(m: MemberInfo, t: (k: any, v?: any) => string): { 
   if (!m.planId || !m.endDate) return { ok: false, reason: t('member_no_plan') };
   if (!m.active) return { ok: false, reason: t('member_expired') };
   if (m.frozen) return { ok: false, reason: t('member_frozen') };
+  if (m.visitsLeft !== undefined && m.visitsLeft <= 0) return { ok: false, reason: t('member_no_visits') };
   if (m.dayOnly && new Date().getHours() >= 17) return { ok: false, reason: t('member_day_only') };
   return { ok: true };
 }
@@ -106,6 +107,11 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
               </T>
             ) : null}
           </Row>
+          {member.visitsLeft !== undefined ? (
+            <T type="body" style={{ fontWeight: '700' }} color={member.visitsLeft <= 2 ? Colors.warning : Colors.text}>
+              {t('visits_left_n', { n: member.visitsLeft })}
+            </T>
+          ) : null}
           <T type="small" color={Colors.textSecondary}>
             {t('member_visits_month', { n: member.visitsThisMonth })}
             {member.note ? ` • ${member.note}` : ''}

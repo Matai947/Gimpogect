@@ -49,6 +49,11 @@ export function MemberPass() {
                 {tp(m.daysLeft, 'days_pl')} {t('home_left')}
               </T>
             </View>
+          ) : null}
+          {m.active && m.visitsLeft !== undefined ? (
+            <T type="body" color={inkSoft} style={{ fontWeight: '700' }}>
+              {t('visits_left_n', { n: m.visitsLeft })}
+            </T>
           ) : (
             <T type="title" color={ink} style={{ marginTop: 6 }}>
               {t('home_no_plan_title')}
