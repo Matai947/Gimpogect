@@ -263,3 +263,4 @@ input:focus, select:focus { outline: none; border-color: var(--gold); box-shadow
 .trainer .tl.dots li::before { content: '•'; }
 .trainer .price { font: 800 22px 'Raleway'; margin: 4px 0 12px; }
 .trainer .price span { font: 500 13px 'Montserrat'; color: var(--muted); }
+.trainer .tl.chk li::before { content: '✓'; }

@@ -59,6 +59,7 @@ export const ru = {
   auth_terms: 'Продолжая, вы соглашаетесь с условиями членства и политикой конфиденциальности',
   rules_title: 'Правила клуба',
   trainer_quals: 'Квалификация',
+  trainer_why: 'Почему стоит заниматься',
   trainer_ages: 'Возраст клиентов',
   trainer_schedule: 'График работы',
   trainer_services: 'Чем помогает',

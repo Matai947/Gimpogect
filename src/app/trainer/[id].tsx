@@ -94,6 +94,19 @@ export default function TrainerScreen() {
           </View>
         ) : null}
 
+        {trainer.why?.length ? (
+          <View style={{ marginTop: Spacing.four }}>
+            <SectionHeader title={t('trainer_why')} />
+            <View style={{ gap: 6 }}>
+              {trainer.why.map((s) => (
+                <T key={s} type="body" color={Colors.textSecondary}>
+                  ✓  {s}
+                </T>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
         {trainer.experience ? (
           <View style={{ marginTop: Spacing.four }}>
             <SectionHeader title={t('trainer_experience')} />

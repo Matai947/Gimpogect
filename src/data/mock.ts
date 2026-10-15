@@ -37,6 +37,7 @@ export type Trainer = {
   photo?: ImageSourcePropType;
   services?: string[]; // what the trainer helps with
   experience?: string;
+  why?: string[]; // reasons to train with this trainer
   ages?: string; // client age range
   schedule?: string; // working days and hours
   bio: string; // qualifications, one per line
@@ -175,13 +176,30 @@ export const trainers: Trainer[] = [
     id: 't2',
     name: 'Мамыт Ерсін',
     clubId: '', // works in both clubs
-    specialties: ['Вольная борьба','Пауэрлифтинг','Жим лёжа'],
+    specialties: ['Снижение веса', 'Набор массы', 'Вольная борьба', 'Пауэрлифтинг', 'Жим лёжа'],
     rating: 0,
     reviews: 0,
     experienceYears: 0,
-    pricePerSession: 0,
+    pricePerSession: 25000,
+    photo: require('../../assets/images/trainers/ersin.jpg'),
     phone: '+7 747 038 5849',
-    bio: 'Кандидат мастера спорта по вольной борьбе, мастер спорта по пауэрлифтингу и жиму штанги лёжа.',
+    bio: 'Профессиональный фитнес-тренер\nКМС по вольной борьбе\nМС по пауэрлифтингу и жиму лёжа',
+    services: [
+      'Снижение веса и сжигание жира',
+      'Набор мышечной массы',
+      'Развитие силы и выносливости',
+      'Коррекция фигуры',
+      'Развитие физических качеств',
+      'Составление индивидуальных программ тренировок',
+    ],
+    why: [
+      'Индивидуальный подход к каждому клиенту',
+      'Индивидуальная программа под ваши цели',
+      'Контроль техники выполнения упражнений',
+      'Постепенное увеличение нагрузок',
+      'Контроль прогресса и результата',
+    ],
+    experience: 'Стаж работы более 7 лет',
     audience: '',
   },
   {
