@@ -6,6 +6,7 @@ import { useCallback, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { MemberResult, StaffAccent } from '@/components/member-result';
+import { OneFitEntry } from '@/components/onefit-entry';
 import { StaffHeader } from '@/components/staff-header';
 import { WebQrScanner } from '@/components/web-qr-scanner';
 import { Button, Row, T } from '@/components/ui';
@@ -133,6 +134,8 @@ export default function StaffScanScreen() {
             </Row>
           </Pressable>
         ) : null}
+
+        <OneFitEntry />
 
         {/* Result */}
         {result?.kind === 'member' ? <MemberResult member={result.member} onDone={reset} /> : null}

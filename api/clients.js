@@ -13,6 +13,7 @@ const TOKEN_DAYS = 180;
 // u_<phone digits> for people with a phone; x_<n> for cards imported without one (no app account).
 const ID = /^(u_\d{10,12}|x_\d{1,6})$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const dayOf = (ts) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10); // Almaty calendar day
 
 const sb = async (path, init = {}) => {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...init, headers: { apikey: SUPABASE_KEY, 'content-type': 'application/json', ...init.headers } });
@@ -207,6 +208,31 @@ module.exports = async function handler(req, res) {
       if (op === 'checkin' && membership && membership.visitsLeft > 0 && !(prev.session && day(prev.session.inTs) === day(Date.now()))) membership = { ...membership, visitsLeft: membership.visitsLeft - 1 };
       await write(id, { ...prev, session, ...(membership ? { membership } : {}) });
       return res.status(200).json({ ok: true, visitsLeft: membership?.visitsLeft });
+    }
+
+    // Front desk: let in a 1Fit member. Finds the client by phone or creates a card, and records one 1Fit visit per day.
+    if (req.method === 'POST' && op === 'onefit') {
+      const name = str(body.name, 60);
+      let d = digitsOf(body.phone);
+      if (d.length === 10) d = '7' + d;
+      else if (d.length === 11 && d[0] === '8') d = '7' + d.slice(1);
+      const phoneOk = d.length === 11;
+      const clubId = ['c1', 'c2'].includes(body.clubId) ? body.clubId : 'c1';
+      let id = phoneOk ? 'u_' + d : '';
+      let c = id ? await read(id) : null;
+      const now = Date.now();
+      if (!c) {
+        if (name.length < 2) return res.status(400).json({ error: 'name' });
+        if (!id) {
+          do id = 'x_' + (100000 + Math.floor(Math.random() * 899999));
+          while (await read(id));
+        }
+        c = { id, name, phone: phoneOk ? `+7 ${d.slice(1, 4)} ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}` : '', homeClubId: clubId, since: dayOf(now), note: '1Fit' };
+      }
+      const visits = Array.isArray(c.onefit) ? c.onefit : [];
+      if (visits.some((v) => v.d === dayOf(now))) return res.status(200).json({ ok: true, duplicate: true, id, name: c.name });
+      await write(id, { ...c, onefit: [...visits, { d: dayOf(now), c: clubId, ts: now }].slice(-300), session: { clubId, inTs: now } });
+      return res.status(200).json({ ok: true, id, name: c.name });
     }
 
     // Front desk: drop a forgotten password; the client sets a new one at the next sign-in.
