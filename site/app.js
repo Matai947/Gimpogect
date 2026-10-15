@@ -9,11 +9,15 @@ const clubs = [
 ];
 
 const plans = [
-  { n: 'pl_start', months: 1, price: 25000, per: 25000, f: [['ft_all'], ['ft_groups'], ['ft_freeze', 7]] },
-  { n: 'pl_formula', months: 3, price: 60000, old: 75000, per: 20000, f: [['ft_all'], ['ft_groups'], ['ft_freeze', 14], ['ft_guest', 1]] },
-  { n: 'pl_progress', months: 6, price: 105000, old: 150000, per: 17500, pop: true, f: [['ft_all'], ['ft_groups'], ['ft_freeze', 30], ['ft_guest', 3], ['ft_body']] },
-  { n: 'pl_champ', months: 12, price: 180000, old: 300000, per: 15000, f: [['ft_all'], ['ft_groups'], ['ft_freeze', 90], ['ft_guest', 6], ['ft_body'], ['ft_pt', 2]] },
-  { n: 'pl_day', months: 1, price: 15000, per: 15000, f: [['ft_day'], ['ft_all'], ['ft_daygroups']] },
+  { name: "Разовая тренировка", months: 0, days: 1, price: 3500, f: [['ft_visits', 1]] },
+  { name: "Дневной абонемент 12 посещений", months: 1, days: 31, price: 15000, per: 15000, f: [['ft_visits', 12], ['ft_day'], ['ft_freeze', '5']] },
+  { name: "Дневной абонемент Безлимитный", months: 1, days: 31, price: 17000, per: 17000, f: [['ft_unl'], ['ft_day'], ['ft_freeze', '5']] },
+  { name: "Полный день 12 посещений", months: 1, days: 31, price: 17000, per: 17000, f: [['ft_visits', 12], ['ft_freeze', '5']] },
+  { name: "Полный день Безлимитный", months: 1, days: 31, price: 19000, per: 19000, f: [['ft_unl'], ['ft_freeze', '5']] },
+  { name: "Абонемент безлимитный", months: 1, days: 31, price: 19000, per: 19000, f: [['ft_unl'], ['ft_freeze', '5']] },
+  { name: "3 Месяца Безлимитный", months: 3, days: 90, price: 50000, per: 16667, f: [['ft_unl'], ['ft_freeze', '7']] },
+  { name: "6 Месяцев Безлимитный", months: 6, days: 180, price: 90000, per: 15000, f: [['ft_unl'], ['ft_freeze', '10']] },
+  { name: "12 Месяцев Безлимитный", months: 12, days: 365, price: 170000, per: 14167, f: [['ft_unl'], ['ft_freeze', '2×7']] },
 ];
 
 const trainers = [
@@ -55,6 +59,7 @@ const dict = {
     trial_eyebrow: 'Без обязательств', trial_title: '3 дня пробных тренировок', trial_p: 'Бесплатно, можно без тренера. Оставь заявку, администратор активирует пробный период, и QR появится в приложении.', trial_cta: 'Попробовать',
     price_eyebrow: 'Тарифы', price_title: 'Абонементы на любой срок', price_note: 'Оплата и выдача абонемента на ресепшене любого клуба. После оплаты QR-пропуск сразу появляется в приложении. Все клубы сети входят в абонемент.',
     pl_start: 'Старт', pl_formula: 'Формула', pl_progress: 'Прогресс', pl_champ: 'Чемпион', pl_day: 'Дневной', pl_pop: 'Популярный', per_mo: '{n} ₸ в месяц',
+    ft_visits: 'посещений: {n}', ft_unl: 'Безлимит',
     ft_all: 'Все клубы сети', ft_groups: 'Групповые занятия', ft_freeze: 'Заморозка {n} дн.', ft_guest: 'Гостевых визитов: {n}', ft_body: 'Анализ состава тела', ft_pt: 'Персональных: {n}', ft_day: 'Вход с 07:00 до 17:00', ft_daygroups: 'Группы днём',
     tr_eyebrow: 'Тренеры', tr_title: 'Люди, с которыми получается', tr_exp: 'опыт {n} лет', tr_price: '{n} ₸ за занятие',
     sp_strength: 'Силовые', sp_crossfit: 'Кроссфит', sp_mass: 'Набор массы', sp_yoga: 'Йога', sp_pilates: 'Пилатес', sp_stretch: 'Растяжка', sp_box: 'Бокс', sp_kick: 'Кикбоксинг', sp_func: 'Функциональный', sp_loss: 'Похудение', sp_cardio: 'Кардио', sp_nutrition: 'Питание', sp_swim: 'Плавание', sp_aqua: 'Аква', sp_tri: 'Триатлон', sp_dance: 'Танцы', sp_zumba: 'Zumba', sp_cycle: 'Сайкл',
@@ -69,6 +74,7 @@ const dict = {
     f_name: 'Имя', f_phone: 'Телефон', f_club: 'Клуб', f_send: 'Отправить заявку', f_sending: 'Отправляем…', f_ok: 'Спасибо! Заявка принята, администратор свяжется с вами.', f_err: 'Не получилось отправить. Позвоните в клуб или напишите в WhatsApp.', f_bad: 'Проверьте имя и номер телефона.', f_any: 'Любой клуб',
     foot_p: 'Сеть фитнес-клубов в Алматы.', foot_contacts: 'Связаться', foot_app: 'Веб-версия приложения',
     months: (n) => (n === 1 ? 'месяц' : n < 5 ? 'месяца' : 'месяцев'),
+    day: 'день',
   },
   kk: {
     nav_clubs: 'Клубтар', nav_prices: 'Тарифтер', nav_trainers: 'Жаттықтырушылар', nav_app: 'Қосымша', nav_faq: 'Сұрақтар', nav_login: 'Кіру', nav_lead: 'Өтінім қалдыру',
@@ -85,6 +91,7 @@ const dict = {
     trial_eyebrow: 'Міндеттемесіз', trial_title: '3 күндік сынақ жаттығулары', trial_p: 'Тегін, жаттықтырушысыз да болады. Өтінім қалдырыңыз, әкімші сынақ мерзімін қосады және QR қосымшада пайда болады.', trial_cta: 'Байқап көру',
     price_eyebrow: 'Тарифтер', price_title: 'Кез келген мерзімге абонементтер', price_note: 'Абонементті кез келген клубтың ресепшенінде төлеп аласыз. Төлемнен кейін QR-рұқсат қосымшада бірден пайда болады. Желідегі барлық клуб абонементке кіреді.',
     pl_start: 'Бастау', pl_formula: 'Формула', pl_progress: 'Прогресс', pl_champ: 'Чемпион', pl_day: 'Күндізгі', pl_pop: 'Танымал', per_mo: 'айына {n} ₸',
+    ft_visits: 'келу саны: {n}', ft_unl: 'Шектеусіз',
     ft_all: 'Желінің барлық клубы', ft_groups: 'Топтық сабақтар', ft_freeze: '{n} күн мұздату', ft_guest: 'Қонақ келулері: {n}', ft_body: 'Дене құрамын талдау', ft_pt: 'Жеке жаттығу: {n}', ft_day: '07:00–17:00 кіру', ft_daygroups: 'Күндізгі топтар',
     tr_eyebrow: 'Жаттықтырушылар', tr_title: 'Нәтиже беретін адамдар', tr_exp: '{n} жыл тәжірибе', tr_price: 'сабағы {n} ₸',
     sp_strength: 'Күш', sp_crossfit: 'Кроссфит', sp_mass: 'Салмақ қосу', sp_yoga: 'Йога', sp_pilates: 'Пилатес', sp_stretch: 'Созылу', sp_box: 'Бокс', sp_kick: 'Кикбоксинг', sp_func: 'Функционалды', sp_loss: 'Арықтау', sp_cardio: 'Кардио', sp_nutrition: 'Тамақтану', sp_swim: 'Жүзу', sp_aqua: 'Аква', sp_tri: 'Триатлон', sp_dance: 'Би', sp_zumba: 'Zumba', sp_cycle: 'Сайкл',
@@ -99,6 +106,7 @@ const dict = {
     f_name: 'Аты', f_phone: 'Телефон', f_club: 'Клуб', f_send: 'Өтінім жіберу', f_sending: 'Жіберілуде…', f_ok: 'Рахмет! Өтінім қабылданды, әкімші сізбен байланысады.', f_err: 'Жіберу мүмкін болмады. Клубқа қоңырау шалыңыз немесе WhatsApp-қа жазыңыз.', f_bad: 'Аты мен телефон нөмірін тексеріңіз.', f_any: 'Кез келген клуб',
     foot_p: 'Алматыдағы фитнес-клубтар желісі.', foot_contacts: 'Байланыс', foot_app: 'Қосымшаның веб-нұсқасы',
     months: () => 'ай',
+    day: 'күн',
   },
   en: {
     nav_clubs: 'Clubs', nav_prices: 'Prices', nav_trainers: 'Trainers', nav_app: 'App', nav_faq: 'FAQ', nav_login: 'Log in', nav_lead: 'Request a call',
@@ -115,6 +123,7 @@ const dict = {
     trial_eyebrow: 'No commitment', trial_title: '3 days of free trial training', trial_p: 'Free, and you can come without a trainer. Leave a request, the administrator activates the trial and your QR appears in the app.', trial_cta: 'Try it',
     price_eyebrow: 'Prices', price_title: 'Memberships for any length', price_note: 'You pay and receive the membership at the front desk of any club. Right after payment the QR pass appears in the app. All clubs of the network are included.',
     pl_start: 'Start', pl_formula: 'Formula', pl_progress: 'Progress', pl_champ: 'Champion', pl_day: 'Daytime', pl_pop: 'Popular', per_mo: '{n} ₸ per month',
+    ft_visits: 'visits: {n}', ft_unl: 'Unlimited',
     ft_all: 'All clubs of the network', ft_groups: 'Group classes', ft_freeze: '{n} days of freeze', ft_guest: 'Guest visits: {n}', ft_body: 'Body composition analysis', ft_pt: 'Personal sessions: {n}', ft_day: 'Entry 07:00 to 17:00', ft_daygroups: 'Daytime classes',
     tr_eyebrow: 'Trainers', tr_title: 'People who get results', tr_exp: '{n} yrs experience', tr_price: '{n} ₸ per session',
     sp_strength: 'Strength', sp_crossfit: 'CrossFit', sp_mass: 'Muscle gain', sp_yoga: 'Yoga', sp_pilates: 'Pilates', sp_stretch: 'Stretching', sp_box: 'Boxing', sp_kick: 'Kickboxing', sp_func: 'Functional', sp_loss: 'Weight loss', sp_cardio: 'Cardio', sp_nutrition: 'Nutrition', sp_swim: 'Swimming', sp_aqua: 'Aqua', sp_tri: 'Triathlon', sp_dance: 'Dance', sp_zumba: 'Zumba', sp_cycle: 'Cycle',
@@ -129,6 +138,7 @@ const dict = {
     f_name: 'Name', f_phone: 'Phone', f_club: 'Club', f_send: 'Send request', f_sending: 'Sending…', f_ok: 'Thank you! Your request is in, the administrator will contact you.', f_err: 'Could not send. Please call the club or message us on WhatsApp.', f_bad: 'Please check your name and phone number.', f_any: 'Any club',
     foot_p: 'A network of fitness clubs in Almaty.', foot_contacts: 'Contact', foot_app: 'Web version of the app',
     months: (n) => (n === 1 ? 'month' : 'months'),
+    day: 'day',
   },
 };
 
@@ -159,11 +169,11 @@ function render() {
   $('#priceGrid').innerHTML = plans.map((p) => `
     <article class="price reveal${p.pop ? ' pop' : ''}">
       ${p.pop ? `<span class="badge">${t('pl_pop')}</span>` : ''}
-      <span class="term">${p.months} ${dict[lang].months(p.months)}</span>
-      <h3>${t(p.n)}</h3>
+      <span class="term">${p.months ? `${p.months} ${dict[lang].months(p.months)}` : `${p.days} ${dict[lang].day}`}</span>
+      <h3>${p.name}</h3>
       <span class="sum">${money(p.price)} ₸</span>
       ${p.old ? `<span class="old">${money(p.old)} ₸</span>` : ''}
-      <span class="per">${t('per_mo', { n: money(p.per) })}</span>
+      ${p.per ? `<span class="per">${t('per_mo', { n: money(p.per) })}</span>` : ''}
       <ul>${p.f.map(([k, n]) => `<li>${t(k, { n })}</li>`).join('')}</ul>
     </article>`).join('');
 

@@ -191,7 +191,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             </T>
             <Row gap={6} style={{ flexWrap: 'wrap' }}>
               {plans.map((p) => (
-                <Chip key={p.id} label={p.staffOnly ? t('guest_pass') : p.trial ? t('trial_grant') : `${td(p.name)} · ${formatPrice(p.price)}`} active={choice === p.id} onPress={() => setChoice(p.id)} />
+                <Chip key={p.id} label={p.id === 'guest' ? t('guest_pass') : p.trial ? t('trial_grant') : `${td(p.name)} · ${formatPrice(p.price)}`} active={choice === p.id} onPress={() => setChoice(p.id)} />
               ))}
             </Row>
             {chosen ? (

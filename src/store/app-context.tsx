@@ -176,7 +176,7 @@ function extendMembership(cur: Membership | null, planId: string): Membership {
   const end = stillActive ? new Date(cur!.endDate) : new Date();
   if (plan.days) end.setDate(end.getDate() + plan.days);
   else end.setMonth(end.getMonth() + plan.months);
-  const freezeDays = plan.trial ? 0 : plan.months >= 12 ? 90 : plan.months >= 6 ? 30 : plan.months >= 3 ? 14 : 7;
+  const freezeDays = plan.trial ? 0 : (plan.freezeDays ?? 0);
   return { planId, startDate: stillActive ? cur!.startDate : today, endDate: toISODate(end), freezeDaysLeft: (stillActive ? cur!.freezeDaysLeft : 0) + freezeDays };
 }
 

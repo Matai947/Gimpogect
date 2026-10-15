@@ -82,7 +82,9 @@ export type Plan = {
   trial?: boolean; // free trial, hidden from the price list; 3 days
   days?: number; // fixed-length pass instead of months
   staffOnly?: boolean; // issued only at the front desk
-  legacy?: boolean; // imported from the old system: shown on members, hidden from sale
+  legacy?: boolean; // hidden from sale but still shown on members
+  visits?: number; // visits included; unset = unlimited
+  freezeDays?: number; // total freeze days given with the plan
 };
 
 export type NewsItem = {
@@ -234,20 +236,15 @@ export const classTemplates: ClassTemplate[] = [];
 export const plans: Plan[] = [
   { id: 'trial', name: 'Пробный', months: 0, price: 0, perMonth: 0, features: ['3 дня тренировок', 'Без обязательств', 'Можно без тренера'], trial: true, days: 3 },
   { id: 'guest', name: 'Гостевой', months: 0, days: 1, price: 0, perMonth: 0, features: ['Разовый вход на сегодня'], trial: true, staffOnly: true },
-  { id: 'p1', name: 'Старт', months: 1, price: 25000, perMonth: 25000, features: ['Все клубы сети', 'Групповые занятия', 'Заморозка 7 дней'] },
-  { id: 'p3', name: 'Формула', months: 3, price: 60000, oldPrice: 75000, perMonth: 20000, features: ['Все клубы сети', 'Групповые занятия', 'Заморозка 14 дней', '1 гостевой визит'] },
-  { id: 'p6', name: 'Прогресс', months: 6, price: 105000, oldPrice: 150000, perMonth: 17500, features: ['Все клубы сети', 'Групповые занятия', 'Заморозка 30 дней', '3 гостевых визита', 'Анализ состава тела'], popular: true },
-  { id: 'p12', name: 'Чемпион', months: 12, price: 180000, oldPrice: 300000, perMonth: 15000, features: ['Все клубы сети', 'Групповые занятия', 'Заморозка 90 дней', '6 гостевых визитов', 'Анализ состава тела', '2 персональные тренировки'] },
-  { id: 'pd1', name: 'Дневной', months: 1, price: 15000, perMonth: 15000, features: ['Вход с 07:00 до 17:00', 'Все клубы сети', 'Групповые занятия днём'], dayOnly: true },
-  // Plans carried over from the clubs' previous system. Shown on imported members, not sold.
-  { id: 'i1', name: 'Полный день 12 посещений', months: 1, price: 0, perMonth: 0, features: [], legacy: true },
-  { id: 'i2', name: 'Полный день Безлимитный', months: 1, price: 0, perMonth: 0, features: [], legacy: true },
-  { id: 'i3', name: 'Дневной абонемент 12 посещений', months: 1, price: 0, perMonth: 0, features: [], legacy: true, dayOnly: true },
-  { id: 'i4', name: 'Дневной абонемент Безлимитный', months: 1, price: 0, perMonth: 0, features: [], legacy: true, dayOnly: true },
-  { id: 'i5', name: 'Абонемент безлимитный', months: 1, price: 0, perMonth: 0, features: [], legacy: true },
-  { id: 'i6', name: '3 Месяца Безлимитный', months: 3, price: 0, perMonth: 0, features: [], legacy: true },
-  { id: 'i7', name: '6 Месяцев Безлимитный', months: 6, price: 0, perMonth: 0, features: [], legacy: true },
-  { id: 'i8', name: '12 Месяцев Безлимитный', months: 12, price: 0, perMonth: 0, features: [], legacy: true },
+  { id: 'i9', name: 'Разовая тренировка', months: 0, days: 1, price: 3500, perMonth: 3500, visits: 1, features: ['1 посещение','Срок: 1 день'] },
+  { id: 'i3', name: 'Дневной абонемент 12 посещений', months: 1, days: 31, price: 15000, perMonth: 15000, visits: 12, freezeDays: 5, dayOnly: true, features: ['12 посещений','Срок: 31 дн.','Вход с 07:00 до 17:00','Заморозка: 1 раз, 5 дн.'] },
+  { id: 'i4', name: 'Дневной абонемент Безлимитный', months: 1, days: 31, price: 17000, perMonth: 17000, freezeDays: 5, dayOnly: true, features: ['Безлимит','Срок: 31 дн.','Вход с 07:00 до 17:00','Заморозка: 1 раз, 5 дн.'] },
+  { id: 'i1', name: 'Полный день 12 посещений', months: 1, days: 31, price: 17000, perMonth: 17000, visits: 12, freezeDays: 5, features: ['12 посещений','Срок: 31 дн.','Заморозка: 1 раз, 5 дн.'] },
+  { id: 'i2', name: 'Полный день Безлимитный', months: 1, days: 31, price: 19000, perMonth: 19000, freezeDays: 5, features: ['Безлимит','Срок: 31 дн.','Заморозка: 1 раз, 5 дн.'] },
+  { id: 'i5', name: 'Абонемент безлимитный', months: 1, days: 31, price: 19000, perMonth: 19000, freezeDays: 5, features: ['Безлимит','Срок: 31 дн.','Заморозка: 1 раз, 5 дн.'] },
+  { id: 'i6', name: '3 Месяца Безлимитный', months: 3, days: 90, price: 50000, perMonth: 16667, freezeDays: 7, features: ['Безлимит','Срок: 90 дн.','Заморозка: 1 раз, 7 дн.'] },
+  { id: 'i7', name: '6 Месяцев Безлимитный', months: 6, days: 180, price: 90000, perMonth: 15000, freezeDays: 10, features: ['Безлимит','Срок: 180 дн.','Заморозка: 1 раз, 10 дн.'] },
+  { id: 'i8', name: '12 Месяцев Безлимитный', months: 12, days: 365, price: 170000, perMonth: 14167, freezeDays: 14, features: ['Безлимит','Срок: 365 дн.','Заморозка: 2 раза по 7 дн.'] },
 ];
 
 export const news: NewsItem[] = [
@@ -362,6 +359,12 @@ export function clubById(id: string) {
 
 export function trainerById(id: string) {
   return trainers.find((t) => t.id === id);
+}
+
+/** "3 мес" for monthly plans, "1 день" for single visits. */
+export function planLength(p: Plan): string {
+  const lang = getLang();
+  return p.months ? `${p.months} ${translate(lang, 'months_short')}` : translate(lang, 'days_n', { n: p.days ?? 1 });
 }
 
 export function planById(id: string) {

@@ -10,7 +10,7 @@ import { ProductCard } from '@/components/product-card';
 import { Badge, Button, Card, IconButton, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTip, goalTitle } from '@/data/fitness';
-import { clubById, clubHours, clubs, formatDateHuman, formatPrice, news, occupancyLabel, sessionById, sessionStart, trainerById, trainers } from '@/data/mock';
+import { clubById, clubHours, clubs, formatDateHuman, formatPrice, news, occupancyLabel, sessionById, sessionStart, trainerById, trainers, planLength } from '@/data/mock';
 import { useApp, useCatalog, useFitnessProfile, useI18n, useMembershipInfo, usePlans, useVisitStats } from '@/store/app-context';
 
 export default function HomeScreen() {
@@ -136,7 +136,7 @@ export default function HomeScreen() {
               <Pressable key={p.id} onPress={() => router.push(`/membership?plan=${p.id}`)} style={[styles.price, p.popular && { borderColor: Colors.accent }]}>
                 <Row style={{ justifyContent: 'space-between' }}>
                   <T type="label" color={Colors.textSecondary} style={{ fontSize: 11 }}>
-                    {p.months} {tp(p.months, 'months_pl')}
+                    {planLength(p)}
                   </T>
                   {p.popular ? <Badge label={t('popular')} /> : null}
                   {p.dayOnly ? <Badge label={t('day_only')} color={Colors.info} /> : null}

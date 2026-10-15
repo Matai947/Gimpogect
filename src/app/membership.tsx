@@ -6,17 +6,17 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { Badge, Button, Card, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { clubById, formatDateLong, formatPrice } from '@/data/mock';
+import { clubById, formatDateLong, formatPrice, planLength } from '@/data/mock';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { useApp, useI18n, useMembershipInfo, usePlans } from '@/store/app-context';
 
 export default function MembershipScreen() {
   const { membership, user, freezeMembership, unfreezeMembership } = useApp();
-  const { t, tp, td } = useI18n();
+  const { t, td } = useI18n();
   const plans = usePlans();
   const info = useMembershipInfo();
   const { plan: planParam } = useLocalSearchParams<{ plan?: string }>();
-  const [selected, setSelected] = useState<string>(plans.some((p) => p.id === planParam && !p.trial) ? planParam! : (info.plan?.id ?? 'p6'));
+  const [selected, setSelected] = useState<string>(plans.some((p) => p.id === planParam && !p.trial) ? planParam! : (info.plan?.id ?? 'i6'));
   const plan = plans.find((p) => p.id === selected)!;
 
   const club = clubById(user?.homeClubId ?? 'c1');
@@ -100,7 +100,7 @@ export default function MembershipScreen() {
                         {p.dayOnly ? <Badge label={t('day_only')} color={Colors.info} /> : null}
                       </Row>
                       <T type="small" color={Colors.textSecondary}>
-                        {p.months} {tp(p.months, 'months_pl')} • {formatPrice(p.perMonth)}
+                        {planLength(p)} • {formatPrice(p.perMonth)}
                         {t('per_month')}
                       </T>
                     </View>
@@ -151,7 +151,7 @@ export default function MembershipScreen() {
       <View style={styles.footer}>
         <View style={{ flex: 1 }}>
           <T type="small" color={Colors.textSecondary}>
-            «{td(plan.name)}» • {plan.months} {t('months_short')}
+            «{td(plan.name)}» • {planLength(plan)}
           </T>
           <T type="heading">{formatPrice(plan.price)}</T>
         </View>

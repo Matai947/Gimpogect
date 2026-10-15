@@ -7,7 +7,7 @@ import { StaffAccent } from '@/components/member-result';
 import { StaffHeader } from '@/components/staff-header';
 import { Avatar, Badge, Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { formatPrice } from '@/data/mock';
+import { formatPrice, planLength } from '@/data/mock';
 import type { PayMethod } from '@/data/owner';
 import { MEMBER_DISCOUNT } from '@/data/shop';
 import { useApp, useCatalog, useI18n, useMembers, usePlans, type MemberInfo } from '@/store/app-context';
@@ -227,7 +227,7 @@ export default function StaffPosScreen() {
                       {td(p.name)}
                     </T>
                     <T type="small" color={Colors.textSecondary}>
-                      {p.months} {t('months_short')}
+                      {planLength(p)}
                     </T>
                     <T type="subheading" color={StaffAccent}>
                       {formatPrice(p.price)}

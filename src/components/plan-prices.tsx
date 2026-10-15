@@ -3,6 +3,7 @@ import { StyleSheet, TextInput, View } from 'react-native';
 
 import { Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { planLength } from '@/data/mock';
 import { useApp, useI18n, usePlans } from '@/store/app-context';
 
 /** Front desk: edit membership prices in place. Saved as you type, applied everywhere through usePlans(). */
@@ -35,7 +36,7 @@ export function PlanPrices({ accent }: { accent: string }) {
                     {td(p.name)}
                   </T>
                   <T type="small" color={Colors.textMuted}>
-                    {p.months} {t('months_short')}
+                    {planLength(p)}
                   </T>
                 </View>
                 <View style={styles.field}>
