@@ -14,14 +14,3 @@ create table if not exists leads (
 
 alter table clients enable row level security;
 alter table leads enable row level security;
-
--- Trainer views and contact taps, for the staff chart.
-create table if not exists clicks (
-  id bigint generated always as identity primary key,
-  ts bigint not null,
-  kind text not null,
-  target text not null,
-  src text not null default 'app'
-);
-create index if not exists clicks_ts on clicks (ts);
-alter table clicks enable row level security;

@@ -112,15 +112,6 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    // Anyone may report a trainer view or a contact tap; only the staff can read the totals.
-    if (req.method === 'POST' && op === 'track') {
-      const kind = ['view', 'call', 'whatsapp'].includes(body.kind) ? body.kind : '';
-      const target = /^t\d{1,3}$/.test(String(body.target)) ? String(body.target) : '';
-      if (!kind || !target) return res.status(400).json({ error: 'bad data' });
-      await sb('clicks', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ ts: Date.now(), kind, target, src: body.src === 'site' ? 'site' : 'app' }) });
-      return res.status(200).json({ ok: true });
-    }
-
     // Sign in with phone + password. Accounts created before passwords existed take the first password offered.
     if (req.method === 'POST' && op === 'login') {
       const id = str(body.id, 20);
@@ -183,12 +174,6 @@ module.exports = async function handler(req, res) {
     if (req.method === 'GET' && op === 'leads') {
       const rows = await sb('leads?select=data&order=ts.desc&limit=200');
       return res.status(200).json({ leads: rows.map((r) => r.data) });
-    }
-
-    // ponytail: newest 5000 taps of the last 60 days; aggregate in SQL if the traffic ever outgrows that.
-    if (req.method === 'GET' && op === 'clicks') {
-      const since = Date.now() - 60 * 86400000;
-      return res.status(200).json({ clicks: await sb(`clicks?select=ts,kind,target,src&ts=gte.${since}&order=ts.desc&limit=5000`) });
     }
 
     if (req.method === 'GET' && op === 'list') {

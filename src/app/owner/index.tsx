@@ -3,7 +3,6 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { OwnerAccent, OwnerHeader } from '@/components/owner-header';
 import { OneFitStat } from '@/components/onefit-stat';
-import { TrainerClicks } from '@/components/trainer-clicks';
 import { Chip, ChipRow, ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { addDays, clubById, clubs, formatPrice, toISODate } from '@/data/mock';
@@ -133,7 +132,6 @@ export default function OwnerOverview() {
           ))}
         </View>
         <OneFitStat accent={OwnerAccent} />
-        <TrainerClicks accent={OwnerAccent} />
       </ScrollView>
     </View>
   );

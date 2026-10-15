@@ -191,7 +191,7 @@ function render() {
         ${r.ages ? `<p class="bio">Возраст клиентов: <b>${r.ages}</b></p>` : ''}
         ${r.schedule ? `<p class="bio">График: <b>${r.schedule}</b></p>` : ''}
         ${r.price ? `<p class="price">${money(r.price)} ₸ <span>в месяц</span></p>` : ''}
-        <p class="st"><a href="tel:${r.phone.replace(/\s/g, '')}" data-track="call" data-target="${r.id}"><b>${r.phone}</b></a><a href="https://wa.me/${r.phone.replace(/\D/g, '')}" target="_blank" rel="noopener" data-track="whatsapp" data-target="${r.id}">WhatsApp</a></p>
+        <p class="st"><a href="tel:${r.phone.replace(/\s/g, '')}"><b>${r.phone}</b></a><a href="https://wa.me/${r.phone.replace(/\D/g, '')}" target="_blank" rel="noopener">WhatsApp</a></p>
       </div>
     </article>`).join('');
 
@@ -266,8 +266,3 @@ document.addEventListener('click', (e) => {
   window.open('https://web.whatsapp.com/send?phone=' + a.href.split('wa.me/')[1], '_blank', 'noopener');
 });
 
-// Count taps on a trainer's phone and WhatsApp links for the staff chart.
-document.addEventListener('click', (e) => {
-  const a = e.target.closest('a[data-track]');
-  if (a) fetch(API + '?op=track', { method: 'POST', keepalive: true, body: JSON.stringify({ kind: a.dataset.track, target: a.dataset.target, src: 'site' }) }).catch(() => {});
-});
