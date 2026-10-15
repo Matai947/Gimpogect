@@ -96,6 +96,27 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
           </View>
         </Row>
 
+        {member.trialAvailable ? (
+          <View style={styles.trial}>
+            <Ionicons name="gift-outline" size={22} color={Colors.success} />
+            <View style={{ flex: 1 }}>
+              <T type="body" style={{ fontWeight: '800' }} color={Colors.success}>
+                {t('trial_banner')}
+              </T>
+              <T type="small" color={Colors.textSecondary}>
+                {t('trial_banner_sub')}
+              </T>
+            </View>
+          </View>
+        ) : member.planId === 'trial' && member.active && member.endDate ? (
+          <View style={styles.trial}>
+            <Ionicons name="gift-outline" size={22} color={Colors.success} />
+            <T type="body" style={{ fontWeight: '800', flex: 1 }} color={Colors.success}>
+              {t('trial_running', { date: formatDateLong(member.endDate) })}
+            </T>
+          </View>
+        ) : null}
+
         <View style={styles.planBox}>
           <Row style={{ justifyContent: 'space-between' }}>
             <T type="body" style={{ fontWeight: '700' }} color={decision.ok ? Colors.text : Colors.danger}>
@@ -161,7 +182,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
                 </>
               ) : (
                 <>
-                  <Button title={t('give_access')} icon="key-outline" onPress={giveAccess} style={{ flex: 1 }} />
+                  <Button title={member.trialAvailable ? t('trial_give') : t('give_access')} icon={member.trialAvailable ? 'gift-outline' : 'key-outline'} onPress={() => (member.trialAvailable ? grant('trial') : giveAccess())} style={{ flex: 1 }} />
                   <Button title="" icon="close" variant="danger" onPress={deny} style={{ paddingHorizontal: 14 }} />
                 </>
               )}
@@ -196,7 +217,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
               {t('grant_pick')}
             </T>
             <Row gap={6} style={{ flexWrap: 'wrap' }}>
-              {plans.map((p) => (
+              {plans.filter((p) => !(p.trial && !p.staffOnly && !member.trialAvailable)).map((p) => (
                 <Chip key={p.id} label={p.id === 'guest' ? t('guest_pass') : p.trial ? t('trial_grant') : `${td(p.name)} · ${formatPrice(p.price)}`} active={choice === p.id} onPress={() => setChoice(p.id)} />
               ))}
             </Row>
@@ -244,5 +265,6 @@ const styles = StyleSheet.create({
   verdict: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   planBox: { backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md, padding: 12, gap: 4 },
   picker: { gap: 8, padding: 12, borderRadius: Radius.md, backgroundColor: Colors.surfaceAlt },
+  trial: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: Radius.md, backgroundColor: 'rgba(76,195,138,0.14)', borderWidth: 1, borderColor: 'rgba(76,195,138,0.5)' },
   logged: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: Radius.md, backgroundColor: 'rgba(76,195,138,0.12)' },
 });

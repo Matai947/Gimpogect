@@ -19,6 +19,7 @@ export type Member = {
   trainerId?: string;
   freezeDaysLeft: number;
   visitsLeft?: number;
+  trialUsed?: boolean;
 };
 
 

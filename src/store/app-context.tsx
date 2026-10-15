@@ -841,6 +841,7 @@ export type MemberInfo = {
   trainerId?: string;
   freezeDaysLeft: number;
   visitsLeft?: number;
+  trialAvailable: boolean; // new client: no plan, no imported history, the free 3 days not used yet
   bookingsToday: number;
   ordersReady: number;
   params?: string; // height / weight, known for the device user only
@@ -877,6 +878,7 @@ export function useMembers() {
         trainerId: m.trainerId,
         freezeDaysLeft: m.freezeDaysLeft,
         visitsLeft: m.visitsLeft,
+        trialAvailable: !isSelf && !m.planId && !m.trialUsed && !m.note,
         bookingsToday: isSelf ? bookings.filter((b) => sessionById(b)?.date === todayIso).length : 0,
         ordersReady: (isSelf ? orders : mockOrders).filter((o) => o.status === 'Готов к выдаче' && (!isSelf ? o.memberId === m.id : true)).length,
         params: isSelf && user?.profile ? `${user.profile.heightCm} см • ${user.profile.weightKg} кг` : undefined,
@@ -890,7 +892,7 @@ export function useMembers() {
     const fresh = remote
       .filter((r) => r.id !== user?.id && !members.some((m) => m.id === r.id))
       .map((r) => {
-        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId, endDate: r.membership?.endDate, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, note: r.note, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0, visitsLeft: r.membership?.visitsLeft }, false);
+        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId, endDate: r.membership?.endDate, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, note: r.note, trialUsed: r.trialUsed, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0, visitsLeft: r.membership?.visitsLeft }, false);
         info.params = r.profile?.heightCm ? `${r.profile.heightCm} см • ${r.profile.weightKg} кг` : undefined;
         return info;
       });

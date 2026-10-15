@@ -11,7 +11,7 @@ export type RemoteMembership = { planId: string; startDate: string; endDate: str
 export type RemoteProfile = { age?: number; goal?: string; heightCm?: number; weightKg?: number; targetWeightKg?: number; gender?: string; level?: string; daysPerWeek?: number };
 export type RemoteSession = { clubId: string; inTs: number; outTs?: number };
 export type OneFitVisit = { d: string; c: string; ts: number };
-export type RemoteClient = { id: string; onefit?: OneFitVisit[]; name: string; phone: string; homeClubId: string; since: string; note?: string; membership?: RemoteMembership; profile?: RemoteProfile; session?: RemoteSession };
+export type RemoteClient = { id: string; onefit?: OneFitVisit[]; name: string; phone: string; homeClubId: string; since: string; note?: string; trialUsed?: boolean; membership?: RemoteMembership; profile?: RemoteProfile; session?: RemoteSession };
 export type RemoteMe = { membership: RemoteMembership | null; name: string | null; homeClubId: string | null; profile: RemoteProfile | null };
 export type Lead = { name: string; phone: string; clubId: string; lang: string; ts: number };
 

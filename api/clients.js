@@ -365,7 +365,9 @@ module.exports = async function handler(req, res) {
       const membership = cleanMembership(body.membership);
       if (!ID.test(id) || !membership) return res.status(400).json({ error: 'bad data' });
       const prev = (await read(id)) || { id, name: str(body.name, 60) || 'Гость', phone: str(body.phone, 20), homeClubId: 'c1', since: new Date().toISOString().slice(0, 10) };
-      await write(id, { ...prev, membership });
+      // The 3 free days are given once; the flag also tells the front desk the offer is used.
+      if (membership.planId === 'trial' && prev.trialUsed) return res.status(409).json({ error: 'trial used' });
+      await write(id, { ...prev, membership, ...(membership.planId === 'trial' ? { trialUsed: true } : {}) });
       return res.status(200).json({ ok: true });
     }
 
