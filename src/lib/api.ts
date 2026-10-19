@@ -91,7 +91,13 @@ export async function trainerLoginRemote(trainerId: string, pin: string): Promis
   return { status: r.status === 401 ? 'wrong' : r.status === 429 ? 'locked' : r.status === 404 ? 'nopin' : 'offline' };
 }
 
-export type TrainerMe = { classes: ClassTemplate[]; sessions: TrainerLoad[]; clients: { name: string; ts: number; club: string }[] };
+export type Appointment = { id: string; trainerId: string; clubId: string; clientId: string; clientName: string; clientPhone: string; kind: 'weekly' | 'once'; weekdays: number[]; date: string; time: string; durationMin: number; note: string; active: boolean };
+export type TrainerMe = { classes: ClassTemplate[]; appointments: Appointment[]; sessions: TrainerLoad[]; clients: { name: string; ts: number; club: string }[] };
+
+/** Front desk: give a trainer a client and a time. The trainer sees it in their cabinet. */
+export const saveAppt = (code: string, a: Omit<Appointment, 'id' | 'active'> & { id?: string }) => call<{ ok: true; id: string }>('appt-save', { method: 'POST', code, body: a });
+export const fetchAppts = async (code: string) => (await call<{ appts: Appointment[] }>('appts', { code }))?.appts ?? null;
+export const deleteAppt = (code: string, id: string) => call<{ ok: true }>('appt-del', { method: 'POST', code, body: { id } });
 /** The signed-in trainer's own classes, recorded sessions and personal clients. null = expired or offline. */
 export const fetchTrainerMe = (trainerToken: string) => call<TrainerMe>('trainer-me', { trainerToken });
 

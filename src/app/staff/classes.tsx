@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { StaffAccent } from '@/components/member-result';
+import { AppointmentsEditor } from '@/components/admin/appointments-editor';
 import { StaffHeader } from '@/components/staff-header';
 import { Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -111,6 +112,11 @@ export default function StaffTrainerLoadScreen() {
             </T>
           ) : null}
           <Button title={t('tl_save')} icon="checkmark-circle-outline" onPress={() => void save()} disabled={busy} style={{ backgroundColor: StaffAccent }} />
+        </View>
+
+        <View style={styles.card}>
+          <T type="subheading">{t('appt_title')}</T>
+          <AppointmentsEditor accent={StaffAccent} />
         </View>
 
         <T type="subheading">{t('tl_recent')}</T>

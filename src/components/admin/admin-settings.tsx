@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import { AdminSection } from '@/components/admin/fields';
+import { AppointmentsEditor } from '@/components/admin/appointments-editor';
 import { ClassesEditor } from '@/components/admin/classes-editor';
 import { PhotosEditor } from '@/components/admin/photos-editor';
 import { PlansEditor } from '@/components/admin/plans-editor';
@@ -27,6 +28,9 @@ export function AdminSettings({ accent }: { accent: string }) {
       </AdminSection>
       <AdminSection title={t('adm_schedule')} hint={t('adm_schedule_hint')} accent={accent}>
         <ClassesEditor accent={accent} />
+      </AdminSection>
+      <AdminSection title={t('appt_title')} hint={t('appt_title_hint')} accent={accent}>
+        <AppointmentsEditor accent={accent} />
       </AdminSection>
       <AdminSection title={t('adm_promos')} hint={t('adm_promos_hint')} accent={accent}>
         <PromosEditor accent={accent} />

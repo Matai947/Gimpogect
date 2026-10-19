@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Redirect, router, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StaffAccent } from '@/components/member-result';
@@ -40,13 +40,22 @@ export default function MyTrainerScreen() {
   const trainer = trainerAuth ? trainerById(trainerAuth.id) : undefined;
 
   const days = useMemo(() => Array.from({ length: 14 }, (_, i) => addDays(new Date(), i)), []);
-  const week = useMemo(
-    () =>
-      days
-        .map((d) => ({ iso: toISODate(d), items: (me?.classes ?? []).filter((c) => c.weekdays.includes(d.getDay())).sort((a, b) => a.time.localeCompare(b.time)) }))
-        .filter((d) => d.items.length > 0),
-    [days, me],
-  );
+  // Group classes and personal sessions of the next two weeks, day by day, by time.
+  type Slot = { key: string; time: string; title: string; sub: string; color: string; phone?: string; personal: boolean };
+  const week = useMemo(() => {
+    return days
+      .map((d) => {
+        const iso = toISODate(d);
+        const group: Slot[] = (me?.classes ?? [])
+          .filter((c) => c.weekdays.includes(d.getDay()))
+          .map((c) => ({ key: 'g' + c.id + iso, time: c.time, title: c.title, sub: `${clubById(c.clubId)?.name.replace('Seven Gym ', '') ?? ''}${c.room ? ' • ' + c.room : ''} • ${c.durationMin} ${t('min')}`, color: c.color, personal: false }));
+        const personal: Slot[] = (me?.appointments ?? [])
+          .filter((a) => (a.kind === 'weekly' ? a.weekdays.includes(d.getDay()) : a.date === iso))
+          .map((a) => ({ key: 'p' + a.id + iso, time: a.time, title: a.clientName, sub: `${t('tm_personal')} • ${clubById(a.clubId)?.name.replace('Seven Gym ', '') ?? ''} • ${a.durationMin} ${t('min')}${a.note ? ' • ' + a.note : ''}`, color: StaffAccent, phone: a.clientPhone || undefined, personal: true }));
+        return { iso, items: [...group, ...personal].sort((x, y) => x.time.localeCompare(y.time)) };
+      })
+      .filter((d) => d.items.length > 0);
+  }, [days, me, t]);
 
   const thirtyAgo = toISODate(addDays(new Date(), -30));
   const sessions = (me?.sessions ?? []).filter((s) => s.date >= thirtyAgo);
@@ -111,17 +120,17 @@ export default function MyTrainerScreen() {
                   {formatDateHuman(d.iso)}
                 </T>
                 {d.items.map((c) => (
-                  <Row key={c.id + d.iso} gap={Spacing.two} style={styles.row}>
+                  <Row key={c.key} gap={Spacing.two} style={styles.row}>
                     <View style={{ width: 8, alignSelf: 'stretch', borderRadius: 4, backgroundColor: c.color }} />
                     <View style={{ flex: 1 }}>
                       <T type="small" style={{ fontWeight: '700' }} numberOfLines={1}>
                         {c.time} • {c.title}
                       </T>
-                      <T type="small" color={Colors.textMuted} numberOfLines={1}>
-                        {clubById(c.clubId)?.name.replace('Seven Gym ', '')}
-                        {c.room ? ` • ${c.room}` : ''} • {c.durationMin} {t('min')}
+                      <T type="small" color={Colors.textMuted} numberOfLines={2}>
+                        {c.sub}
                       </T>
                     </View>
+                    {c.phone ? <Ionicons name="call-outline" size={22} color={StaffAccent} onPress={() => Linking.openURL(`tel:${c.phone?.replace(/\s/g, '')}`)} accessibilityLabel={t('tm_call')} /> : null}
                   </Row>
                 ))}
               </View>

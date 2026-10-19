@@ -292,6 +292,8 @@ module.exports = async function handler(req, res) {
       const paid = await pageAll(`sales?select=data&ts=gte.${since}&${encodeURIComponent('data->>kind')}=eq.personal&${mine}&order=ts.desc`);
       return res.status(200).json({
         classes: ((await getContent()).classes || []).filter((c) => c.trainerId === id),
+        // this trainer's own clients and times, with a phone so they can reach them
+        appointments: (await pageAll(`settings?key=like.appt:*&${mine}&select=data`)).map((r) => r.data).filter((a) => a.active),
         sessions: sessions.map((r) => r.data),
         // names and dates only: what a client paid is the owner's business
         clients: paid.map((r) => ({ name: r.data.name, ts: r.data.ts, club: r.data.clubId })),
@@ -500,6 +502,44 @@ module.exports = async function handler(req, res) {
       await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'trainerpin:' + id, data: { hash: hashPassword(pin), fails: 0, lockUntil: 0, at: Date.now(), by: isOwner(req) ? 'owner' : 'staff' } }) });
       return res.status(200).json({ ok: true });
     }
+    /* ---- personal sessions: which client a trainer trains, when ----
+       Kept in private settings rows (never in the public content), seen only by the administrators and by that trainer. */
+    if (req.method === 'POST' && op === 'appt-save') {
+      const now = Date.now();
+      const id = str(body.id, 24) || 'A' + now.toString(36) + Math.random().toString(36).slice(2, 5);
+      const plain = (v) => !/[<>]/.test(v);
+      const a = {
+        id,
+        trainerId: str(body.trainerId, 6),
+        clubId: str(body.clubId, 6),
+        clientId: str(body.clientId, 20),
+        clientName: str(body.clientName, 60),
+        clientPhone: str(body.clientPhone, 25),
+        kind: body.kind === 'once' ? 'once' : 'weekly',
+        weekdays: Array.isArray(body.weekdays) ? [...new Set(body.weekdays.map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))] : [],
+        date: String(body.date || ''),
+        time: str(body.time, 5),
+        durationMin: Math.max(10, Math.min(240, Math.round(Number(body.durationMin) || 60))),
+        note: str(body.note, 200),
+        active: body.active !== false,
+      };
+      const okTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(a.time);
+      const okWhen = a.kind === 'weekly' ? a.weekdays.length > 0 : DAY.test(a.date);
+      if (!/^[A-Za-z0-9]{3,24}$/.test(id) || !TRAINER_ID.test(a.trainerId) || !(await validClub(a.clubId)) || a.clientName.length < 2 || !plain(a.clientName) || !plain(a.note) || !/^[+\d()\-\s]*$/.test(a.clientPhone) || !okTime || !okWhen) return res.status(400).json({ error: 'bad data' });
+      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'appt:' + id, data: { ...a, at: now, by: isOwner(req) ? 'owner' : 'staff' } }) });
+      return res.status(200).json({ ok: true, id });
+    }
+    if (req.method === 'GET' && op === 'appts') {
+      const rows = await pageAll('settings?key=like.appt:*&select=data');
+      return res.status(200).json({ appts: rows.map((r) => r.data) });
+    }
+    if (req.method === 'POST' && op === 'appt-del') {
+      const id = str(body.id, 24);
+      if (!/^[A-Za-z0-9]{3,24}$/.test(id)) return res.status(400).json({ error: 'bad id' });
+      await sb(`settings?key=eq.appt:${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+      return res.status(200).json({ ok: true });
+    }
+
     // Switch a trainer's access off: the PIN is deleted and every token already issued stops working.
     if (req.method === 'POST' && op === 'trainer-pin-clear') {
       const id = str(body.trainerId, 6);
