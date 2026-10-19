@@ -11,7 +11,7 @@ export type RemoteMembership = { planId: string; startDate: string; endDate: str
 export type RemoteProfile = { age?: number; goal?: string; heightCm?: number; weightKg?: number; targetWeightKg?: number; gender?: string; level?: string; daysPerWeek?: number };
 export type RemoteSession = { clubId: string; inTs: number; outTs?: number };
 export type OneFitVisit = { d: string; c: string; ts: number };
-export type RemoteClient = { id: string; onefit?: OneFitVisit[]; name: string; phone: string; homeClubId: string; since: string; note?: string; trialUsed?: boolean; membership?: RemoteMembership; profile?: RemoteProfile; session?: RemoteSession };
+export type RemoteClient = { id: string; onefit?: OneFitVisit[]; name: string; phone: string; homeClubId: string; since: string; note?: string; trialUsed?: boolean; pending?: { planId: string; days: number; freezeDays?: number; visitsLeft?: number; dayOnly?: boolean }; membership?: RemoteMembership; profile?: RemoteProfile; session?: RemoteSession };
 export type RemoteMe = { membership: RemoteMembership | null; name: string | null; homeClubId: string | null; profile: RemoteProfile | null };
 export type Lead = { name: string; phone: string; clubId: string; lang: string; ts: number };
 
@@ -46,6 +46,9 @@ export const loginClient = async (id: string, password: string) => {
 };
 
 export const fetchMyMembership = (id: string, token: string) => call<RemoteMe>('me', { query: `&id=${id}`, token });
+
+/** A fresh single-use proof for the client's own QR (valid 90 seconds). */
+export const fetchQrProof = async (id: string, token: string) => (await call<{ code: string }>('qr', { token, query: `&id=${id}` }))?.code ?? null;
 
 export const fetchLeads = async (code: string) => (await call<{ leads: Lead[] }>('leads', { code }))?.leads ?? null;
 
@@ -109,7 +112,8 @@ export const fetchTrainerPins = async (code: string) => (await call<{ set: strin
 
 export const grantRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('grant', { method: 'POST', code, body: c });
 
-export const checkinRemote = (code: string, id: string, clubId: string) => call<{ ok: true; visitsLeft?: number }>('checkin', { method: 'POST', code, body: { id, clubId } });
+/** Records an entry. With the client's QR proof the server checks it first (automatic entry); without it the desk admits by hand. */
+export const checkinRemote = (code: string, id: string, clubId: string, qr?: string) => call<{ ok: true; visitsLeft?: number; membership?: RemoteMembership | null }>('checkin', { method: 'POST', code, body: { id, clubId, ...(qr ? { qr } : {}) } });
 
 export const checkoutRemote = (code: string, id: string) => call<{ ok: true }>('checkout', { method: 'POST', code, body: { id } });
 

@@ -98,6 +98,14 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
           </View>
         </Row>
 
+        {member.pendingActivation && member.endDate ? (
+          <View style={styles.trial}>
+            <Ionicons name="calendar-outline" size={22} color={Colors.success} />
+            <T type="body" style={{ fontWeight: '800', flex: 1 }} color={Colors.success}>
+              {t('pending_banner')}
+            </T>
+          </View>
+        ) : null}
         {member.trialAvailable ? (
           <View style={styles.trial}>
             <Ionicons name="gift-outline" size={22} color={Colors.success} />

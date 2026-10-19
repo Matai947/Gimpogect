@@ -9,7 +9,7 @@ import { applyContent, promoByCode, promoDiscount, type Content, type ContentSec
 import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { trainerLoginRemote, checkinRemote, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient } from '@/lib/api';
+import { trainerLoginRemote, checkinRemote, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -139,7 +139,7 @@ type Actions = {
   ownerLogin: (code: string) => void;
   ownerLogout: () => void;
   setStaffClub: (clubId: string) => void;
-  logCheckin: (entry: Omit<CheckinEntry, 'ts'>) => void;
+  logCheckin: (entry: Omit<CheckinEntry, 'ts'>, served?: { visitsLeft?: number; membership?: RemoteMembership | null }) => void;
   checkoutMember: (memberId: string) => void;
   toggleAttendance: (sessionId: string, memberId: string) => void;
   setOrderStatus: (orderId: string, status: OrderStatus) => void;
@@ -387,15 +387,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setStaffClub = useCallback((clubId: string) => setState((s) => (s.staff ? { ...s, staff: { ...s.staff, clubId } } : s)), []);
 
   const logCheckin = useCallback(
-    (entry: Omit<CheckinEntry, 'ts'>) => {
+    (entry: Omit<CheckinEntry, 'ts'>, served?: { visitsLeft?: number; membership?: RemoteMembership | null }) => {
     const ts = Date.now();
     const today = toISODate(new Date());
-    if (entry.ok && state.staffCode && state.remote.some((r) => r.id === entry.memberId)) {
-      // The server counts the visit; its answer updates the card right away.
-      checkinRemote(state.staffCode, entry.memberId, entry.clubId).then((r) => {
-        if (r && typeof r.visitsLeft === 'number') setState((s) => ({ ...s, remote: s.remote.map((c) => (c.id === entry.memberId && c.membership ? { ...c, membership: { ...c.membership, visitsLeft: r.visitsLeft } } : c)) }));
-      });
-    }
+    // What the server answered: the visit counter, or the pass that just started at this first entry.
+    const apply = (r: { visitsLeft?: number; membership?: RemoteMembership | null } | null) => {
+      if (!r) return;
+      setState((s) => ({ ...s, remote: s.remote.map((c) => (c.id === entry.memberId ? { ...c, pending: undefined, ...(r.membership ? { membership: r.membership } : {}) } : c)) }));
+    };
+    if (served) apply(served);
+    else if (entry.ok && state.staffCode && state.remote.some((r) => r.id === entry.memberId)) checkinRemote(state.staffCode, entry.memberId, entry.clubId).then(apply);
     setState((s) => {
       // A successful check-in of the device user also counts as their visit.
       const isSelf = s.user && entry.memberId === s.user.id && entry.ok;
@@ -860,6 +861,7 @@ export type MemberInfo = {
   trainerId?: string;
   freezeDaysLeft: number;
   visitsLeft?: number;
+  pendingActivation: boolean; // an imported pass that starts at the first entry
   trialAvailable: boolean; // new client: no plan, no imported history, the free 3 days not used yet
   bookingsToday: number;
   ordersReady: number;
@@ -898,6 +900,7 @@ export function useMembers() {
         freezeDaysLeft: m.freezeDaysLeft,
         visitsLeft: m.visitsLeft,
         trialAvailable: !isSelf && !m.planId && !m.trialUsed && !m.note,
+        pendingActivation: !!m.pendingActivation,
         bookingsToday: isSelf ? bookings.filter((b) => sessionById(b)?.date === todayIso).length : 0,
         ordersReady: (isSelf ? orders : mockOrders).filter((o) => o.status === 'Готов к выдаче' && (!isSelf ? o.memberId === m.id : true)).length,
         params: isSelf && user?.profile ? `${user.profile.heightCm} см • ${user.profile.weightKg} кг` : undefined,
@@ -911,7 +914,7 @@ export function useMembers() {
     const fresh = remote
       .filter((r) => r.id !== user?.id && !members.some((m) => m.id === r.id))
       .map((r) => {
-        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId, endDate: r.membership?.endDate, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, note: r.note, trialUsed: r.trialUsed, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0, visitsLeft: r.membership?.visitsLeft }, false);
+        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId ?? r.pending?.planId, endDate: r.membership?.endDate ?? (r.pending ? toISODate(addDays(today, r.pending.days)) : undefined), pendingActivation: !!r.pending && !r.membership, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, note: r.note, trialUsed: r.trialUsed, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0, visitsLeft: r.membership?.visitsLeft ?? r.pending?.visitsLeft }, false);
         info.params = r.profile?.heightCm ? `${r.profile.heightCm} см • ${r.profile.weightKg} кг` : undefined;
         return info;
       });

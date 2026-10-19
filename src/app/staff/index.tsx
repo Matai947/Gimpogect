@@ -12,13 +12,15 @@ import { WebQrScanner } from '@/components/web-qr-scanner';
 import { Button, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { mockOrders } from '@/data/members';
+import { checkinRemote } from '@/lib/api';
 import { useApp, useI18n, useMembers, usePresence, type MemberInfo } from '@/store/app-context';
 
 type Result = { kind: 'member'; member: MemberInfo } | { kind: 'order'; id: string } | { kind: 'unknown' } | { kind: 'notfound'; q: string };
 
 export default function StaffScanScreen() {
   const { t } = useI18n();
-  const { user, orders, staff, logCheckin, autoAdmit, setAutoAdmit } = useApp();
+  const { user, orders, staff, staffCode, logCheckin, autoAdmit, setAutoAdmit } = useApp();
+  const [unverified, setUnverified] = useState(false);
   const present = usePresence();
   const { byId, list } = useMembers();
   const [permission, requestPermission] = useCameraPermissions();
@@ -65,8 +67,21 @@ export default function StaffScanScreen() {
     setResult(r);
     setPaused(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setUnverified(false);
     if (scanned && autoAdmit && r.kind === 'member' && entryDecision(r.member, t).ok && !present.some((p) => p.memberId === r.member.id)) {
-      logCheckin({ memberId: r.member.id, name: r.member.name, ok: true, clubId: staff?.clubId ?? r.member.homeClubId });
+      // Only a QR that carries the server's proof opens automatically; anything else (a phone number, an old or made-up QR) waits for the desk.
+      let proof: string | undefined;
+      try {
+        const o = JSON.parse(raw.trim()) as { c?: unknown };
+        proof = typeof o.c === 'string' ? o.c : undefined;
+      } catch {
+        proof = undefined;
+      }
+      const clubId = staff?.clubId ?? r.member.homeClubId;
+      const entry = { memberId: r.member.id, name: r.member.name, ok: true, clubId };
+      if (proof && staffCode) {
+        checkinRemote(staffCode, r.member.id, clubId, proof).then((served) => (served ? logCheckin(entry, served) : setUnverified(true)));
+      } else setUnverified(true);
     }
     if (r.kind === 'order') router.push({ pathname: '/staff/orders', params: { focus: r.id } });
   };
@@ -80,6 +95,7 @@ export default function StaffScanScreen() {
     setResult(null);
     setPaused(false);
     setManual('');
+    setUnverified(false);
   };
 
   return (
@@ -153,6 +169,12 @@ export default function StaffScanScreen() {
         ) : null}
 
         <OneFitEntry />
+
+        {unverified ? (
+          <T type="small" color={Colors.warning} style={{ fontWeight: '700', textAlign: 'center' }}>
+            {t('qr_unverified')}
+          </T>
+        ) : null}
 
         {/* Result */}
         {result?.kind === 'member' ? <MemberResult member={result.member} onDone={reset} /> : null}

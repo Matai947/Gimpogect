@@ -58,6 +58,8 @@ export const en: Record<TKey, string> = {
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
   trainer_quals: 'Qualifications',
+  qr_unverified: 'QR without the server\'s proof (the phone is offline or it is another kind of QR). Press "Let in" by hand.',
+  pending_banner: 'The pass starts at the first entry and runs from that day',
   auto_admit: 'Let in right at the scan',
   auto_admit_sub: 'The entry is recorded and a visit is taken as soon as the QR is valid. A search by name only opens the card.',
   day_only_hint: 'A daytime plan works until 17:00. For the evening a single workout can be sold at the register.',

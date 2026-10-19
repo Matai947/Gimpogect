@@ -20,6 +20,7 @@ export type Member = {
   freezeDaysLeft: number;
   visitsLeft?: number;
   trialUsed?: boolean;
+  pendingActivation?: boolean;
 };
 
 

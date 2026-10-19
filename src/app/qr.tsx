@@ -8,15 +8,17 @@ import QRCode from 'react-native-qrcode-svg';
 import { Badge, Button, Card, Row, Screen, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { DAY_ONLY_UNTIL, clubById, clubHour, formatDateLong, toISODate } from '@/data/mock';
+import { fetchQrProof } from '@/lib/api';
 import { useApp, useI18n, useMembershipInfo } from '@/store/app-context';
 
 const REFRESH_SEC = 30;
 
 export default function QrScreen() {
-  const { user, checkIn, visits } = useApp();
+  const { user, checkIn, visits, token } = useApp();
   const { t, td } = useI18n();
   const membership = useMembershipInfo();
   const [tick, setTick] = useState(0);
+  const [proof, setProof] = useState('');
   const [left, setLeft] = useState(REFRESH_SEC);
   const club = clubById(user?.homeClubId ?? 'c1');
   const visitedToday = visits.some((v) => v.date === toISODate(new Date()));
@@ -34,8 +36,15 @@ export default function QrScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  // Rotating nonce: a real backend would sign this payload and validate the timestamp.
-  const payload = JSON.stringify({ v: 1, t: 'member', uid: user?.id ?? 'guest', n: tick });
+  // A fresh server-signed proof with every refresh: the scanner can then let the client in automatically, and a screenshot or a made-up QR cannot.
+  useEffect(() => {
+    let live = true;
+    if (user && token) fetchQrProof(user.id, token).then((c) => live && setProof(c ?? ''));
+    return () => {
+      live = false;
+    };
+  }, [tick, user, token]);
+  const payload = JSON.stringify({ v: 2, t: 'member', uid: user?.id ?? 'guest', n: tick, ...(proof ? { c: proof } : {}) });
 
   const dayClosed = !!membership.plan?.dayOnly && clubHour() >= DAY_ONLY_UNTIL;
 

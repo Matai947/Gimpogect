@@ -257,6 +257,15 @@ module.exports = async function handler(req, res) {
     // Editable content is public too: prices, plans, trainers, rules, schedule, promotions, photos.
     if (req.method === 'GET' && op === 'content') return res.status(200).json({ content: await getContent() });
 
+    // A fresh single-use proof for the client's own QR (valid 90 seconds). The scanner sends it back with the check-in,
+    // so a screenshot, a guessed phone number or a hand-made QR cannot open the door automatically.
+    if (req.method === 'GET' && op === 'qr') {
+      const id = str(req.query.id, 20);
+      if (!ID.test(id) || tokenOwner(req) !== id) return res.status(401).json({ error: 'auth' });
+      const exp = Date.now() + 90000;
+      return res.status(200).json({ code: id + '.' + exp + '.' + sign('Q' + id + '.' + exp) });
+    }
+
     // A trainer signs in with the PIN the administrators set. Five wrong tries lock that trainer for 15 minutes.
     if (req.method === 'POST' && op === 'trainer-login') {
       const id = str(body.trainerId, 6);
@@ -373,20 +382,41 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST' && (op === 'checkin' || op === 'checkout')) {
       const id = str(body.id, 20);
       if (!ID.test(id)) return res.status(400).json({ error: 'bad id' });
-      const prev = await read(id);
-      if (!prev) return res.status(404).json({ error: 'unknown client' });
-      // A daytime plan is not let in from 17:00 (Almaty time), whatever the front desk's screen says.
-      if (op === 'checkin' && prev.membership?.dayOnly && new Date(Date.now() + 5 * 3600000).getUTCHours() >= 17) return res.status(403).json({ error: 'day only' });
-      // A plan with a visit counter loses one visit per calendar day (Almaty time) on the first check-in of that day.
+      const loaded = await read(id);
+      if (!loaded) return res.status(404).json({ error: 'unknown client' });
+      const now = Date.now();
       const day = (ts) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10);
+      const firstToday = !(loaded.session && day(loaded.session.inTs) === day(now));
+
+      // Automatic entry carries the proof from the client's own QR: a short-lived, single-use code signed by the server.
+      let proofExp = 0;
+      if (op === 'checkin' && body.qr) {
+        const [qid, qexp, qsig] = String(body.qr).split('.');
+        const expect = qid && qexp ? sign('Q' + qid + '.' + qexp) : '';
+        const valid = qid === id && Number(qexp) > now && !!qsig && qsig.length === expect.length && crypto.timingSafeEqual(Buffer.from(qsig), Buffer.from(expect)) && Number(qexp) > (loaded.qrUsed || 0);
+        if (!valid) return res.status(403).json({ error: 'bad qr' });
+        proofExp = Number(qexp);
+      }
+
+      // A pass imported without dates starts at the first entry: today for as many days as the plan lasts.
+      let prev = loaded;
+      if (op === 'checkin' && !loaded.membership && loaded.pending) {
+        const p = loaded.pending;
+        const { pending: _p, ...rest } = loaded;
+        prev = { ...rest, membership: { planId: p.planId, startDate: day(now), endDate: day(now + (p.days || 31) * 86400000), freezeDaysLeft: p.freezeDays || 0, ...(p.visitsLeft !== undefined ? { visitsLeft: p.visitsLeft } : {}), ...(p.dayOnly ? { dayOnly: true } : {}) } };
+      }
+
+      // A daytime plan is not let in from 17:00 (Almaty time), whatever the front desk's screen says.
+      if (op === 'checkin' && prev.membership?.dayOnly && new Date(now + 5 * 3600000).getUTCHours() >= 17) return res.status(403).json({ error: 'day only' });
       // With no visits left the next day's entry is refused here too (coming back the same day, after the last visit, is still fine).
-      if (op === 'checkin' && prev.membership?.visitsLeft !== undefined && prev.membership.visitsLeft <= 0 && !(prev.session && day(prev.session.inTs) === day(Date.now()))) return res.status(403).json({ error: 'no visits' });
-      const session = op === 'checkin' ? { clubId: str(body.clubId, 8) || 'c1', inTs: Date.now() } : prev.session ? { ...prev.session, outTs: Date.now() } : undefined;
+      if (op === 'checkin' && prev.membership?.visitsLeft !== undefined && prev.membership.visitsLeft <= 0 && firstToday) return res.status(403).json({ error: 'no visits' });
+      const session = op === 'checkin' ? { clubId: str(body.clubId, 8) || 'c1', inTs: now } : prev.session ? { ...prev.session, outTs: now } : undefined;
       let membership = prev.membership;
-      if (op === 'checkin' && !(prev.session && day(prev.session.inTs) === day(Date.now()))) await logVisit(session.clubId, id, 'qr');
-      if (op === 'checkin' && membership && membership.visitsLeft > 0 && !(prev.session && day(prev.session.inTs) === day(Date.now()))) membership = { ...membership, visitsLeft: membership.visitsLeft - 1 };
-      await write(id, { ...prev, session, ...(membership ? { membership } : {}) });
-      return res.status(200).json({ ok: true, visitsLeft: membership?.visitsLeft });
+      if (op === 'checkin' && firstToday) await logVisit(session.clubId, id, 'qr');
+      // A plan with a visit counter loses one visit per calendar day on the first check-in of that day.
+      if (op === 'checkin' && membership && membership.visitsLeft > 0 && firstToday) membership = { ...membership, visitsLeft: membership.visitsLeft - 1 };
+      await write(id, { ...prev, session, ...(membership ? { membership } : {}), ...(proofExp ? { qrUsed: proofExp } : {}) });
+      return res.status(200).json({ ok: true, visitsLeft: membership?.visitsLeft, membership: membership ?? null });
     }
 
     // Front desk: let in a 1Fit member. Finds the client by phone or creates a card, and records one 1Fit visit per day.
@@ -433,7 +463,9 @@ module.exports = async function handler(req, res) {
       const prev = (await read(id)) || { id, name: str(body.name, 60) || 'Гость', phone: str(body.phone, 20), homeClubId: 'c1', since: new Date().toISOString().slice(0, 10) };
       // The 3 free days are given once; the flag also tells the front desk the offer is used.
       if (membership.planId === 'trial' && prev.trialUsed) return res.status(409).json({ error: 'trial used' });
-      await write(id, { ...prev, membership, ...(membership.planId === 'trial' ? { trialUsed: true } : {}) });
+      // A plan given at the desk replaces a pass that was waiting for its first entry.
+      const { pending: _waiting, ...current } = prev;
+      await write(id, { ...current, membership, ...(membership.planId === 'trial' ? { trialUsed: true } : {}) });
       return res.status(200).json({ ok: true });
     }
 
