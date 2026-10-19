@@ -19,6 +19,7 @@ export type Membership = {
   frozenUntil?: string;
   freezeDaysLeft: number;
   visitsLeft?: number; // only for plans with a visit counter
+  dayOnly?: boolean; // daytime plan: no entry from 17:00 (the server checks it too)
 };
 
 export type User = {
@@ -195,7 +196,7 @@ function extendMembership(cur: Membership | null, planId: string): Membership {
   else end.setMonth(end.getMonth() + plan.months);
   const freezeDays = plan.trial ? 0 : (plan.freezeDays ?? 0);
   const visitsLeft = plan.visits ? (stillActive && cur!.visitsLeft !== undefined ? cur!.visitsLeft : 0) + plan.visits : undefined;
-  return { planId, startDate: stillActive ? cur!.startDate : today, endDate: toISODate(end), freezeDaysLeft: (stillActive ? cur!.freezeDaysLeft : 0) + freezeDays, ...(visitsLeft !== undefined ? { visitsLeft } : {}) };
+  return { planId, startDate: stillActive ? cur!.startDate : today, endDate: toISODate(end), freezeDaysLeft: (stillActive ? cur!.freezeDaysLeft : 0) + freezeDays, ...(visitsLeft !== undefined ? { visitsLeft } : {}), ...(plan.dayOnly ? { dayOnly: true } : {}) };
 }
 
 const AppContext = createContext<(State & Actions) | null>(null);

@@ -214,6 +214,7 @@ function cleanMembership(m) {
   const out = { planId: str(m.planId, 12), startDate: str(m.startDate, 10), endDate: str(m.endDate, 10), freezeDaysLeft: Math.max(0, Math.min(365, Number(m.freezeDaysLeft) || 0)) };
   if (!out.planId || !DAY.test(out.startDate) || !DAY.test(out.endDate)) return null;
   if (m.frozenUntil && DAY.test(String(m.frozenUntil))) out.frozenUntil = String(m.frozenUntil);
+  if (m.dayOnly === true) out.dayOnly = true;
   if (m.visitsLeft != null && Number.isFinite(Number(m.visitsLeft))) out.visitsLeft = Math.max(0, Math.min(1000, Math.round(Number(m.visitsLeft))));
   return out;
 }
@@ -374,6 +375,8 @@ module.exports = async function handler(req, res) {
       if (!ID.test(id)) return res.status(400).json({ error: 'bad id' });
       const prev = await read(id);
       if (!prev) return res.status(404).json({ error: 'unknown client' });
+      // A daytime plan is not let in from 17:00 (Almaty time), whatever the front desk's screen says.
+      if (op === 'checkin' && prev.membership?.dayOnly && new Date(Date.now() + 5 * 3600000).getUTCHours() >= 17) return res.status(403).json({ error: 'day only' });
       const session = op === 'checkin' ? { clubId: str(body.clubId, 8) || 'c1', inTs: Date.now() } : prev.session ? { ...prev.session, outTs: Date.now() } : undefined;
       // A plan with a visit counter loses one visit per calendar day (Almaty time) on the first check-in of that day.
       const day = (ts) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10);

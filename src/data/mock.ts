@@ -382,6 +382,11 @@ export function sessionStart(s: ClassSession): Date {
   return d;
 }
 
+/** A daytime plan lets people in until this hour (clubs' time). */
+export const DAY_ONLY_UNTIL = 17;
+/** The hour on the clubs' clock (Almaty, UTC+5), whatever time zone the phone is set to. */
+export const clubHour = (ts: number = Date.now()) => new Date(ts + 5 * 3600000).getUTCHours();
+
 export function clubById(id: string) {
   return allClubs.find((c) => c.id === id);
 }

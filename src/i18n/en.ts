@@ -58,6 +58,7 @@ export const en: Record<TKey, string> = {
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
   trainer_quals: 'Qualifications',
+  day_only_hint: 'A daytime plan works until 17:00. For the evening a single workout can be sold at the register.',
   appt_title: '2. Trainers\' clients and schedule',
   tl_title: '1. How many sessions the trainer worked',
   appt_title_hint: 'Who trains with which trainer and when',

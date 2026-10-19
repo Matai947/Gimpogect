@@ -7,7 +7,7 @@ import QRCode from 'react-native-qrcode-svg';
 
 import { Badge, Button, Card, Row, Screen, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { clubById, formatDateLong, toISODate } from '@/data/mock';
+import { DAY_ONLY_UNTIL, clubById, clubHour, formatDateLong, toISODate } from '@/data/mock';
 import { useApp, useI18n, useMembershipInfo } from '@/store/app-context';
 
 const REFRESH_SEC = 30;
@@ -37,8 +37,10 @@ export default function QrScreen() {
   // Rotating nonce: a real backend would sign this payload and validate the timestamp.
   const payload = JSON.stringify({ v: 1, t: 'member', uid: user?.id ?? 'guest', n: tick });
 
+  const dayClosed = !!membership.plan?.dayOnly && clubHour() >= DAY_ONLY_UNTIL;
+
   const simulate = () => {
-    if (!membership.active || membership.frozen) return;
+    if (!membership.active || membership.frozen || dayClosed) return;
     checkIn(club?.id ?? 'c1');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     Alert.alert(t('welcome_title'), t('welcome_body', { club: club?.name ?? '' }), [{ text: t('thanks'), onPress: () => router.back() }]);
@@ -51,13 +53,13 @@ export default function QrScreen() {
       </T>
 
       <View style={styles.qrCard}>
-        {membership.active && !membership.frozen ? (
+        {membership.active && !membership.frozen && !dayClosed ? (
           <QRCode value={payload} size={230} backgroundColor="#FFFFFF" color="#0B0F14" />
         ) : (
           <View style={{ width: 230, height: 230, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <Ionicons name="lock-closed" size={48} color="#5B6673" />
             <T type="body" color="#5B6673" style={{ textAlign: 'center' }}>
-              {membership.frozen ? t('frozen_title') : t('qr_no_plan')}
+              {membership.frozen ? t('frozen_title') : dayClosed ? t('member_day_only') : t('qr_no_plan')}
             </T>
           </View>
         )}

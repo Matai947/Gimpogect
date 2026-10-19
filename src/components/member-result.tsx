@@ -7,7 +7,7 @@ import { Avatar, Badge, Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
 import { resetPasswordRemote } from '@/lib/api';
-import { clubById, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
+import { DAY_ONLY_UNTIL, clubById, clubHour, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
 import { useApp, useI18n, useMembers, usePlans, usePresence, type MemberInfo } from '@/store/app-context';
 
 export const hm = (ts: number) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -20,7 +20,7 @@ export function entryDecision(m: MemberInfo, t: (k: any, v?: any) => string): { 
   if (!m.active) return { ok: false, reason: t('member_expired') };
   if (m.frozen) return { ok: false, reason: t('member_frozen') };
   if (m.visitsLeft !== undefined && m.visitsLeft <= 0) return { ok: false, reason: t('member_no_visits') };
-  if (m.dayOnly && new Date().getHours() >= 17) return { ok: false, reason: t('member_day_only') };
+  if (m.dayOnly && clubHour() >= DAY_ONLY_UNTIL) return { ok: false, reason: t('member_day_only') };
   return { ok: true };
 }
 
@@ -46,6 +46,8 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
     setGranted(planId);
   };
   const decision = entryDecision(member, t);
+  // A daytime plan is not let in during the evening, and the desk cannot override that: a single workout is sold instead.
+  const dayBlocked = member.dayOnly && member.active && !member.frozen && clubHour() >= DAY_ONLY_UNTIL;
   const club = clubById(member.homeClubId);
 
   const allow = () => {
@@ -137,6 +139,11 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             {t('member_visits_month', { n: member.visitsThisMonth })}
             {member.note ? ` • ${member.note}` : ''}
           </T>
+          {dayBlocked ? (
+            <T type="small" color={Colors.textSecondary}>
+              {t('day_only_hint')}
+            </T>
+          ) : null}
           {!decision.ok ? (
             <Row gap={6} style={{ marginTop: 4 }}>
               <Ionicons name="alert-circle" size={14} color={Colors.danger} />
@@ -182,7 +189,8 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
                 </>
               ) : (
                 <>
-                  <Button title={member.trialAvailable ? t('trial_give') : t('give_access')} icon={member.trialAvailable ? 'gift-outline' : 'key-outline'} onPress={() => (member.trialAvailable ? grant('trial') : giveAccess())} style={{ flex: 1 }} />
+                  {dayBlocked ? <View style={{ flex: 1 }} /> : null}
+                  {dayBlocked ? null : <Button title={member.trialAvailable ? t('trial_give') : t('give_access')} icon={member.trialAvailable ? 'gift-outline' : 'key-outline'} onPress={() => (member.trialAvailable ? grant('trial') : giveAccess())} style={{ flex: 1 }} />}
                   <Button title="" icon="close" variant="danger" onPress={deny} style={{ paddingHorizontal: 14 }} />
                 </>
               )}
