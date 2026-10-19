@@ -3,22 +3,23 @@ import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'ex
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 
-import { MemberResult, StaffAccent } from '@/components/member-result';
+import { MemberResult, StaffAccent, entryDecision } from '@/components/member-result';
 import { OneFitEntry } from '@/components/onefit-entry';
 import { StaffHeader } from '@/components/staff-header';
 import { WebQrScanner } from '@/components/web-qr-scanner';
 import { Button, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { mockOrders } from '@/data/members';
-import { useApp, useI18n, useMembers, type MemberInfo } from '@/store/app-context';
+import { useApp, useI18n, useMembers, usePresence, type MemberInfo } from '@/store/app-context';
 
 type Result = { kind: 'member'; member: MemberInfo } | { kind: 'order'; id: string } | { kind: 'unknown' } | { kind: 'notfound'; q: string };
 
 export default function StaffScanScreen() {
   const { t } = useI18n();
-  const { user, orders } = useApp();
+  const { user, orders, staff, logCheckin, autoAdmit, setAutoAdmit } = useApp();
+  const present = usePresence();
   const { byId, list } = useMembers();
   const [permission, requestPermission] = useCameraPermissions();
   const [result, setResult] = useState<Result | null>(null);
@@ -57,17 +58,22 @@ export default function StaffScanScreen() {
     [orders, byId, list]
   );
 
-  const handle = (raw: string) => {
+  // A scanned QR of a valid member is let in at once: the entry is recorded and a visit is taken from a visit plan
+  // (once per day, the server decides). A manual search only opens the card.
+  const handle = (raw: string, scanned = false) => {
     const r = resolve(raw);
     setResult(r);
     setPaused(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    if (scanned && autoAdmit && r.kind === 'member' && entryDecision(r.member, t).ok && !present.some((p) => p.memberId === r.member.id)) {
+      logCheckin({ memberId: r.member.id, name: r.member.name, ok: true, clubId: staff?.clubId ?? r.member.homeClubId });
+    }
     if (r.kind === 'order') router.push({ pathname: '/staff/orders', params: { focus: r.id } });
   };
 
   const onScan = (res: BarcodeScanningResult) => {
     if (paused) return;
-    handle(res.data);
+    handle(res.data, true);
   };
 
   const reset = () => {
@@ -83,7 +89,7 @@ export default function StaffScanScreen() {
         {/* Camera */}
         <View style={styles.cameraWrap}>
           {!canCamera ? (
-            <WebQrScanner onScan={(d) => { if (!paused) handle(d); }} paused={paused} permissionText={t('scan_permission')} allowText={t('scan_allow')} accent={StaffAccent} />
+            <WebQrScanner onScan={(d) => { if (!paused) handle(d, true); }} paused={paused} permissionText={t('scan_permission')} allowText={t('scan_allow')} accent={StaffAccent} />
           ) : permission?.granted ? (
             <CameraView style={StyleSheet.absoluteFill} facing="back" barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={paused ? undefined : onScan} />
           ) : (
@@ -113,6 +119,17 @@ export default function StaffScanScreen() {
         <T type="small" color={Colors.textSecondary} style={{ textAlign: 'center' }}>
           {t('scan_hint')}
         </T>
+        <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flex: 1, paddingRight: Spacing.two }}>
+            <T type="body" style={{ fontWeight: '700' }}>
+              {t('auto_admit')}
+            </T>
+            <T type="small" color={Colors.textSecondary}>
+              {t('auto_admit_sub')}
+            </T>
+          </View>
+          <Switch value={autoAdmit} onValueChange={setAutoAdmit} trackColor={{ true: StaffAccent }} />
+        </Row>
 
         {/* Manual entry */}
         <View style={styles.manual}>

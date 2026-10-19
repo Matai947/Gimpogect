@@ -377,9 +377,11 @@ module.exports = async function handler(req, res) {
       if (!prev) return res.status(404).json({ error: 'unknown client' });
       // A daytime plan is not let in from 17:00 (Almaty time), whatever the front desk's screen says.
       if (op === 'checkin' && prev.membership?.dayOnly && new Date(Date.now() + 5 * 3600000).getUTCHours() >= 17) return res.status(403).json({ error: 'day only' });
-      const session = op === 'checkin' ? { clubId: str(body.clubId, 8) || 'c1', inTs: Date.now() } : prev.session ? { ...prev.session, outTs: Date.now() } : undefined;
       // A plan with a visit counter loses one visit per calendar day (Almaty time) on the first check-in of that day.
       const day = (ts) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10);
+      // With no visits left the next day's entry is refused here too (coming back the same day, after the last visit, is still fine).
+      if (op === 'checkin' && prev.membership?.visitsLeft !== undefined && prev.membership.visitsLeft <= 0 && !(prev.session && day(prev.session.inTs) === day(Date.now()))) return res.status(403).json({ error: 'no visits' });
+      const session = op === 'checkin' ? { clubId: str(body.clubId, 8) || 'c1', inTs: Date.now() } : prev.session ? { ...prev.session, outTs: Date.now() } : undefined;
       let membership = prev.membership;
       if (op === 'checkin' && !(prev.session && day(prev.session.inTs) === day(Date.now()))) await logVisit(session.clubId, id, 'qr');
       if (op === 'checkin' && membership && membership.visitsLeft > 0 && !(prev.session && day(prev.session.inTs) === day(Date.now()))) membership = { ...membership, visitsLeft: membership.visitsLeft - 1 };

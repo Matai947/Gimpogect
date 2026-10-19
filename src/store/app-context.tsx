@@ -75,6 +75,7 @@ type State = {
   remote: RemoteClient[]; // clients registered from any device, fetched while staff or owner is signed in
   serverSales: Sale[] | null; // the shared books from the server (null until first loaded)
   clubConfig: ClubConfig[]; // the network's clubs as the owner set them, kept for the next start
+  autoAdmit: boolean; // the scanner records the entry (and takes a visit) as soon as a valid QR is scanned
   trainerAuth: { id: string; token: string } | null; // a trainer signed in with their PIN
   content: Content; // prices, plans, trainers, rules, schedule, promotions, photos set by the administrators
   contentStatus: 'idle' | 'saving' | 'ok' | 'fail'; // last save to the server (not kept on the device)
@@ -113,6 +114,7 @@ type Actions = {
   saveContent: (section: ContentSection, data: unknown) => void;
   trainerLogin: (trainerId: string, pin: string) => Promise<'ok' | 'wrong' | 'locked' | 'nopin' | 'offline'>;
   trainerLogout: () => void;
+  setAutoAdmit: (v: boolean) => void;
   setPlanPrice: (planId: string, price: number, oldPrice?: number) => void;
   freezeMembership: (days: number) => void;
   unfreezeMembership: () => void;
@@ -169,6 +171,7 @@ const initialState: State = {
   remote: [],
   serverSales: null,
   clubConfig: [],
+  autoAdmit: true,
   trainerAuth: null,
   content: {},
   contentStatus: 'idle',
@@ -574,6 +577,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (r.status === 'ok') setState((s) => ({ ...s, trainerAuth: { id: trainerId, token: r.token } }));
     return r.status;
   }, []);
+  const setAutoAdmit = useCallback((v: boolean) => setState((s) => ({ ...s, autoAdmit: v })), []);
   const trainerLogout = useCallback(() => setState((s) => ({ ...s, trainerAuth: null })), []);
 
   /** Owner: save the list of clubs (add a branch, edit one, switch one off). */
@@ -716,6 +720,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveContent,
       trainerLogin,
       trainerLogout,
+      setAutoAdmit,
       setPlanPrice,
       freezeMembership,
       unfreezeMembership,
@@ -748,7 +753,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, recordSale, refreshSales, saveClubConfig, saveContent, trainerLogin, trainerLogout, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, recordSale, refreshSales, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
