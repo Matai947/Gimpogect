@@ -191,16 +191,19 @@ const tokenOwner = (req) => {
 };
 /* ---- trainers: a PIN set by the administrators, a token that opens only that trainer's own data ---- */
 const TRAINER_ID = /^t\d{1,3}$/;
-const trainerToken = (id) => {
-  const payload = 'T' + id + '.' + (Date.now() + 30 * 86400000);
+// The token carries the version (time) of the PIN it was issued for: changing or removing the PIN revokes every earlier token.
+const trainerToken = (id, version) => {
+  const payload = 'T' + id + '.' + version + '.' + (Date.now() + 14 * 86400000);
   return payload + '.' + sign(payload);
 };
-/** The trainer id the token belongs to, or null. */
-const trainerFrom = (req) => {
-  const [who, exp, sig] = String(req.headers['x-trainer'] || '').split('.');
-  if (!who || !exp || !sig || !/^Tt\d{1,3}$/.test(who) || Number(exp) < Date.now()) return null;
-  const expect = sign(who + '.' + exp);
-  return sig.length === expect.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect)) ? who.slice(1) : null;
+/** The trainer id the token belongs to, or null (bad signature, expired, or the PIN was changed or removed since). */
+const trainerFrom = async (req) => {
+  const [who, version, exp, sig] = String(req.headers['x-trainer'] || '').split('.');
+  if (!who || !version || !exp || !sig || !/^Tt\d{1,3}$/.test(who) || Number(exp) < Date.now()) return null;
+  const expect = sign(who + '.' + version + '.' + exp);
+  if (sig.length !== expect.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect))) return null;
+  const rec = (await sb(`settings?key=eq.trainerpin:${who.slice(1)}&select=data`))[0]?.data;
+  return rec && String(rec.at) === version ? who.slice(1) : null;
 };
 
 const account = (c) => (c ? { membership: c.membership ?? null, name: c.name ?? null, homeClubId: c.homeClubId ?? null, profile: c.profile ?? null } : null);
@@ -257,24 +260,28 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST' && op === 'trainer-login') {
       const id = str(body.trainerId, 6);
       const pin = String(body.pin ?? '');
-      if (!TRAINER_ID.test(id) || !/^\d{4,8}$/.test(pin)) return res.status(400).json({ error: 'bad data' });
+      if (!TRAINER_ID.test(id) || !/^\d{6,8}$/.test(pin)) return res.status(400).json({ error: 'bad data' });
       const key = 'trainerpin:' + id;
       const rec = (await sb(`settings?key=eq.${key}&select=data`))[0]?.data;
       if (!rec) return res.status(404).json({ error: 'no pin' });
       if (rec.lockUntil > Date.now()) return res.status(429).json({ error: 'locked' });
-      const save = (data) => sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key, data: { ...rec, ...data } }) });
+      const tries = rec.fails || 0;
+      // The try is counted BEFORE the PIN is checked, and only one request can move the counter from this state
+      // (the update matches only while it still reads what we read), so parallel guesses cannot dodge the lockout.
+      const counted = await sb(`settings?key=eq.${key}&${encodeURIComponent('data->>fails')}=eq.${tries}&${encodeURIComponent('data->>lockUntil')}=eq.${rec.lockUntil || 0}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { ...rec, fails: tries + 1 } }) });
+      if (counted.length !== 1) return res.status(429).json({ error: 'busy' });
+      const settle = (patch) => sb(`settings?key=eq.${key}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...rec, ...patch } }) });
       if (!checkPassword(pin, rec.hash)) {
-        const fails = (rec.fails || 0) + 1;
-        await save(fails >= 5 ? { fails: 0, lockUntil: Date.now() + 15 * 60000 } : { fails });
+        if (tries + 1 >= 5) await settle({ fails: 0, lockUntil: Date.now() + 15 * 60000 });
         return res.status(401).json({ error: 'wrong pin' });
       }
-      if (rec.fails) await save({ fails: 0 });
-      return res.status(200).json({ token: trainerToken(id), trainerId: id });
+      await settle({ fails: 0 });
+      return res.status(200).json({ token: trainerToken(id, rec.at), trainerId: id });
     }
 
     // A trainer's own data: their classes, the sessions the administrators recorded for them and their personal clients.
     if (req.method === 'GET' && op === 'trainer-me') {
-      const id = trainerFrom(req);
+      const id = await trainerFrom(req);
       if (!id) return res.status(401).json({ error: 'auth' });
       const since = Date.now() - 60 * 86400000;
       const mine = encodeURIComponent('data->>trainerId') + '=eq.' + id;
@@ -486,8 +493,15 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST' && op === 'trainer-pin') {
       const id = str(body.trainerId, 6);
       const pin = String(body.pin ?? '');
-      if (!TRAINER_ID.test(id) || !/^\d{4,8}$/.test(pin)) return res.status(400).json({ error: 'bad data' });
+      if (!TRAINER_ID.test(id) || !/^\d{6,8}$/.test(pin)) return res.status(400).json({ error: 'bad data' });
       await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'trainerpin:' + id, data: { hash: hashPassword(pin), fails: 0, lockUntil: 0, at: Date.now(), by: isOwner(req) ? 'owner' : 'staff' } }) });
+      return res.status(200).json({ ok: true });
+    }
+    // Switch a trainer's access off: the PIN is deleted and every token already issued stops working.
+    if (req.method === 'POST' && op === 'trainer-pin-clear') {
+      const id = str(body.trainerId, 6);
+      if (!TRAINER_ID.test(id)) return res.status(400).json({ error: 'bad data' });
+      await sb(`settings?key=eq.trainerpin:${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
       return res.status(200).json({ ok: true });
     }
     if (req.method === 'GET' && op === 'trainer-pins') {

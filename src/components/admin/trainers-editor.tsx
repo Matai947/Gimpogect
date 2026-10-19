@@ -5,7 +5,7 @@ import { Field, fromLines, PhotoPicker, toLines, Toggle } from '@/components/adm
 import { Button, Row, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { trainerCatalog, type TrainerCfg } from '@/data/content';
-import { fetchTrainerPins, setTrainerPin } from '@/lib/api';
+import { clearTrainerPin, fetchTrainerPins, setTrainerPin } from '@/lib/api';
 import { formatPrice } from '@/data/mock';
 import { useApp, useI18n } from '@/store/app-context';
 
@@ -44,8 +44,15 @@ export function TrainersEditor({ accent }: { accent: string }) {
     };
   }, [staffCode]);
 
+  const removePin = async () => {
+    if (!form || !staffCode) return;
+    const ok = await clearTrainerPin(staffCode, form.id);
+    setPinMsg(ok ? 'ok' : 'fail');
+    if (ok) setPinsSet((p) => p.filter((x) => x !== form.id));
+  };
+
   const savePin = async () => {
-    if (!form || !staffCode || !/^\d{4,8}$/.test(pin)) return;
+    if (!form || !staffCode || !/^\d{6,8}$/.test(pin)) return;
     const ok = await setTrainerPin(staffCode, form.id, pin);
     setPinMsg(ok ? 'ok' : 'fail');
     if (ok) {
@@ -136,7 +143,8 @@ export function TrainersEditor({ accent }: { accent: string }) {
           {!form.isNew ? (
             <View style={{ gap: Spacing.two }}>
               <Field label={`${t('tm_pin_label')} (${pinsSet.includes(form.id) ? t('tm_pin_set') : t('tm_pin_unset')})`} value={pin} onChange={(v) => { setPin(v.replace(/\D/g, '').slice(0, 8)); setPinMsg(null); }} keyboard="number-pad" placeholder="••••" />
-              <Button title={t('tm_pin_save')} icon="key-outline" variant="secondary" size="sm" onPress={() => void savePin()} disabled={!/^\d{4,8}$/.test(pin)} />
+              <Button title={t('tm_pin_save')} icon="key-outline" variant="secondary" size="sm" onPress={() => void savePin()} disabled={!/^\d{6,8}$/.test(pin)} />
+              {pinsSet.includes(form.id) ? <Button title={t('tm_pin_clear')} variant="ghost" size="sm" onPress={() => void removePin()} /> : null}
               {pinMsg ? (
                 <T type="small" color={pinMsg === 'ok' ? Colors.success : Colors.danger} style={{ fontWeight: '700' }}>
                   {pinMsg === 'ok' ? t('tm_pin_saved') : t('tm_pin_failed')}

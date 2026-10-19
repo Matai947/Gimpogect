@@ -75,7 +75,7 @@ export default function TrainerLoginScreen() {
                 {error}
               </T>
             ) : null}
-            <Button title={t('tm_go')} icon="log-in-outline" size="lg" onPress={() => void enter()} disabled={pin.length < 4 || busy || !id} style={{ marginTop: Spacing.three, backgroundColor: StaffAccent }} />
+            <Button title={t('tm_go')} icon="log-in-outline" size="lg" onPress={() => void enter()} disabled={pin.length < 6 || busy || !id} style={{ marginTop: Spacing.three, backgroundColor: StaffAccent }} />
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

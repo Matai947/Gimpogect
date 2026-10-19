@@ -97,6 +97,8 @@ export const fetchTrainerMe = (trainerToken: string) => call<TrainerMe>('trainer
 
 /** Administrators give a trainer a PIN (4–8 digits). It cannot be read back, only replaced. */
 export const setTrainerPin = (code: string, trainerId: string, pin: string) => call<{ ok: true }>('trainer-pin', { method: 'POST', code, body: { trainerId, pin } });
+/** Switch a trainer's sign-in off: the PIN is deleted and the trainer's open sessions end. */
+export const clearTrainerPin = (code: string, trainerId: string) => call<{ ok: true }>('trainer-pin-clear', { method: 'POST', code, body: { trainerId } });
 export const fetchTrainerPins = async (code: string) => (await call<{ set: string[] }>('trainer-pins', { code }))?.set ?? null;
 
 export const grantRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('grant', { method: 'POST', code, body: c });
