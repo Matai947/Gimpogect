@@ -84,11 +84,6 @@ export default function StaffMembersScreen() {
                       • {t('new_badge')}
                     </T>
                   ) : null}
-                  {m.trialAvailable ? (
-                    <T type="small" color={Colors.success} style={{ fontWeight: '800' }}>
-                      • {t('trial_tag')}
-                    </T>
-                  ) : null}
                   {m.isSelf ? (
                     <T type="small" color={StaffAccent} style={{ fontWeight: '700' }}>
                       • {t('self_badge')}

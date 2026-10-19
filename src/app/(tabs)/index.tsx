@@ -87,29 +87,6 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
-      {/* Free trial, like the "3 дня пробных тренировок" block on s89 */}
-      {!membership.active ? (
-        <View style={styles.section}>
-          <Pressable
-            onPress={() => router.push('/membership')}
-            style={styles.trial}>
-            <View style={{ flex: 1 }}>
-              <T type="display" style={{ fontSize: 22, lineHeight: 26 }}>
-                {t('trial_title')}
-              </T>
-              <T type="small" color={Colors.textSecondary} style={{ marginTop: 4 }}>
-                {t('trial_sub_desk')}
-              </T>
-              <View style={styles.trialBtn}>
-                <T type="label" color={Colors.onAccent} style={{ fontSize: 13 }}>
-                  {t('trial_cta_desk')}
-                </T>
-              </View>
-            </View>
-            <Ionicons name="gift-outline" size={44} color={Colors.info} />
-          </Pressable>
-        </View>
-      ) : null}
 
       {/* Quick actions */}
       <View style={[styles.section, { flexDirection: 'row', gap: Spacing.two }]}>

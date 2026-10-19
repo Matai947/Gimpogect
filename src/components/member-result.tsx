@@ -106,26 +106,6 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             </T>
           </View>
         ) : null}
-        {member.trialAvailable ? (
-          <View style={styles.trial}>
-            <Ionicons name="gift-outline" size={22} color={Colors.success} />
-            <View style={{ flex: 1 }}>
-              <T type="body" style={{ fontWeight: '800' }} color={Colors.success}>
-                {t('trial_banner')}
-              </T>
-              <T type="small" color={Colors.textSecondary}>
-                {t('trial_banner_sub')}
-              </T>
-            </View>
-          </View>
-        ) : member.planId === 'trial' && member.active && member.endDate ? (
-          <View style={styles.trial}>
-            <Ionicons name="gift-outline" size={22} color={Colors.success} />
-            <T type="body" style={{ fontWeight: '800', flex: 1 }} color={Colors.success}>
-              {t('trial_running', { date: formatDateLong(member.endDate) })}
-            </T>
-          </View>
-        ) : null}
 
         <View style={styles.planBox}>
           <Row style={{ justifyContent: 'space-between' }}>
@@ -198,7 +178,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
               ) : (
                 <>
                   {dayBlocked ? <View style={{ flex: 1 }} /> : null}
-                  {dayBlocked ? null : <Button title={member.trialAvailable ? t('trial_give') : t('give_access')} icon={member.trialAvailable ? 'gift-outline' : 'key-outline'} onPress={() => (member.trialAvailable ? grant('trial') : giveAccess())} style={{ flex: 1 }} />}
+                  {dayBlocked ? null : <Button title={t('give_access')} icon="key-outline" onPress={giveAccess} style={{ flex: 1 }} />}
                   <Button title="" icon="close" variant="danger" onPress={deny} style={{ paddingHorizontal: 14 }} />
                 </>
               )}
@@ -233,7 +213,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
               {t('grant_pick')}
             </T>
             <Row gap={6} style={{ flexWrap: 'wrap' }}>
-              {plans.filter((p) => !(p.trial && !p.staffOnly && !member.trialAvailable)).map((p) => (
+              {plans.map((p) => (
                 <Chip key={p.id} label={p.id === 'guest' ? t('guest_pass') : p.trial ? t('trial_grant') : `${td(p.name)} · ${formatPrice(p.price)}`} active={choice === p.id} onPress={() => setChoice(p.id)} />
               ))}
             </Row>

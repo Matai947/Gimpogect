@@ -258,7 +258,7 @@ export const trainers: Trainer[] = [
 export const classTemplates: ClassTemplate[] = [];
 
 export const plans: Plan[] = [
-  { id: 'trial', name: 'Пробный', months: 0, price: 0, perMonth: 0, features: ['3 дня тренировок', 'Без обязательств', 'Можно без тренера'], trial: true, days: 3 },
+  { id: 'trial', name: 'Пробный', months: 0, price: 0, perMonth: 0, features: ['3 дня тренировок'], trial: true, days: 3, legacy: true },
   { id: 'guest', name: 'Гостевой', months: 0, days: 1, price: 0, perMonth: 0, features: ['Разовый вход на сегодня'], trial: true, staffOnly: true },
   { id: 'i9', name: 'Разовая тренировка', months: 0, days: 1, price: 3500, perMonth: 3500, visits: 1, features: ['1 посещение','Срок: 1 день'] },
   { id: 'i10', name: 'Разовая тренировка 1Fit', months: 0, days: 1, price: 0, perMonth: 0, visits: 1, partner: true, features: ['Партнёр 1Fit', '1 посещение'] },

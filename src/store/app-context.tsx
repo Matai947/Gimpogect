@@ -862,7 +862,6 @@ export type MemberInfo = {
   freezeDaysLeft: number;
   visitsLeft?: number;
   pendingActivation: boolean; // an imported pass that starts at the first entry
-  trialAvailable: boolean; // new client: no plan, no imported history, the free 3 days not used yet
   bookingsToday: number;
   ordersReady: number;
   params?: string; // height / weight, known for the device user only
@@ -899,7 +898,6 @@ export function useMembers() {
         trainerId: m.trainerId,
         freezeDaysLeft: m.freezeDaysLeft,
         visitsLeft: m.visitsLeft,
-        trialAvailable: !isSelf && !m.planId && !m.trialUsed && !m.note,
         pendingActivation: !!m.pendingActivation,
         bookingsToday: isSelf ? bookings.filter((b) => sessionById(b)?.date === todayIso).length : 0,
         ordersReady: (isSelf ? orders : mockOrders).filter((o) => o.status === 'Готов к выдаче' && (!isSelf ? o.memberId === m.id : true)).length,
