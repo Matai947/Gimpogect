@@ -410,6 +410,13 @@ module.exports = async function handler(req, res) {
       if (op === 'checkin' && prev.membership?.dayOnly && new Date(now + 5 * 3600000).getUTCHours() >= 17) return res.status(403).json({ error: 'day only' });
       // With no visits left the next day's entry is refused here too (coming back the same day, after the last visit, is still fine).
       if (op === 'checkin' && prev.membership?.visitsLeft !== undefined && prev.membership.visitsLeft <= 0 && firstToday) return res.status(403).json({ error: 'no visits' });
+      // Use up the proof atomically: the update matches only while qrUsed still has the value we read, so of two
+      // scans racing with the same code exactly one gets through.
+      if (proofExp) {
+        const seen = loaded.qrUsed === undefined ? 'is.null' : `eq.${loaded.qrUsed}`;
+        const claimed = await sb(`clients?id=eq.${id}&${encodeURIComponent('data->>qrUsed')}=${seen}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { ...loaded, qrUsed: proofExp } }) });
+        if (claimed.length !== 1) return res.status(403).json({ error: 'qr used' });
+      }
       const session = op === 'checkin' ? { clubId: str(body.clubId, 8) || 'c1', inTs: now } : prev.session ? { ...prev.session, outTs: now } : undefined;
       let membership = prev.membership;
       if (op === 'checkin' && firstToday) await logVisit(session.clubId, id, 'qr');
