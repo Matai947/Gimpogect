@@ -12,6 +12,9 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="theme-color" content="#F6F6F6" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Seven Gym" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.json" />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: css }} />
       </head>
