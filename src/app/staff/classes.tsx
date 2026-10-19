@@ -63,6 +63,7 @@ export default function StaffTrainerLoadScreen() {
     <View style={styles.root}>
       <StaffHeader title={t('staff_tab_trainers')} />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <T type="subheading">{t('tl_title')}</T>
         <T type="caption">{t('tl_hint')}</T>
 
         <View style={styles.card}>
