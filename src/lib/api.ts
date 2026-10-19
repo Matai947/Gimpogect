@@ -1,5 +1,5 @@
 import type { Content, ContentSection } from '@/data/content';
-import type { ClubConfig } from '@/data/mock';
+import type { ClassTemplate, ClubConfig } from '@/data/mock';
 import type { Sale } from '@/data/owner';
 
 // Client registry API (functions/api/clients.js on Cloudflare Pages). Every call is best effort:
@@ -15,13 +15,13 @@ export type RemoteClient = { id: string; onefit?: OneFitVisit[]; name: string; p
 export type RemoteMe = { membership: RemoteMembership | null; name: string | null; homeClubId: string | null; profile: RemoteProfile | null };
 export type Lead = { name: string; phone: string; clubId: string; lang: string; ts: number };
 
-type Init = { method?: 'POST'; body?: unknown; code?: string; token?: string; query?: string };
+type Init = { method?: 'POST'; body?: unknown; code?: string; token?: string; trainerToken?: string; query?: string };
 
 async function raw(op: string, init?: Init): Promise<{ status: number; data: unknown }> {
   try {
     const res = await fetch(`${BASE}/api/clients?op=${op}${init?.query ?? ''}`, {
       method: init?.method ?? 'GET',
-      headers: { 'content-type': 'application/json', ...(init?.code ? { 'x-code': init.code } : {}), ...(init?.token ? { 'x-token': init.token } : {}) },
+      headers: { 'content-type': 'application/json', ...(init?.code ? { 'x-code': init.code } : {}), ...(init?.token ? { 'x-token': init.token } : {}), ...(init?.trainerToken ? { 'x-trainer': init.trainerToken } : {}) },
       body: init?.body ? JSON.stringify(init.body) : undefined,
     });
     return { status: res.status, data: await res.json().catch(() => null) };
@@ -83,6 +83,21 @@ export const uploadPhoto = async (code: string, ext: string, base64: string) => 
 export const fetchClubs = async () => (await call<{ clubs: ClubConfig[] }>('clubs'))?.clubs ?? null;
 /** Owner only: adds or edits branches. */
 export const saveClubs = (code: string, clubs: ClubConfig[]) => call<{ ok: true }>('clubs-save', { method: 'POST', code, body: { clubs } });
+
+/** A trainer signs in with the PIN the administrators gave them. */
+export async function trainerLoginRemote(trainerId: string, pin: string): Promise<{ status: 'ok'; token: string } | { status: 'wrong' | 'locked' | 'nopin' | 'offline' }> {
+  const r = await raw('trainer-login', { method: 'POST', body: { trainerId, pin } });
+  if (r.status === 200 && (r.data as { token?: string })?.token) return { status: 'ok', token: (r.data as { token: string }).token };
+  return { status: r.status === 401 ? 'wrong' : r.status === 429 ? 'locked' : r.status === 404 ? 'nopin' : 'offline' };
+}
+
+export type TrainerMe = { classes: ClassTemplate[]; sessions: TrainerLoad[]; clients: { name: string; ts: number; club: string }[] };
+/** The signed-in trainer's own classes, recorded sessions and personal clients. null = expired or offline. */
+export const fetchTrainerMe = (trainerToken: string) => call<TrainerMe>('trainer-me', { trainerToken });
+
+/** Administrators give a trainer a PIN (4–8 digits). It cannot be read back, only replaced. */
+export const setTrainerPin = (code: string, trainerId: string, pin: string) => call<{ ok: true }>('trainer-pin', { method: 'POST', code, body: { trainerId, pin } });
+export const fetchTrainerPins = async (code: string) => (await call<{ set: string[] }>('trainer-pins', { code }))?.set ?? null;
 
 export const grantRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('grant', { method: 'POST', code, body: c });
 

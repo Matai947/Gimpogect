@@ -48,6 +48,8 @@ function RootStack() {
       <Stack.Screen name="bookings" options={{ title: t('my_bookings') }} />
       <Stack.Screen name="progress" options={{ title: t('progress') }} />
       <Stack.Screen name="trainers" options={{ title: t('qa_trainers') }} />
+      <Stack.Screen name="trainer-login" options={{ headerShown: false }} />
+      <Stack.Screen name="mytrainer" options={{ headerShown: false }} />
       <Stack.Screen name="rules" options={{ title: t("rules_title") }} />
       <Stack.Screen name="cart" options={{ title: t('cart') }} />
       <Stack.Screen name="orders" options={{ title: t('my_orders') }} />

@@ -9,7 +9,7 @@ import { applyContent, promoByCode, promoDiscount, type Content, type ContentSec
 import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { checkinRemote, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient } from '@/lib/api';
+import { trainerLoginRemote, checkinRemote, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -74,6 +74,7 @@ type State = {
   remote: RemoteClient[]; // clients registered from any device, fetched while staff or owner is signed in
   serverSales: Sale[] | null; // the shared books from the server (null until first loaded)
   clubConfig: ClubConfig[]; // the network's clubs as the owner set them, kept for the next start
+  trainerAuth: { id: string; token: string } | null; // a trainer signed in with their PIN
   content: Content; // prices, plans, trainers, rules, schedule, promotions, photos set by the administrators
   contentStatus: 'idle' | 'saving' | 'ok' | 'fail'; // last save to the server (not kept on the device)
   sales: Sale[]; // payments recorded on this device when staff issue plans
@@ -109,6 +110,8 @@ type Actions = {
   refreshSales: () => Promise<void>;
   saveClubConfig: (list: ClubConfig[]) => Promise<boolean>;
   saveContent: (section: ContentSection, data: unknown) => void;
+  trainerLogin: (trainerId: string, pin: string) => Promise<'ok' | 'wrong' | 'locked' | 'nopin' | 'offline'>;
+  trainerLogout: () => void;
   setPlanPrice: (planId: string, price: number, oldPrice?: number) => void;
   freezeMembership: (days: number) => void;
   unfreezeMembership: () => void;
@@ -165,6 +168,7 @@ const initialState: State = {
   remote: [],
   serverSales: null,
   clubConfig: [],
+  trainerAuth: null,
   content: {},
   contentStatus: 'idle',
   sales: [],
@@ -564,6 +568,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (JSON.stringify(cur) !== JSON.stringify(known)) saveContent('catalog', cur);
   }, [state.hydrated, state.staffCode, state.customProducts, state.productOverrides, state.hiddenProducts, state.content.catalog, saveContent]);
 
+  const trainerLogin = useCallback(async (trainerId: string, pin: string) => {
+    const r = await trainerLoginRemote(trainerId, pin);
+    if (r.status === 'ok') setState((s) => ({ ...s, trainerAuth: { id: trainerId, token: r.token } }));
+    return r.status;
+  }, []);
+  const trainerLogout = useCallback(() => setState((s) => ({ ...s, trainerAuth: null })), []);
+
   /** Owner: save the list of clubs (add a branch, edit one, switch one off). */
   const saveClubConfig = useCallback(
     async (list: ClubConfig[]) => {
@@ -702,6 +713,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       refreshSales,
       saveClubConfig,
       saveContent,
+      trainerLogin,
+      trainerLogout,
       setPlanPrice,
       freezeMembership,
       unfreezeMembership,
@@ -734,7 +747,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, recordSale, refreshSales, saveClubConfig, saveContent, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, recordSale, refreshSales, saveClubConfig, saveContent, trainerLogin, trainerLogout, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

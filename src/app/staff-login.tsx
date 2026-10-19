@@ -110,6 +110,14 @@ export default function StaffLoginScreen() {
             </View>
 
             <Button title={t('staff_enter')} icon="log-in-outline" size="lg" onPress={enter} disabled={code.length < 4} style={{ marginTop: Spacing.four, backgroundColor: StaffAccent }} />
+            <Pressable onPress={() => router.push('/trainer-login' as Href)} hitSlop={8} style={{ alignSelf: 'center', marginTop: Spacing.three }}>
+              <Row gap={6}>
+                <Ionicons name="barbell-outline" size={16} color={Colors.textSecondary} />
+                <T type="small" color={Colors.textSecondary} style={{ fontWeight: '700' }}>
+                  {t('tm_enter')}
+                </T>
+              </Row>
+            </Pressable>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

@@ -189,6 +189,20 @@ const tokenOwner = (req) => {
   const expect = sign(id + '.' + exp);
   return sig.length === expect.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect)) ? id : null;
 };
+/* ---- trainers: a PIN set by the administrators, a token that opens only that trainer's own data ---- */
+const TRAINER_ID = /^t\d{1,3}$/;
+const trainerToken = (id) => {
+  const payload = 'T' + id + '.' + (Date.now() + 30 * 86400000);
+  return payload + '.' + sign(payload);
+};
+/** The trainer id the token belongs to, or null. */
+const trainerFrom = (req) => {
+  const [who, exp, sig] = String(req.headers['x-trainer'] || '').split('.');
+  if (!who || !exp || !sig || !/^Tt\d{1,3}$/.test(who) || Number(exp) < Date.now()) return null;
+  const expect = sign(who + '.' + exp);
+  return sig.length === expect.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect)) ? who.slice(1) : null;
+};
+
 const account = (c) => (c ? { membership: c.membership ?? null, name: c.name ?? null, homeClubId: c.homeClubId ?? null, profile: c.profile ?? null } : null);
 const publicClient = ({ passHash: _p, passReset: _r, ...c }) => c;
 
@@ -238,6 +252,41 @@ module.exports = async function handler(req, res) {
 
     // Editable content is public too: prices, plans, trainers, rules, schedule, promotions, photos.
     if (req.method === 'GET' && op === 'content') return res.status(200).json({ content: await getContent() });
+
+    // A trainer signs in with the PIN the administrators set. Five wrong tries lock that trainer for 15 minutes.
+    if (req.method === 'POST' && op === 'trainer-login') {
+      const id = str(body.trainerId, 6);
+      const pin = String(body.pin ?? '');
+      if (!TRAINER_ID.test(id) || !/^\d{4,8}$/.test(pin)) return res.status(400).json({ error: 'bad data' });
+      const key = 'trainerpin:' + id;
+      const rec = (await sb(`settings?key=eq.${key}&select=data`))[0]?.data;
+      if (!rec) return res.status(404).json({ error: 'no pin' });
+      if (rec.lockUntil > Date.now()) return res.status(429).json({ error: 'locked' });
+      const save = (data) => sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key, data: { ...rec, ...data } }) });
+      if (!checkPassword(pin, rec.hash)) {
+        const fails = (rec.fails || 0) + 1;
+        await save(fails >= 5 ? { fails: 0, lockUntil: Date.now() + 15 * 60000 } : { fails });
+        return res.status(401).json({ error: 'wrong pin' });
+      }
+      if (rec.fails) await save({ fails: 0 });
+      return res.status(200).json({ token: trainerToken(id), trainerId: id });
+    }
+
+    // A trainer's own data: their classes, the sessions the administrators recorded for them and their personal clients.
+    if (req.method === 'GET' && op === 'trainer-me') {
+      const id = trainerFrom(req);
+      if (!id) return res.status(401).json({ error: 'auth' });
+      const since = Date.now() - 60 * 86400000;
+      const mine = encodeURIComponent('data->>trainerId') + '=eq.' + id;
+      const sessions = await pageAll(`trainer_sessions?select=data&ts=gte.${since}&${mine}&order=ts.desc`);
+      const paid = await pageAll(`sales?select=data&ts=gte.${since}&${encodeURIComponent('data->>kind')}=eq.personal&${mine}&order=ts.desc`);
+      return res.status(200).json({
+        classes: ((await getContent()).classes || []).filter((c) => c.trainerId === id),
+        sessions: sessions.map((r) => r.data),
+        // names and dates only: what a client paid is the owner's business
+        clients: paid.map((r) => ({ name: r.data.name, ts: r.data.ts, club: r.data.clubId })),
+      });
+    }
 
     // Sign in with phone + password. Accounts created before passwords existed take the first password offered.
     if (req.method === 'POST' && op === 'login') {
@@ -431,6 +480,19 @@ module.exports = async function handler(req, res) {
       await sb('sales', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: ref.id, ts: now, data: ref }) });
       await sb(`sales?id=eq.${encodeURIComponent(saleId)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...sale, refunded: (sale.refunded || 0) + amount } }) });
       return res.status(200).json({ ok: true });
+    }
+
+    /* ---- trainer PINs: administrators set them, nobody can read them back ---- */
+    if (req.method === 'POST' && op === 'trainer-pin') {
+      const id = str(body.trainerId, 6);
+      const pin = String(body.pin ?? '');
+      if (!TRAINER_ID.test(id) || !/^\d{4,8}$/.test(pin)) return res.status(400).json({ error: 'bad data' });
+      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'trainerpin:' + id, data: { hash: hashPassword(pin), fails: 0, lockUntil: 0, at: Date.now(), by: isOwner(req) ? 'owner' : 'staff' } }) });
+      return res.status(200).json({ ok: true });
+    }
+    if (req.method === 'GET' && op === 'trainer-pins') {
+      const rows = await sb('settings?key=like.trainerpin:*&select=key');
+      return res.status(200).json({ set: rows.map((r) => r.key.slice(11)) });
     }
 
     /* ---- editable content: administrators ---- */

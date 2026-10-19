@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Field, fromLines, PhotoPicker, toLines, Toggle } from '@/components/admin/fields';
 import { Button, Row, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { trainerCatalog, type TrainerCfg } from '@/data/content';
+import { fetchTrainerPins, setTrainerPin } from '@/lib/api';
 import { formatPrice } from '@/data/mock';
 import { useApp, useI18n } from '@/store/app-context';
 
@@ -28,8 +29,30 @@ type Form = {
 export function TrainersEditor({ accent }: { accent: string }) {
   const { content, saveContent } = useApp();
   const { t } = useI18n();
+  const { staffCode } = useApp();
   const [form, setForm] = useState<Form | null>(null);
+  const [pinsSet, setPinsSet] = useState<string[]>([]);
+  const [pin, setPin] = useState('');
+  const [pinMsg, setPinMsg] = useState<'ok' | 'fail' | null>(null);
   const list = trainerCatalog(content);
+
+  useEffect(() => {
+    let live = true;
+    if (staffCode) fetchTrainerPins(staffCode).then((p) => live && p && setPinsSet(p));
+    return () => {
+      live = false;
+    };
+  }, [staffCode]);
+
+  const savePin = async () => {
+    if (!form || !staffCode || !/^\d{4,8}$/.test(pin)) return;
+    const ok = await setTrainerPin(staffCode, form.id, pin);
+    setPinMsg(ok ? 'ok' : 'fail');
+    if (ok) {
+      setPin('');
+      setPinsSet((p) => (p.includes(form.id) ? p : [...p, form.id]));
+    }
+  };
   const set = (patch: Partial<Form>) => setForm((f) => (f ? { ...f, ...patch } : f));
 
   const open = (tr: TrainerCfg & { hidden: boolean }) =>
@@ -110,6 +133,21 @@ export function TrainersEditor({ accent }: { accent: string }) {
           <Field label={t('trainer_schedule')} value={form.schedule} onChange={(v) => set({ schedule: v })} placeholder="Вт Чт Сб 18:00-22:00" />
           <Field label={t('trainer_price')} value={form.price} onChange={(v) => set({ price: v.replace(/\D/g, '') })} keyboard="number-pad" />
           <Toggle label={t('adm_shown')} value={form.visible} onChange={(v) => set({ visible: v })} accent={accent} />
+          {!form.isNew ? (
+            <View style={{ gap: Spacing.two }}>
+              <Field label={`${t('tm_pin_label')} (${pinsSet.includes(form.id) ? t('tm_pin_set') : t('tm_pin_unset')})`} value={pin} onChange={(v) => { setPin(v.replace(/\D/g, '').slice(0, 8)); setPinMsg(null); }} keyboard="number-pad" placeholder="••••" />
+              <Button title={t('tm_pin_save')} icon="key-outline" variant="secondary" size="sm" onPress={() => void savePin()} disabled={!/^\d{4,8}$/.test(pin)} />
+              {pinMsg ? (
+                <T type="small" color={pinMsg === 'ok' ? Colors.success : Colors.danger} style={{ fontWeight: '700' }}>
+                  {pinMsg === 'ok' ? t('tm_pin_saved') : t('tm_pin_failed')}
+                </T>
+              ) : null}
+            </View>
+          ) : (
+            <T type="small" color={Colors.textMuted}>
+              {t('tm_pin_after_save')}
+            </T>
+          )}
           <Row gap={Spacing.two}>
             <Button title={t('cancel')} variant="secondary" onPress={() => setForm(null)} style={{ flex: 1 }} />
             <Button title={t('save')} icon="checkmark" onPress={save} disabled={form.name.trim().length < 2} style={{ flex: 1, backgroundColor: accent }} />
