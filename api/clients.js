@@ -268,14 +268,17 @@ module.exports = async function handler(req, res) {
       const tries = rec.fails || 0;
       // The try is counted BEFORE the PIN is checked, and only one request can move the counter from this state
       // (the update matches only while it still reads what we read), so parallel guesses cannot dodge the lockout.
-      const counted = await sb(`settings?key=eq.${key}&${encodeURIComponent('data->>fails')}=eq.${tries}&${encodeURIComponent('data->>lockUntil')}=eq.${rec.lockUntil || 0}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { ...rec, fails: tries + 1 } }) });
+      // Every write also requires the PIN version we read (data->>at): if an administrator changed or removed the PIN
+      // meanwhile, our stale copy is never written back and no token is issued for the old PIN.
+      const sameVersion = `settings?key=eq.${key}&${encodeURIComponent('data->>at')}=eq.${rec.at}`;
+      const counted = await sb(`${sameVersion}&${encodeURIComponent('data->>fails')}=eq.${tries}&${encodeURIComponent('data->>lockUntil')}=eq.${rec.lockUntil || 0}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { ...rec, fails: tries + 1 } }) });
       if (counted.length !== 1) return res.status(429).json({ error: 'busy' });
-      const settle = (patch) => sb(`settings?key=eq.${key}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...rec, ...patch } }) });
+      const settle = (patch) => sb(sameVersion, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { ...rec, ...patch } }) });
       if (!checkPassword(pin, rec.hash)) {
         if (tries + 1 >= 5) await settle({ fails: 0, lockUntil: Date.now() + 15 * 60000 });
         return res.status(401).json({ error: 'wrong pin' });
       }
-      await settle({ fails: 0 });
+      if ((await settle({ fails: 0 })).length !== 1) return res.status(409).json({ error: 'pin changed' });
       return res.status(200).json({ token: trainerToken(id, rec.at), trainerId: id });
     }
 
