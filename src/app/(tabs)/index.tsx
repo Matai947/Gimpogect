@@ -7,7 +7,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MemberPass } from '@/components/member-pass';
 import { ProductCard } from '@/components/product-card';
-import { Badge, Button, Card, IconButton, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
+import { Badge, Button, Card, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { activePromos } from '@/data/content';
 import { goalTip, goalTitle } from '@/data/fitness';
