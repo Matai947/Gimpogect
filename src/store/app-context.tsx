@@ -1043,8 +1043,13 @@ export function useCanManage() {
 export function useNow() {
   const [now, setNow] = useState(() => serverNow());
   useEffect(() => {
+    // The first tick comes at once: the server's clock is known only after the first answer, so the mount value may be the device's.
+    const first = setTimeout(() => setNow(serverNow()), 1500);
     const iv = setInterval(() => setNow(serverNow()), 30000);
-    return () => clearInterval(iv);
+    return () => {
+      clearTimeout(first);
+      clearInterval(iv);
+    };
   }, []);
   return now;
 }
