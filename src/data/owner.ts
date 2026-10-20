@@ -1,6 +1,6 @@
 export const OWNER_DEMO_CODE = '1357';
 
-export type PayMethod = 'kaspi' | 'card' | 'cash' | 'split' | 'desk';
+export type PayMethod = 'kaspi' | 'card' | 'cash' | 'transfer' | 'split' | 'desk';
 
 export type SaleKind = 'plan' | 'shop' | 'personal' | 'debt' | 'debt_payment' | 'refund';
 
@@ -18,6 +18,7 @@ export type Sale = {
   trainerId?: string; // personal training: whose
   remaining?: number; // debt: still owed
   refunded?: number; // sale: already returned
+  reason?: string; // refund: why the money went back
   refundOf?: string; // refund / debt payment: the row it belongs to
   synced?: boolean; // reached the server
 };

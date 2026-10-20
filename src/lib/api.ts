@@ -65,7 +65,7 @@ export type VisitRow = { ts: number; club: string; member: string; kind: string 
 export const fetchVisits = async (code: string, days = 60) => (await call<{ visits: VisitRow[] }>('visits', { code, query: `&days=${days}` }))?.visits ?? null;
 
 /** Owner only: return money for a sale (the whole rest, or a part). */
-export const refundRemote = (code: string, saleId: string, amount?: number) => call<{ ok: true }>('refund', { method: 'POST', code, body: { saleId, amount } });
+export const refundRemote = (code: string, saleId: string, reason: string, amount?: number) => call<{ ok: true }>('refund', { method: 'POST', code, body: { saleId, amount, reason } });
 
 /** Front desk: the client pays (part of) a debt. */
 export const settleRemote = (code: string, debtId: string, amount: number, method: string, staff: string) => call<{ ok: true }>('settle', { method: 'POST', code, body: { debtId, amount, method, staff } });
@@ -81,6 +81,14 @@ export type Shift = { id: string; staff: string; clubId: string; start: number; 
 export const startShift = (code: string, b: { staff: string; clubId: string }) => call<{ ok: true; id: string; start: number }>('shift-start', { method: 'POST', code, body: b });
 export const endShift = (code: string, id: string) => call<{ ok: true; end: number }>('shift-end', { method: 'POST', code, body: { id } });
 export const fetchShifts = async (code: string, days = 30) => (await call<{ shifts: Shift[] }>('shifts', { code, query: `&days=${days}` }))?.shifts ?? null;
+
+/** The cash drawer of a club: opened with a count, money taken out, closed with a count. */
+export type CashDrawer = { id: string; clubId: string; staff: string; open: number; openCash: number; outs: { ts: number; amount: number; note: string; staff: string }[]; close: number | null; counted?: number; expected: number; cashIn: number; refunds: number; taken?: number };
+export const fetchCash = async (code: string, clubId: string) => (await call<{ drawer: CashDrawer | null }>('cash', { code, query: `&clubId=${clubId}` }))?.drawer;
+export const cashOpen = async (code: string, b: { clubId: string; staff: string; amount: number }) => (await call<{ drawer: CashDrawer }>('cash-open', { method: 'POST', code, body: b }))?.drawer ?? null;
+export const cashOut = async (code: string, b: { id: string; amount: number; note: string; staff: string }) => (await call<{ drawer: CashDrawer }>('cash-out', { method: 'POST', code, body: b }))?.drawer ?? null;
+export const cashClose = async (code: string, b: { id: string; counted: number; staff: string }) => (await call<{ drawer: CashDrawer }>('cash-close', { method: 'POST', code, body: b }))?.drawer ?? null;
+export const fetchCashes = async (code: string, days = 30) => (await call<{ cashes: CashDrawer[] }>('cashes', { code, query: `&days=${days}` }))?.cashes ?? null;
 
 /** Editable content (prices, plans, trainers, rules, schedule, promotions, photos), as the administrators set it. */
 export const fetchContent = async () => (await call<{ content: Content }>('content'))?.content ?? null;

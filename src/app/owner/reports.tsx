@@ -6,7 +6,7 @@ import { Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubs, formatDateHuman, formatPrice, toISODate, trainers, weekdayShort } from '@/data/mock';
 import { clockTime, useDuration } from '@/components/shift-bar';
-import { fetchLoads, fetchShifts, fetchVisits, type Shift, type TrainerLoad, type VisitRow } from '@/lib/api';
+import { fetchCashes, fetchLoads, fetchShifts, fetchVisits, type CashDrawer, type Shift, type TrainerLoad, type VisitRow } from '@/lib/api';
 import { useApp, useI18n, useNow, useRawSales } from '@/store/app-context';
 
 const ALMATY = 5 * 3600000; // the clubs' clock: UTC+5
@@ -24,6 +24,7 @@ export default function OwnerReports() {
   const [visits, setVisits] = useState<VisitRow[] | null>(null);
   const [loads, setLoads] = useState<TrainerLoad[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [cashes, setCashes] = useState<CashDrawer[]>([]);
   const dur = useDuration();
 
   useEffect(() => {
@@ -32,6 +33,7 @@ export default function OwnerReports() {
     fetchVisits(staffCode, 60).then((v) => live && v && setVisits(v));
     fetchLoads(staffCode, 60).then((l) => live && l && setLoads(l));
     fetchShifts(staffCode, 60).then((l) => live && l && setShifts(l));
+    fetchCashes(staffCode, 60).then((l) => live && l && setCashes(l));
     void refreshSales();
     return () => {
       live = false;
@@ -49,6 +51,9 @@ export default function OwnerReports() {
     return { total: mine.length, byDay, byHour };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visits, from, club]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const cashRows = useMemo(() => cashes.filter((c) => c.open >= from && inClub(c.clubId)), [cashes, from, club]);
 
   const shiftRows = useMemo(() => {
     const list = shifts.filter((s) => s.start >= from && inClub(s.clubId));
@@ -175,6 +180,41 @@ export default function OwnerReports() {
                 </Row>
               ))}
             </>
+          )}
+        </View>
+
+        {/* cash drawer: counted against what should be there */}
+        <View style={styles.card}>
+          <T type="subheading">{t('rep_cash')}</T>
+          {cashRows.length === 0 ? (
+            <T type="small" color={Colors.textMuted}>
+              {t('rep_cash_none')}
+            </T>
+          ) : (
+            cashRows.map((c) => {
+              const diff = c.close ? (c.counted ?? 0) - c.expected : 0;
+              return (
+                <Row key={c.id} style={styles.line}>
+                  <View style={{ flex: 1 }}>
+                    <T type="small" style={{ fontWeight: '700' }} numberOfLines={1}>
+                      {c.staff} • {clubs.find((x) => x.id === c.clubId)?.name.replace('Seven Gym ', '')}
+                    </T>
+                    <T type="small" color={Colors.textMuted} numberOfLines={1}>
+                      {date(c.open)} • {clockTime(c.open)}
+                      {c.close ? `–${clockTime(c.close)}` : ''} • {t('cash_start')}: {formatPrice(c.openCash)}
+                    </T>
+                    {c.close ? (
+                      <T type="small" color={Colors.textMuted} numberOfLines={1}>
+                        {t('cash_result', { exp: formatPrice(c.expected), got: formatPrice(c.counted ?? 0) })}
+                      </T>
+                    ) : null}
+                  </View>
+                  <T type="small" color={!c.close ? Colors.success : diff === 0 ? Colors.text : Colors.danger} style={{ fontWeight: '700' }}>
+                    {!c.close ? t('rep_shift_now') : diff === 0 ? t('cash_diff_ok') : diff < 0 ? t('cash_diff_short', { sum: formatPrice(-diff) }) : t('cash_diff_over', { sum: formatPrice(diff) })}
+                  </T>
+                </Row>
+              );
+            })
           )}
         </View>
 

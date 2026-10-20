@@ -479,7 +479,7 @@ module.exports = async function handler(req, res) {
     /* ---- payments and visits for the reports ---- */
     // The register may only report what it sells; refunds and debt payments exist only through their own ops (refund is owner-only).
     const SALE_KINDS = ['plan', 'shop', 'personal', 'debt'];
-    const METHODS = ['kaspi', 'card', 'cash', 'split', 'desk'];
+    const METHODS = ['kaspi', 'card', 'cash', 'transfer', 'split', 'desk'];
     const int = (v, max) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
 
     // The register reports every payment here; a retry with the same id changes nothing.
@@ -525,6 +525,8 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST' && op === 'refund') {
       if (!isOwner(req)) return res.status(403).json({ error: 'owner only' });
       const saleId = str(body.saleId, 24);
+      const reason = str(body.reason, 80);
+      if (reason.length < 3 || /[<>]/.test(reason)) return res.status(400).json({ error: 'reason required' });
       const rows = await sb(`sales?id=eq.${encodeURIComponent(saleId)}&select=data`);
       const sale = rows[0]?.data;
       if (!sale || !['plan', 'shop', 'personal'].includes(sale.kind)) return res.status(400).json({ error: 'bad data' });
@@ -532,7 +534,7 @@ module.exports = async function handler(req, res) {
       const amount = body.amount == null ? left : int(body.amount, 10000000);
       if (amount < 1 || amount > left) return res.status(400).json({ error: 'bad amount' });
       const now = Date.now();
-      const ref = { id: 'F' + now.toString(36) + Math.random().toString(36).slice(2, 5), ts: now, kind: 'refund', title: 'Возврат: ' + sale.title, name: sale.name, memberId: sale.memberId, amount, clubId: sale.clubId, method: sale.method, staff: 'owner', refundOf: saleId, ...(sale.trainerId ? { trainerId: sale.trainerId } : {}) };
+      const ref = { id: 'F' + now.toString(36) + Math.random().toString(36).slice(2, 5), ts: now, kind: 'refund', title: 'Возврат: ' + sale.title, name: sale.name, memberId: sale.memberId, amount, clubId: sale.clubId, method: sale.method, staff: 'owner', reason, refundOf: saleId, ...(sale.trainerId ? { trainerId: sale.trainerId } : {}) };
       await sb('sales', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: ref.id, ts: now, data: ref }) });
       await sb(`sales?id=eq.${encodeURIComponent(saleId)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...sale, refunded: (sale.refunded || 0) + amount } }) });
       return res.status(200).json({ ok: true });
@@ -615,6 +617,68 @@ module.exports = async function handler(req, res) {
       const days = Math.max(1, Math.min(400, Number(req.query.days) || 30));
       const rows = await pageAll(`settings?select=data&key=like.shift:*&${encodeURIComponent('data->>start')}=gte.${Date.now() - days * 86400000}&order=key.desc`);
       return res.status(200).json({ shifts: rows.map((r) => r.data) });
+    }
+
+    /* ---- the cash drawer: opened with a count, money taken out, closed with a count ----
+       One private settings row per drawer. What should be in it is worked out from the register's cash payments. */
+    const enc = encodeURIComponent;
+    const cashSummary = async (d) => {
+      const rows = await pageAll(`sales?select=data&ts=gte.${d.open}&ts=lte.${d.close || Date.now() + 1000}&${enc('data->>clubId')}=eq.${d.clubId}&${enc('data->>method')}=eq.cash`);
+      let cashIn = 0;
+      let refunds = 0;
+      for (const { data: x } of rows) {
+        if (['plan', 'shop', 'personal', 'debt_payment'].includes(x.kind)) cashIn += x.amount;
+        else if (x.kind === 'debt') cashIn -= x.amount; // the unpaid part of a check was never handed over
+        else if (x.kind === 'refund') refunds += x.amount;
+      }
+      const taken = d.outs.reduce((n, o) => n + o.amount, 0);
+      return { cashIn, refunds, taken, expected: d.openCash + cashIn - refunds - taken };
+    };
+    const cashRows = async (days) => (await pageAll(`settings?select=data&key=like.cash:*&${enc('data->>open')}=gte.${Date.now() - days * 86400000}&order=key.desc`)).map((r) => r.data);
+    const cashPut = (d) => sb(`settings?key=eq.cash:${d.id}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: d }) });
+    const cashGet = async (id) => (/^\d{13}[a-z0-9]{3}$/.test(id) ? (await sb(`settings?key=eq.cash:${id}&select=data`))[0]?.data : undefined);
+
+    if (req.method === 'GET' && op === 'cash') {
+      const clubId = str(req.query.clubId, 6);
+      if (!(await validClub(clubId))) return res.status(400).json({ error: 'bad club' });
+      const d = (await cashRows(30)).find((x) => x.clubId === clubId && !x.close);
+      return res.status(200).json({ drawer: d ? { ...d, ...(await cashSummary(d)) } : null });
+    }
+    if (req.method === 'POST' && op === 'cash-open') {
+      const staff = str(body.staff, 40);
+      const amount = int(body.amount, 100000000);
+      if (staff.length < 2 || /[<>]/.test(staff) || !(await validClub(body.clubId)) || body.amount === '' || body.amount == null) return res.status(400).json({ error: 'bad data' });
+      const have = (await cashRows(30)).find((x) => x.clubId === body.clubId && !x.close);
+      if (have) return res.status(409).json({ error: 'already open', drawer: { ...have, ...(await cashSummary(have)) } });
+      const now = Date.now();
+      const id = String(now) + Math.random().toString(36).slice(2, 5).padEnd(3, '0');
+      const d = { id, clubId: body.clubId, staff, open: now, openCash: amount, outs: [], close: null };
+      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: 'cash:' + id, data: d }) });
+      return res.status(200).json({ ok: true, drawer: { ...d, ...(await cashSummary(d)) } });
+    }
+    if (req.method === 'POST' && op === 'cash-out') {
+      const d = await cashGet(str(body.id, 20));
+      const amount = int(body.amount, 100000000);
+      const note = str(body.note, 80);
+      if (!d || d.close || amount < 1 || /[<>]/.test(note)) return res.status(400).json({ error: 'bad data' });
+      d.outs.push({ ts: Date.now(), amount, note: note || 'Выемка', staff: str(body.staff, 40) });
+      if (d.outs.length > 200) return res.status(400).json({ error: 'too many' });
+      await cashPut(d);
+      return res.status(200).json({ ok: true, drawer: { ...d, ...(await cashSummary(d)) } });
+    }
+    if (req.method === 'POST' && op === 'cash-close') {
+      const d = await cashGet(str(body.id, 20));
+      if (!d || d.close || body.counted === '' || body.counted == null) return res.status(400).json({ error: 'bad data' });
+      const counted = int(body.counted, 100000000);
+      d.close = Date.now();
+      const sum = await cashSummary(d);
+      Object.assign(d, { counted, expected: sum.expected, cashIn: sum.cashIn, refunds: sum.refunds, closedBy: str(body.staff, 40) });
+      await cashPut(d);
+      return res.status(200).json({ ok: true, drawer: { ...d, ...sum } });
+    }
+    if (req.method === 'GET' && op === 'cashes') {
+      const days = Math.max(1, Math.min(400, Number(req.query.days) || 30));
+      return res.status(200).json({ cashes: await cashRows(days) });
     }
 
     // Switch a trainer's access off: the PIN is deleted and every token already issued stops working.

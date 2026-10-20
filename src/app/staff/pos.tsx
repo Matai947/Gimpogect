@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, Share, StyleSheet, TextInput, View } from 'react-native';
 
+import { CashDrawerCard } from '@/components/cash-drawer';
 import { StaffAccent } from '@/components/member-result';
 import { StaffHeader } from '@/components/staff-header';
 import { Avatar, Badge, Button, Chip, ChipRow, Row, T } from '@/components/ui';
@@ -157,7 +158,24 @@ export default function StaffPosScreen() {
   );
   const needsClient = !client && lines.some((l) => l.planId || l.trainerId);
 
-  const methodLabel: Record<PayMethod, string> = { kaspi: t('pay_kaspi'), card: t('pay_card'), cash: t('pay_cash'), split: t('pay_split'), desk: t('pay_desk') };
+  const methodLabel: Record<PayMethod, string> = { kaspi: t('pay_kaspi'), card: t('pay_card'), cash: t('pay_cash'), transfer: t('pay_transfer'), split: t('pay_split'), desk: t('pay_desk') };
+
+  /** The receipt as plain text: to the client's WhatsApp when the card has a phone, else the phone's share sheet. */
+  const sendReceipt = () => {
+    if (!receipt) return;
+    const when = new Date(receipt.ts).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const text = [
+      t('receipt_text_head', { n: receipt.id }),
+      `${when} • ${methodLabel[receipt.method]}`,
+      ...receipt.lines.map((l) => `${l.title}${l.qty > 1 ? ` x${l.qty}` : ''} — ${formatPrice(l.price * l.qty)}`),
+      ...(receipt.discount ? [`${t('pos_discount')}: −${formatPrice(receipt.discount)}`] : []),
+      `${t('pos_total')}: ${formatPrice(receipt.total)}`,
+      ...(receipt.debt ? [`${t('pos_debt_title')}: ${formatPrice(receipt.debt)}`] : []),
+    ].join('\n');
+    const phone = receipt.client?.phone.replace(/\D/g, '');
+    if (phone && phone.length >= 10) Linking.openURL(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`).catch(() => {});
+    else Share.share({ message: text }).catch(() => {});
+  };
 
   if (receipt) {
     return (
@@ -200,6 +218,10 @@ export default function StaffPosScreen() {
               </>
             ) : null}
           </View>
+          <Row gap={Spacing.two}>
+            <Button title={t('receipt_send')} icon="paper-plane-outline" variant="secondary" onPress={sendReceipt} style={{ flex: 1 }} />
+            {Platform.OS === 'web' ? <Button title={t('receipt_print')} icon="print-outline" variant="secondary" onPress={() => window.print()} /> : null}
+          </Row>
           <Button title={t('pos_new')} icon="add" onPress={reset} style={{ backgroundColor: StaffAccent }} />
         </ScrollView>
       </View>
@@ -210,6 +232,8 @@ export default function StaffPosScreen() {
     <View style={styles.root}>
       <StaffHeader title={t('staff_tab_pos')} />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <CashDrawerCard />
+
         {/* client */}
         <T type="label" color={Colors.textSecondary}>
           {t('pos_client')}
@@ -363,7 +387,7 @@ export default function StaffPosScreen() {
               ) : null}
             </Row>
             <Row gap={6} style={{ flexWrap: 'wrap' }}>
-              {(['kaspi', 'card', 'cash'] as PayMethod[]).map((m) => (
+              {(['cash', 'kaspi', 'card', 'transfer'] as PayMethod[]).map((m) => (
                 <Chip key={m} label={methodLabel[m]} active={method === m} onPress={() => setMethod(m)} />
               ))}
               {client ? <Chip label={t('pos_partial')} icon="time-outline" active={partial} onPress={() => setPartial((v) => !v)} /> : null}
