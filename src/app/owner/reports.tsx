@@ -5,7 +5,8 @@ import { OwnerAccent, OwnerHeader } from '@/components/owner-header';
 import { Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubs, formatDateHuman, formatPrice, toISODate, trainers, weekdayShort } from '@/data/mock';
-import { fetchLoads, fetchVisits, type TrainerLoad, type VisitRow } from '@/lib/api';
+import { clockTime, useDuration } from '@/components/shift-bar';
+import { fetchLoads, fetchShifts, fetchVisits, type Shift, type TrainerLoad, type VisitRow } from '@/lib/api';
 import { useApp, useI18n, useNow, useRawSales } from '@/store/app-context';
 
 const ALMATY = 5 * 3600000; // the clubs' clock: UTC+5
@@ -22,12 +23,15 @@ export default function OwnerReports() {
   const [club, setClub] = useState<string>('all');
   const [visits, setVisits] = useState<VisitRow[] | null>(null);
   const [loads, setLoads] = useState<TrainerLoad[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const dur = useDuration();
 
   useEffect(() => {
     if (!staffCode) return;
     let live = true;
     fetchVisits(staffCode, 60).then((v) => live && v && setVisits(v));
     fetchLoads(staffCode, 60).then((l) => live && l && setLoads(l));
+    fetchShifts(staffCode, 60).then((l) => live && l && setShifts(l));
     void refreshSales();
     return () => {
       live = false;
@@ -45,6 +49,12 @@ export default function OwnerReports() {
     return { total: mine.length, byDay, byHour };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visits, from, club]);
+
+  const shiftRows = useMemo(() => {
+    const list = shifts.filter((s) => s.start >= from && inClub(s.clubId));
+    return { list, worked: list.reduce((n, s) => n + (s.end ? s.end - s.start : 0), 0) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shifts, from, club]);
 
   const personal = useMemo(() => {
     const rows = sales.filter((x) => x.ts >= from && inClub(x.clubId) && x.trainerId);
@@ -134,6 +144,38 @@ export default function OwnerReports() {
               </T>
             ))}
           </Row>
+        </View>
+
+        {/* administrators' shifts */}
+        <View style={styles.card}>
+          <T type="subheading">{t('rep_shifts')}</T>
+          {shiftRows.list.length === 0 ? (
+            <T type="small" color={Colors.textMuted}>
+              {t('rep_shifts_none')}
+            </T>
+          ) : (
+            <>
+              <T type="small" color={Colors.textSecondary}>
+                {t('rep_shifts_total', { dur: dur(shiftRows.worked) })}
+              </T>
+              {shiftRows.list.map((s) => (
+                <Row key={s.id} style={styles.line}>
+                  <View style={{ flex: 1 }}>
+                    <T type="small" style={{ fontWeight: '700' }} numberOfLines={1}>
+                      {s.staff}
+                    </T>
+                    <T type="small" color={Colors.textMuted} numberOfLines={1}>
+                      {date(s.start)} • {clubs.find((c) => c.id === s.clubId)?.name.replace('Seven Gym ', '')} • {clockTime(s.start)}
+                      {s.end ? `–${clockTime(s.end)}` : ''}
+                    </T>
+                  </View>
+                  <T type="small" color={s.end ? Colors.text : s.auto ? Colors.danger : Colors.success} style={{ fontWeight: '700' }}>
+                    {s.end ? dur(s.end - s.start) : s.auto ? t('rep_shift_forgot') : t('rep_shift_now')}
+                  </T>
+                </Row>
+              ))}
+            </>
+          )}
         </View>
 
         {/* debts */}

@@ -4,6 +4,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StaffAccent } from '@/components/member-result';
+import { ShiftBar, useShift } from '@/components/shift-bar';
 import { Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubById, clubs } from '@/data/mock';
@@ -14,11 +15,12 @@ export function StaffHeader({ title, right }: { title: string; right?: React.Rea
   const { staff, staffLogout, setStaffClub } = useApp();
   const { t } = useI18n();
   const club = clubById(staff?.clubId ?? 'c1');
+  const shift = useShift();
 
   const pickClub = () => Alert.alert(t('staff_club'), undefined, [...clubs.map((c) => ({ text: c.name, onPress: () => setStaffClub(c.id) })), { text: t('cancel'), style: 'cancel' as const }]);
 
   const exit = () =>
-    Alert.alert(t('staff_exit'), undefined, [
+    Alert.alert(t('staff_exit'), shift.open ? t('shift_open_exit') : undefined, [
       { text: t('cancel'), style: 'cancel' },
       {
         text: t('staff_exit'),
@@ -57,6 +59,7 @@ export function StaffHeader({ title, right }: { title: string; right?: React.Rea
         <T type="small" color={Colors.textSecondary}>
           {t('today_shift', { name: staff?.name ?? '', club: club?.name ?? '' })}
         </T>
+        <ShiftBar />
       </View>
     </SafeAreaView>
   );

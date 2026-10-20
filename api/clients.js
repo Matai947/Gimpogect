@@ -584,6 +584,39 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    /* ---- administrators' shifts: "I have arrived" / "I finish my shift" ----
+       One private settings row per shift; the key sorts by start time. */
+    if (req.method === 'POST' && op === 'shift-start') {
+      const staff = str(body.staff, 40).trim();
+      if (staff.length < 2 || /[<>]/.test(staff) || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
+      const now = Date.now();
+      // A shift the person forgot to close is marked as such, not given an invented end.
+      const recent = await pageAll(`settings?select=key,data&key=like.shift:*&${encodeURIComponent('data->>start')}=gte.${now - 3 * 86400000}`);
+      for (const r of recent) {
+        if (!r.data.end && !r.data.auto && r.data.staff.toLowerCase() === staff.toLowerCase()) {
+          await sb(`settings?key=eq.${encodeURIComponent(r.key)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...r.data, auto: true } }) });
+        }
+      }
+      const id = String(now) + Math.random().toString(36).slice(2, 5).padEnd(3, '0');
+      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: 'shift:' + id, data: { id, staff, clubId: body.clubId, start: now, end: null } }) });
+      return res.status(200).json({ ok: true, id, start: now });
+    }
+    if (req.method === 'POST' && op === 'shift-end') {
+      const id = str(body.id, 20);
+      if (!/^\d{13}[a-z0-9]{3}$/.test(id)) return res.status(400).json({ error: 'bad id' });
+      const rows = await sb(`settings?key=eq.shift:${id}&select=data`);
+      const shift = rows[0]?.data;
+      if (!shift) return res.status(404).json({ error: 'unknown shift' });
+      const end = shift.end || Date.now();
+      if (!shift.end) await sb(`settings?key=eq.shift:${id}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...shift, end, auto: false } }) });
+      return res.status(200).json({ ok: true, end });
+    }
+    if (req.method === 'GET' && op === 'shifts') {
+      const days = Math.max(1, Math.min(400, Number(req.query.days) || 30));
+      const rows = await pageAll(`settings?select=data&key=like.shift:*&${encodeURIComponent('data->>start')}=gte.${Date.now() - days * 86400000}&order=key.desc`);
+      return res.status(200).json({ shifts: rows.map((r) => r.data) });
+    }
+
     // Switch a trainer's access off: the PIN is deleted and every token already issued stops working.
     if (req.method === 'POST' && op === 'trainer-pin-clear') {
       const id = str(body.trainerId, 6);

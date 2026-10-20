@@ -76,6 +76,12 @@ export const postLoad = (code: string, b: { trainerId: string; clubId: string; d
 export const fetchLoads = async (code: string, days = 60) => (await call<{ loads: TrainerLoad[] }>('loads', { code, query: `&days=${days}` }))?.loads ?? null;
 export const deleteLoad = (code: string, id: string) => call<{ ok: true }>('load-del', { method: 'POST', code, body: { id } });
 
+/** Administrators' shifts: "I have arrived" starts one, "I finish my shift" closes it. auto = the person forgot to close it. */
+export type Shift = { id: string; staff: string; clubId: string; start: number; end: number | null; auto?: boolean };
+export const startShift = (code: string, b: { staff: string; clubId: string }) => call<{ ok: true; id: string; start: number }>('shift-start', { method: 'POST', code, body: b });
+export const endShift = (code: string, id: string) => call<{ ok: true; end: number }>('shift-end', { method: 'POST', code, body: { id } });
+export const fetchShifts = async (code: string, days = 30) => (await call<{ shifts: Shift[] }>('shifts', { code, query: `&days=${days}` }))?.shifts ?? null;
+
 /** Editable content (prices, plans, trainers, rules, schedule, promotions, photos), as the administrators set it. */
 export const fetchContent = async () => (await call<{ content: Content }>('content'))?.content ?? null;
 export const saveContentRemote = (code: string, section: ContentSection, data: unknown, by: string) => call<{ ok: true }>('content-save', { method: 'POST', code, body: { section, data, by } });
