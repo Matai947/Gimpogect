@@ -29,4 +29,3 @@ export const members: Member[] = [];
 /** Pending shop orders visible at the reception, on top of the device user's own orders. */
 export const mockOrders: { id: string; memberId: string; clubId: string; date: string; items: { key: string; productId: string; option?: string; qty: number }[]; subtotal: number; discount: number; total: number; status: "Готов к выдаче" | "Готовится" }[] = [];
 
-export const STAFF_DEMO_CODE = '2468';

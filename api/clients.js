@@ -3,7 +3,6 @@
 const crypto = require('crypto');
 
 // No defaults: the codes live only in the Vercel environment, and the API refuses to work without them.
-const STAFF_CODE = process.env.STAFF_CODE;
 const OWNER_CODE = process.env.OWNER_CODE;
 const TOKEN_SECRET = process.env.TOKEN_SECRET; // signs client access tokens
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -159,11 +158,19 @@ async function readAll() {
 }
 
 const isOwner = (req) => !!OWNER_CODE && String(req.headers['x-code'] || '') === OWNER_CODE;
+const enc = encodeURIComponent;
 
-const authed = (req) => {
-  const code = String(req.headers['x-code'] || '');
-  return !!code && (code === STAFF_CODE || code === OWNER_CODE);
-};
+/** Counts one attempt at a guessable code atomically (5 misses lock the code for 15 minutes); null = locked or busy. */
+async function codeGate(key) {
+  await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ key, data: { fails: 0, lockUntil: 0 } }) });
+  const lock = (await sb(`settings?key=eq.${key}&select=data`))[0].data;
+  if (lock.lockUntil > Date.now()) return null;
+  const tries = lock.lockUntil ? 0 : lock.fails || 0; // an expired lock starts the count over
+  const counted = await sb(`settings?key=eq.${key}&${enc('data->>fails')}=eq.${lock.fails || 0}&${enc('data->>lockUntil')}=eq.${lock.lockUntil || 0}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { fails: tries + 1, lockUntil: 0 } }) });
+  if (counted.length !== 1) return null;
+  const settle = (data) => sb(`settings?key=eq.${key}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data }) });
+  return { miss: () => (tries + 1 >= 5 ? settle({ fails: 0, lockUntil: Date.now() + 15 * 60000 }) : Promise.resolve()), hit: () => settle({ fails: 0, lockUntil: 0 }) };
+}
 
 const str = (v, max) => String(v ?? '').trim().slice(0, max);
 const digitsOf = (v) => String(v ?? '').replace(/[^0-9]/g, '');
@@ -189,6 +196,23 @@ const tokenOwner = (req) => {
   const expect = sign(id + '.' + exp);
   return sig.length === expect.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect)) ? id : null;
 };
+/* ---- administrators: a personal code given by the owner; the token carries the code's version, so a changed or removed code revokes it ---- */
+const ADMIN_ID = /^a[a-z0-9]{4,12}$/;
+const adminToken = (id, version) => {
+  const payload = 'A' + id + '.' + version + '.' + (Date.now() + 30 * 86400000);
+  return payload + '.' + sign(payload);
+};
+/** The administrator the x-code token belongs to ({ id, name }), or null. */
+const adminFrom = async (req) => {
+  const [who, version, exp, sig] = String(req.headers['x-code'] || '').split('.');
+  if (!who || !version || !exp || !sig || who[0] !== 'A' || !ADMIN_ID.test(who.slice(1)) || Number(exp) < Date.now()) return null;
+  const expect = sign(who + '.' + version + '.' + exp);
+  if (sig.length !== expect.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect))) return null;
+  const rec = (await sb(`settings?key=eq.admin:${who.slice(1)}&select=data`))[0]?.data;
+  return rec && String(rec.at) === version ? { id: rec.id, name: rec.name } : null;
+};
+const listAdmins = async () => (await sb('settings?key=like.admin:*&select=data&order=key')).map((r) => r.data);
+
 /* ---- trainers: a PIN set by the administrators, a token that opens only that trainer's own data ---- */
 const TRAINER_ID = /^t\d{1,3}$/;
 // The token carries the version (time) of the PIN it was issued for: changing or removing the PIN revokes every earlier token.
@@ -235,8 +259,11 @@ module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  if (!STAFF_CODE || !OWNER_CODE || !TOKEN_SECRET || !SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'not configured' });
+  if (!OWNER_CODE || !TOKEN_SECRET || !SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'not configured' });
   const op = String(req.query.op || '');
+  const admin = req.headers['x-code'] ? await adminFrom(req) : null;
+  const authed = () => isOwner(req) || !!admin;
+  const staffName = (fallback) => (admin ? admin.name : isOwner(req) ? 'owner' : str(fallback, 40));
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
 
   try {
@@ -340,7 +367,7 @@ module.exports = async function handler(req, res) {
       let prev;
       if (existing) {
         // Updating an existing account needs its token (or the front desk code).
-        if (tokenOwner(req) !== id && !authed(req)) return res.status(401).json({ error: 'auth' });
+        if (tokenOwner(req) !== id && !authed()) return res.status(401).json({ error: 'auth' });
         prev = existing;
       } else {
         // A new account must set its password right away.
@@ -362,12 +389,31 @@ module.exports = async function handler(req, res) {
     if (req.method === 'GET' && op === 'me') {
       const id = str(req.query.id, 20);
       if (!ID.test(id)) return res.status(400).json({ error: 'bad id' });
-      if (tokenOwner(req) !== id && !authed(req)) return res.status(401).json({ error: 'auth' });
+      if (tokenOwner(req) !== id && !authed()) return res.status(401).json({ error: 'auth' });
       const c = await read(id);
       return res.status(200).json(account(c) ?? { membership: null, name: null, homeClubId: null, profile: null });
     }
 
-    if (!authed(req)) return res.status(401).json({ error: 'code' });
+    // Staff mode: the owner's code opens the CRM; an administrator's personal code opens the desk under their own name.
+    if (req.method === 'POST' && op === 'staff-login') {
+      const code = String(body.code || '');
+      if (!/^\d{4,8}$/.test(code)) return res.status(400).json({ error: 'bad code' });
+      const gate = await codeGate('stafflock');
+      if (!gate) return res.status(429).json({ error: 'locked' });
+      if (code.length === OWNER_CODE.length && crypto.timingSafeEqual(Buffer.from(code), Buffer.from(OWNER_CODE))) {
+        await gate.hit();
+        return res.status(200).json({ role: 'owner' });
+      }
+      const who = (await listAdmins()).find((a) => checkPassword(code, a.hash));
+      if (!who) {
+        await gate.miss();
+        return res.status(401).json({ error: 'wrong code' });
+      }
+      await gate.hit();
+      return res.status(200).json({ role: 'staff', token: adminToken(who.id, who.at), name: who.name, id: who.id });
+    }
+
+    if (!authed()) return res.status(401).json({ error: 'code' });
 
     if (req.method === 'GET' && op === 'leads') {
       const rows = await sb('leads?select=data&order=ts.desc&limit=200');
@@ -589,7 +635,7 @@ module.exports = async function handler(req, res) {
     /* ---- administrators' shifts: "I have arrived" / "I finish my shift" ----
        One private settings row per shift; the key sorts by start time. */
     if (req.method === 'POST' && op === 'shift-start') {
-      const staff = str(body.staff, 40).trim();
+      const staff = staffName(body.staff);
       if (staff.length < 2 || /[<>]/.test(staff) || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
       const now = Date.now();
       // A shift the person forgot to close is marked as such, not given an invented end.
@@ -621,7 +667,6 @@ module.exports = async function handler(req, res) {
 
     /* ---- the cash drawer: opened with a count, money taken out, closed with a count ----
        One private settings row per drawer. What should be in it is worked out from the register's cash payments. */
-    const enc = encodeURIComponent;
     const cashSummary = async (d) => {
       const rows = await pageAll(`sales?select=data&ts=gte.${d.open}&ts=lte.${d.close || Date.now() + 1000}&${enc('data->>clubId')}=eq.${d.clubId}&${enc('data->>method')}=eq.cash`);
       let cashIn = 0;
@@ -646,7 +691,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ drawer: d ? { ...d, ...(await cashSummary(d)) } : null });
     }
     if (req.method === 'POST' && op === 'cash-open') {
-      const staff = str(body.staff, 40);
+      const staff = staffName(body.staff);
       const amount = int(body.amount, 100000000);
       if (staff.length < 2 || /[<>]/.test(staff) || !(await validClub(body.clubId)) || body.amount === '' || body.amount == null) return res.status(400).json({ error: 'bad data' });
       const have = (await cashRows(30)).find((x) => x.clubId === body.clubId && !x.close);
@@ -670,24 +715,18 @@ module.exports = async function handler(req, res) {
       const code = String(body.ownerCode || '');
       let confirmed = false;
       if (code) {
-        // The miss is counted atomically before the code is compared, like trainer-login: two parallel guesses cannot share one slot.
-        await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ key: 'ownerlock', data: { fails: 0, lockUntil: 0 } }) });
-        const lock = (await sb('settings?key=eq.ownerlock&select=data'))[0].data;
-        if (lock.lockUntil > Date.now()) return res.status(429).json({ error: 'locked' });
-        const tries = lock.lockUntil ? 0 : lock.fails || 0; // an expired lock starts the count over
-        const counted = await sb(`settings?key=eq.ownerlock&${enc('data->>fails')}=eq.${lock.fails || 0}&${enc('data->>lockUntil')}=eq.${lock.lockUntil || 0}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { fails: tries + 1, lockUntil: 0 } }) });
-        if (counted.length !== 1) return res.status(429).json({ error: 'busy' });
+        const gate = await codeGate('ownerlock');
+        if (!gate) return res.status(429).json({ error: 'locked' });
         const h = (v) => crypto.createHmac('sha256', TOKEN_SECRET).update(v).digest();
         confirmed = !!OWNER_CODE && crypto.timingSafeEqual(h(code), h(OWNER_CODE));
-        const settle = (data) => sb('settings?key=eq.ownerlock', { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data }) });
         if (!confirmed) {
-          if (tries + 1 >= 5) await settle({ fails: 0, lockUntil: Date.now() + 15 * 60000 });
+          await gate.miss();
           return res.status(403).json({ error: 'wrong code' });
         }
-        await settle({ fails: 0, lockUntil: 0 });
+        await gate.hit();
       }
       if (d.outs.length >= 200) return res.status(400).json({ error: 'too many' });
-      d.outs.push({ ts: Date.now(), amount, reason, note, staff: str(body.staff, 40), responsible, confirmed });
+      d.outs.push({ ts: Date.now(), amount, reason, note, staff: staffName(body.staff), responsible, confirmed });
       await cashPut(d);
       return res.status(200).json({ ok: true, drawer: { ...d, ...(await cashSummary(d)) } });
     }
@@ -699,7 +738,7 @@ module.exports = async function handler(req, res) {
       if (!d || d.close || amount < 1 || /[<>]/.test(note)) return res.status(400).json({ error: 'bad data' });
       d.ins = d.ins || [];
       if (d.ins.length >= 200) return res.status(400).json({ error: 'too many' });
-      d.ins.push({ ts: Date.now(), amount, note, staff: str(body.staff, 40) });
+      d.ins.push({ ts: Date.now(), amount, note, staff: staffName(body.staff) });
       await cashPut(d);
       return res.status(200).json({ ok: true, drawer: { ...d, ...(await cashSummary(d)) } });
     }
@@ -715,7 +754,7 @@ module.exports = async function handler(req, res) {
       const counted = int(body.counted, 100000000);
       d.close = Date.now();
       const sum = await cashSummary(d);
-      Object.assign(d, { counted, expected: sum.expected, cashIn: sum.cashIn, refunds: sum.refunds, closedBy: str(body.staff, 40) });
+      Object.assign(d, { counted, expected: sum.expected, cashIn: sum.cashIn, refunds: sum.refunds, closedBy: staffName(body.staff) });
       await cashPut(d);
       return res.status(200).json({ ok: true, drawer: { ...d, ...sum } });
     }
@@ -734,6 +773,34 @@ module.exports = async function handler(req, res) {
     if (req.method === 'GET' && op === 'trainer-pins') {
       const rows = await sb('settings?key=like.trainerpin:*&select=key');
       return res.status(200).json({ set: rows.map((r) => r.key.slice(11)) });
+    }
+
+    /* ---- administrators: the owner creates them, changes their codes and removes them ---- */
+    if (op === 'admins' || op === 'admin-save' || op === 'admin-del') {
+      if (!isOwner(req)) return res.status(403).json({ error: 'owner only' });
+      if (req.method === 'GET' && op === 'admins') return res.status(200).json({ admins: (await listAdmins()).map(({ hash: _h, ...a }) => a) });
+      if (req.method === 'POST' && op === 'admin-save') {
+        const name = str(body.name, 40);
+        const code = String(body.code ?? '');
+        const id = str(body.id, 13);
+        if (name.length < 2 || /[<>]/.test(name) || (id && !ADMIN_ID.test(id)) || (code && !/^\d{4,8}$/.test(code)) || (!id && !code)) return res.status(400).json({ error: 'bad data' });
+        if (code && code.length === OWNER_CODE.length && code === OWNER_CODE) return res.status(400).json({ error: 'bad data' });
+        const all = await listAdmins();
+        if (code && all.some((a) => a.id !== id && checkPassword(code, a.hash))) return res.status(409).json({ error: 'code taken' });
+        if (!id && all.length >= 30) return res.status(400).json({ error: 'too many' });
+        const old = id ? all.find((a) => a.id === id) : null;
+        if (id && !old) return res.status(404).json({ error: 'unknown' });
+        const now = Date.now();
+        const rec = { id: id || 'a' + now.toString(36) + Math.random().toString(36).slice(2, 5), name, hash: code ? hashPassword(code) : old.hash, at: code ? now : old.at, since: old ? old.since : now };
+        await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'admin:' + rec.id, data: rec }) });
+        return res.status(200).json({ ok: true, id: rec.id });
+      }
+      if (req.method === 'POST' && op === 'admin-del') {
+        const id = str(body.id, 13);
+        if (!ADMIN_ID.test(id)) return res.status(400).json({ error: 'bad id' });
+        await sb(`settings?key=eq.admin:${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+        return res.status(200).json({ ok: true });
+      }
     }
 
     /* ---- editable content: administrators ---- */

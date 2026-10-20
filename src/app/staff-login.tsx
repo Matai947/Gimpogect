@@ -9,31 +9,30 @@ import { LangSwitch } from '@/components/lang-switch';
 import { StaffAccent } from '@/components/member-result';
 import { Button, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { STAFF_DEMO_CODE } from '@/data/members';
-import { OWNER_DEMO_CODE } from '@/data/owner';
 import { clubs } from '@/data/mock';
+import { staffLoginRemote } from '@/lib/api';
 import { useApp, useI18n } from '@/store/app-context';
 
 export default function StaffLoginScreen() {
   const { staffLogin, ownerLogin, staff } = useApp();
   const { t } = useI18n();
   const [code, setCode] = useState('');
-  const [name, setName] = useState(staff?.name ?? '');
+  const [busy, setBusy] = useState(false);
   const [clubId, setClubId] = useState(staff?.clubId ?? 'c1');
   const [error, setError] = useState<string | null>(null);
 
-  const enter = () => {
+  const enter = async () => {
+    setBusy(true);
+    const r = await staffLoginRemote(code);
+    setBusy(false);
+    if (!r.data) return setError(r.status === 429 ? t('login_locked') : r.status === 0 ? t('login_offline') : t('staff_code_wrong'));
     // The owner has a separate code and lands in the CRM instead of the front-desk tools.
-    if (code === OWNER_DEMO_CODE) {
+    if (r.data.role === 'owner') {
       ownerLogin(code);
       router.replace('/owner' as Href); // typed-routes cache can lag behind new route folders
       return;
     }
-    if (code !== STAFF_DEMO_CODE) {
-      setError(t('staff_code_wrong'));
-      return;
-    }
-    staffLogin(name.trim() || t('staff_name_default'), clubId, code);
+    staffLogin(r.data.name, clubId, r.data.token);
     router.replace('/staff');
   };
 
@@ -63,7 +62,7 @@ export default function StaffLoginScreen() {
               <TextInput
                 value={code}
                 onChangeText={(v) => {
-                  setCode(v.replace(/\D/g, '').slice(0, 6));
+                  setCode(v.replace(/\D/g, '').slice(0, 8));
                   setError(null);
                 }}
                 keyboardType="number-pad"
@@ -74,17 +73,11 @@ export default function StaffLoginScreen() {
                 autoFocus
               />
             </View>
-            <T type="small" color={error ? Colors.danger : Colors.textMuted}>
-              {error ?? t('staff_code_hint')}
-            </T>
-            <T type="small" color={Colors.textMuted}>
-              {t('owner_login_hint')}
-            </T>
-
-            <View style={[styles.input, { marginTop: Spacing.three }]}>
-              <Ionicons name="person-outline" size={18} color={Colors.textSecondary} />
-              <TextInput value={name} onChangeText={setName} style={styles.inputText} placeholder={t('staff_name_ph')} placeholderTextColor={Colors.textMuted} />
-            </View>
+            {error ? (
+              <T type="small" color={Colors.danger}>
+                {error}
+              </T>
+            ) : null}
 
             <T type="label" style={{ marginTop: Spacing.four, marginBottom: Spacing.two }}>
               {t('staff_club')}
@@ -109,7 +102,7 @@ export default function StaffLoginScreen() {
               })}
             </View>
 
-            <Button title={t('staff_enter')} icon="log-in-outline" size="lg" onPress={enter} disabled={code.length < 4} style={{ marginTop: Spacing.four, backgroundColor: StaffAccent }} />
+            <Button title={t('staff_enter')} icon="log-in-outline" size="lg" onPress={enter} disabled={busy || code.length < 4} style={{ marginTop: Spacing.four, backgroundColor: StaffAccent }} />
             <Pressable onPress={() => router.push('/trainer-login' as Href)} hitSlop={8} style={{ alignSelf: 'center', marginTop: Spacing.three }}>
               <Row gap={6}>
                 <Ionicons name="barbell-outline" size={16} color={Colors.textSecondary} />

@@ -50,6 +50,16 @@ export const fetchMyMembership = (id: string, token: string) => call<RemoteMe>('
 /** A fresh single-use proof for the client's own QR (valid 90 seconds). */
 export const fetchQrProof = async (id: string, token: string) => (await call<{ code: string }>('qr', { token, query: `&id=${id}` }))?.code ?? null;
 
+/** Staff mode: the owner's code or an administrator's personal code. 401 = wrong, 429 = locked for 15 minutes, 0 = offline. */
+export const staffLoginRemote = async (code: string) => {
+  const r = await raw('staff-login', { method: 'POST', body: { code } });
+  return { status: r.status, data: r.status === 200 ? (r.data as { role: 'owner' } | { role: 'staff'; token: string; name: string; id: string }) : null };
+};
+export type AdminRec = { id: string; name: string; at: number; since: number };
+export const fetchAdmins = async (code: string) => (await call<{ admins: AdminRec[] }>('admins', { code }))?.admins ?? null;
+export const saveAdmin = async (code: string, b: { id?: string; name: string; code: string }) => ({ status: (await raw('admin-save', { method: 'POST', code, body: b })).status });
+export const deleteAdmin = (code: string, id: string) => call<{ ok: true }>('admin-del', { method: 'POST', code, body: { id } });
+
 export const fetchLeads = async (code: string) => (await call<{ leads: Lead[] }>('leads', { code }))?.leads ?? null;
 
 export const fetchClients = async (code: string) => (await call<{ clients: RemoteClient[] }>('list', { code }))?.clients ?? null;

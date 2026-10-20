@@ -1,5 +1,3 @@
-export const OWNER_DEMO_CODE = '1357';
-
 export type PayMethod = 'kaspi' | 'card' | 'cash' | 'transfer' | 'split' | 'desk';
 
 export type SaleKind = 'plan' | 'shop' | 'personal' | 'debt' | 'debt_payment' | 'refund';
