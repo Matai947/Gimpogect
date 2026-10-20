@@ -406,7 +406,8 @@ module.exports = async function handler(req, res) {
       const code = String(body.code || '');
       if (!/^\d{4,8}$/.test(code)) return res.status(400).json({ error: 'bad code' });
       // Locked per device address, so a stranger's guesses never lock the owner or the staff out of their own phones.
-      const ip = String(req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+      // Only Cloudflare's own header counts: it is set by the edge and cannot be sent by the client. Without it (local runs) the lock is global.
+      const ip = String(req.headers['cf-connecting-ip'] || '').trim();
       const gate = await codeGate('stafflock:' + (ip ? crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16) : 'any'));
       if (!gate) return res.status(429).json({ error: 'locked' });
       if (code.length === OWNER_CODE.length && crypto.timingSafeEqual(Buffer.from(code), Buffer.from(OWNER_CODE))) {
