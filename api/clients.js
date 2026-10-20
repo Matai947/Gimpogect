@@ -165,8 +165,8 @@ async function readAll() {
 const isOwner = (req) => !!OWNER_CODE && String(req.headers['x-code'] || '') === OWNER_CODE;
 const enc = encodeURIComponent;
 
-/** Counts one attempt at a guessable code atomically (5 misses lock the code for 15 minutes); null = locked or busy. */
-async function codeGate(key) {
+/** Counts one attempt at a guessable code atomically (`limit` misses lock it for 15 minutes); null = locked or busy. */
+async function codeGate(key, limit = 3) {
   await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ key, data: { fails: 0, lockUntil: 0 } }) });
   const lock = (await sb(`settings?key=eq.${key}&select=data`))[0].data;
   if (lock.lockUntil > Date.now()) return null;
@@ -174,7 +174,21 @@ async function codeGate(key) {
   const counted = await sb(`settings?key=eq.${key}&${enc('data->>fails')}=eq.${lock.fails || 0}&${enc('data->>lockUntil')}=eq.${lock.lockUntil || 0}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { fails: tries + 1, lockUntil: 0 } }) });
   if (counted.length !== 1) return null;
   const settle = (data) => sb(`settings?key=eq.${key}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data }) });
-  return { miss: () => (tries + 1 >= 5 ? settle({ fails: 0, lockUntil: Date.now() + 15 * 60000 }) : Promise.resolve()), hit: () => settle({ fails: 0, lockUntil: 0 }) };
+  return { miss: () => (tries + 1 >= limit ? settle({ fails: 0, lockUntil: Date.now() + 15 * 60000 }) : Promise.resolve()), hit: () => settle({ fails: 0, lockUntil: 0 }) };
+}
+/** Every gate a guess must pass: 3 misses from one device, 3 on one account, and a ceiling of 30 across everyone, so rotating devices does not help. */
+async function guessGates(req, kind, account) {
+  // Only Cloudflare's own header counts: it is set by the edge and cannot be sent by the client. Without it (local runs) the device gate is shared.
+  const ip = String(req.headers['cf-connecting-ip'] || '').trim();
+  const keys = [[kind + ':ip:' + (ip ? crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16) : 'any'), 3], [kind + ':all', 30]];
+  if (account) keys.push([kind + ':' + account, 3]);
+  const gates = [];
+  for (const [key, limit] of keys) {
+    const g = await codeGate(key, limit);
+    if (!g) return null;
+    gates.push(g);
+  }
+  return { miss: () => Promise.all(gates.map((g) => g.miss())), hit: () => Promise.all(gates.map((g) => g.hit())) };
 }
 
 const str = (v, max) => String(v ?? '').trim().slice(0, max);
@@ -319,7 +333,7 @@ module.exports = async function handler(req, res) {
       if (counted.length !== 1) return res.status(429).json({ error: 'busy' });
       const settle = (patch) => sb(sameVersion, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { ...rec, ...patch } }) });
       if (!checkPassword(pin, rec.hash)) {
-        if (tries + 1 >= 5) await settle({ fails: 0, lockUntil: Date.now() + 15 * 60000 });
+        if (tries + 1 >= 3) await settle({ fails: 0, lockUntil: Date.now() + 15 * 60000 });
         return res.status(401).json({ error: 'wrong pin' });
       }
       if ((await settle({ fails: 0 })).length !== 1) return res.status(409).json({ error: 'pin changed' });
@@ -353,7 +367,13 @@ module.exports = async function handler(req, res) {
       if (!c) return res.status(404).json({ error: 'unknown' });
       if (password.length < 6) return res.status(400).json({ error: 'short password' });
       if (c.passHash) {
-        if (!checkPassword(password, c.passHash)) return res.status(401).json({ error: 'wrong password' });
+        const gate = await guessGates(req, 'client', id);
+        if (!gate) return res.status(429).json({ error: 'locked' });
+        if (!checkPassword(password, c.passHash)) {
+          await gate.miss();
+          return res.status(401).json({ error: 'wrong password' });
+        }
+        await gate.hit();
       } else if (c.passReset) {
         // The front desk confirmed the person; the next sign-in sets the password.
         const { passReset: _r, ...rest } = c;
@@ -405,10 +425,7 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST' && op === 'staff-login') {
       const code = String(body.code || '');
       if (!/^\d{4,8}$/.test(code)) return res.status(400).json({ error: 'bad code' });
-      // Locked per device address, so a stranger's guesses never lock the owner or the staff out of their own phones.
-      // Only Cloudflare's own header counts: it is set by the edge and cannot be sent by the client. Without it (local runs) the lock is global.
-      const ip = String(req.headers['cf-connecting-ip'] || '').trim();
-      const gate = await codeGate('stafflock:' + (ip ? crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16) : 'any'));
+      const gate = await guessGates(req, 'staff');
       if (!gate) return res.status(429).json({ error: 'locked' });
       if (code.length === OWNER_CODE.length && crypto.timingSafeEqual(Buffer.from(code), Buffer.from(OWNER_CODE))) {
         await gate.hit();
@@ -728,7 +745,7 @@ module.exports = async function handler(req, res) {
       const code = String(body.ownerCode || '');
       let confirmedBy = manages() ? staffName('') : '';
       if (!confirmedBy && code) {
-        const gate = await codeGate('ownerlock');
+        const gate = await guessGates(req, 'confirm');
         if (!gate) return res.status(429).json({ error: 'locked' });
         const h = (v) => crypto.createHmac('sha256', TOKEN_SECRET).update(v).digest();
         if (crypto.timingSafeEqual(h(code), h(OWNER_CODE))) confirmedBy = 'owner';

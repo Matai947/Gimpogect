@@ -103,7 +103,7 @@ type Actions = {
   /** Create a new account: the password is set on the server, which answers with the access token. */
   login: (phone: string, name: string, password: string) => Promise<boolean>;
   /** Sign in with an account the server already knows: name, questionnaire and plan come back without re-registering. Returns false if unknown. */
-  restore: (phone: string, password: string) => Promise<'ok' | 'unknown' | 'wrong' | 'reset' | 'offline'>;
+  restore: (phone: string, password: string) => Promise<'ok' | 'unknown' | 'wrong' | 'reset' | 'locked' | 'offline'>;
   logout: () => void;
   updateUser: (patch: Partial<User>) => void;
   completeOnboarding: (profile: FitnessProfile) => void;
@@ -346,6 +346,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (r.status === 404) return 'unknown';
     if (r.status === 401) return 'wrong';
     if (r.status === 409) return 'reset';
+    if (r.status === 429) return 'locked';
     if (!r.data) return 'offline';
     const me = r.data.account;
     const token = r.data.token;
