@@ -656,15 +656,28 @@ module.exports = async function handler(req, res) {
       await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: 'cash:' + id, data: d }) });
       return res.status(200).json({ ok: true, drawer: { ...d, ...(await cashSummary(d)) } });
     }
+    // Withdrawal: a reason and the responsible person are required; the owner's code typed by the owner confirms it.
     if (req.method === 'POST' && op === 'cash-out') {
       const d = await cashGet(str(body.id, 20));
       const amount = int(body.amount, 100000000);
+      const reason = str(body.reason, 40);
       const note = str(body.note, 80);
-      if (!d || d.close || amount < 1 || /[<>]/.test(note)) return res.status(400).json({ error: 'bad data' });
-      d.outs.push({ ts: Date.now(), amount, note: note || 'Выемка', staff: str(body.staff, 40) });
-      if (d.outs.length > 200) return res.status(400).json({ error: 'too many' });
+      const responsible = str(body.responsible, 40);
+      if (!d || d.close || amount < 1 || reason.length < 3 || responsible.length < 2 || [reason, note, responsible].some((v) => /[<>]/.test(v))) return res.status(400).json({ error: 'bad data' });
+      const code = String(body.ownerCode || '');
+      const confirmed = !!OWNER_CODE && code.length === OWNER_CODE.length && crypto.timingSafeEqual(Buffer.from(code), Buffer.from(OWNER_CODE));
+      if (code && !confirmed) return res.status(403).json({ error: 'wrong code' });
+      if (amount > (await cashSummary(d)).expected) return res.status(400).json({ error: 'more than in the drawer' });
+      if (d.outs.length >= 200) return res.status(400).json({ error: 'too many' });
+      d.outs.push({ ts: Date.now(), amount, reason, note, staff: str(body.staff, 40), responsible, confirmed });
       await cashPut(d);
       return res.status(200).json({ ok: true, drawer: { ...d, ...(await cashSummary(d)) } });
+    }
+    // Every withdrawal of the period, newest first, for the owner's history and report.
+    if (req.method === 'GET' && op === 'withdrawals') {
+      const days = Math.max(1, Math.min(400, Number(req.query.days) || 30));
+      const list = (await cashRows(days)).flatMap((d) => d.outs.map((o) => ({ ...o, clubId: d.clubId, drawer: d.id })));
+      return res.status(200).json({ withdrawals: list.sort((x, y) => y.ts - x.ts) });
     }
     if (req.method === 'POST' && op === 'cash-close') {
       const d = await cashGet(str(body.id, 20));

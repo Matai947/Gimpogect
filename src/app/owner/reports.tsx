@@ -6,7 +6,7 @@ import { Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubs, formatDateHuman, formatPrice, toISODate, trainers, weekdayShort } from '@/data/mock';
 import { clockTime, useDuration } from '@/components/shift-bar';
-import { fetchCashes, fetchLoads, fetchShifts, fetchVisits, type CashDrawer, type Shift, type TrainerLoad, type VisitRow } from '@/lib/api';
+import { fetchCashes, fetchLoads, fetchShifts, fetchVisits, fetchWithdrawals, type CashDrawer, type Withdrawal, type Shift, type TrainerLoad, type VisitRow } from '@/lib/api';
 import { useApp, useI18n, useNow, useRawSales } from '@/store/app-context';
 
 const ALMATY = 5 * 3600000; // the clubs' clock: UTC+5
@@ -25,6 +25,7 @@ export default function OwnerReports() {
   const [loads, setLoads] = useState<TrainerLoad[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [cashes, setCashes] = useState<CashDrawer[]>([]);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const dur = useDuration();
 
   useEffect(() => {
@@ -34,6 +35,7 @@ export default function OwnerReports() {
     fetchLoads(staffCode, 60).then((l) => live && l && setLoads(l));
     fetchShifts(staffCode, 60).then((l) => live && l && setShifts(l));
     fetchCashes(staffCode, 60).then((l) => live && l && setCashes(l));
+    fetchWithdrawals(staffCode, 60).then((l) => live && l && setWithdrawals(l));
     void refreshSales();
     return () => {
       live = false;
@@ -52,6 +54,8 @@ export default function OwnerReports() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visits, from, club]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const wdRows = useMemo(() => withdrawals.filter((w) => w.ts >= from && inClub(w.clubId ?? '')), [withdrawals, from, club]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const cashRows = useMemo(() => cashes.filter((c) => c.open >= from && inClub(c.clubId)), [cashes, from, club]);
 
@@ -215,6 +219,41 @@ export default function OwnerReports() {
                 </Row>
               );
             })
+          )}
+        </View>
+
+        {/* withdrawals */}
+        <View style={styles.card}>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <T type="subheading">{t('rep_withdrawals')}</T>
+            <T type="subheading">{formatPrice(wdRows.reduce((n, w) => n + w.amount, 0))}</T>
+          </Row>
+          {wdRows.length === 0 ? (
+            <T type="small" color={Colors.textMuted}>
+              {t('rep_withdrawals_none')}
+            </T>
+          ) : (
+            wdRows.map((w, i) => (
+              <Row key={i} style={styles.line}>
+                <View style={{ flex: 1 }}>
+                  <T type="small" style={{ fontWeight: '700' }} numberOfLines={1}>
+                    {w.reason}
+                    {w.note ? ` • ${w.note}` : ''}
+                  </T>
+                  <T type="small" color={Colors.textMuted} numberOfLines={1}>
+                    {date(w.ts)} {clockTime(w.ts)} • {clubs.find((c) => c.id === w.clubId)?.name.replace('Seven Gym ', '')} • {w.staff} → {w.responsible}
+                  </T>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <T type="small" style={{ fontWeight: '700' }}>
+                    {formatPrice(w.amount)}
+                  </T>
+                  <T type="small" color={w.confirmed ? Colors.success : Colors.textMuted}>
+                    {w.confirmed ? t('wd_confirmed') : t('wd_unconfirmed')}
+                  </T>
+                </View>
+              </Row>
+            ))
           )}
         </View>
 

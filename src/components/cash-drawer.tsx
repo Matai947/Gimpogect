@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { clockTime } from '@/components/shift-bar';
-import { Button, Row, T } from '@/components/ui';
+import { Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice } from '@/data/mock';
 import { cashClose, cashOpen, cashOut, fetchCash, type CashDrawer } from '@/lib/api';
@@ -22,6 +22,10 @@ export function CashDrawerCard() {
   const [mode, setMode] = useState<'out' | 'close' | null>(null);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [reason, setReason] = useState('');
+  const [responsible, setResponsible] = useState('');
+  const [ownerCode, setOwnerCode] = useState('');
+  const reasons = [t('wd_r1'), t('wd_r2'), t('wd_r3'), t('wd_r4')];
   const [msg, setMsg] = useState<{ text: string; bad: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
@@ -46,12 +50,26 @@ export function CashDrawerCard() {
     setMsg(null);
     setAmount('');
     setNote('');
+    setReason('');
+    setOwnerCode('');
     setMode(null);
     then?.(d);
   };
 
   const open = () => run(() => cashOpen(staffCode, { clubId, staff: who, amount: digits(amount) }), setDrawer);
-  const take = () => run(() => cashOut(staffCode, { id: drawer!.id, amount: digits(amount), note, staff: who }), setDrawer);
+  const take = async () => {
+    setBusy(true);
+    const r = await cashOut(staffCode, { id: drawer!.id, amount: digits(amount), reason, note, staff: who, responsible: responsible.trim(), ownerCode });
+    setBusy(false);
+    if (!r.drawer) return setMsg({ text: r.wrongCode ? t('wd_wrong_code') : digits(amount) > (drawer?.expected ?? 0) ? t('wd_too_much') : t('cash_fail'), bad: true });
+    setMsg({ text: t('wd_done', { sum: formatPrice(digits(amount)) }), bad: false });
+    setAmount('');
+    setNote('');
+    setReason('');
+    setOwnerCode('');
+    setMode(null);
+    setDrawer(r.drawer);
+  };
   const close = () =>
     run(
       () => cashClose(staffCode, { id: drawer!.id, counted: digits(amount), staff: who }),
@@ -89,12 +107,42 @@ export function CashDrawerCard() {
             {drawer.refunds ? <Line label={t('cash_refunds')} value={`−${formatPrice(drawer.refunds)}`} /> : null}
             {drawer.taken ? <Line label={t('cash_taken')} value={`−${formatPrice(drawer.taken)}`} /> : null}
           </View>
+          {drawer.outs.map((o, i) => (
+            <Row key={i} style={styles.out}>
+              <View style={{ flex: 1 }}>
+                <T type="small" numberOfLines={1}>
+                  {clockTime(o.ts)} • {o.reason}
+                  {o.note ? ` • ${o.note}` : ''}
+                </T>
+                <T type="small" color={Colors.textMuted} numberOfLines={1}>
+                  {o.staff} → {o.responsible} • {o.confirmed ? t('wd_confirmed') : t('wd_unconfirmed')}
+                </T>
+              </View>
+              <T type="small" style={{ fontWeight: '700' }}>
+                −{formatPrice(o.amount)}
+              </T>
+            </Row>
+          ))}
           {mode ? (
             <View style={{ gap: Spacing.two }}>
               {input(mode === 'out' ? t('cash_amount_ph') : t('cash_counted'))}
-              {mode === 'out' ? <TextInput value={note} onChangeText={setNote} placeholder={t('cash_take_note')} placeholderTextColor={Colors.textMuted} maxLength={80} style={styles.input} /> : null}
+              {mode === 'out' ? (
+                <>
+                  <ChipRow>
+                    {reasons.map((r) => (
+                      <Chip key={r} label={r} active={reason === r} onPress={() => setReason(r)} />
+                    ))}
+                  </ChipRow>
+                  <TextInput value={note} onChangeText={setNote} placeholder={t('cash_take_note')} placeholderTextColor={Colors.textMuted} maxLength={80} style={styles.input} />
+                  <TextInput value={responsible} onChangeText={setResponsible} placeholder={t('wd_responsible')} placeholderTextColor={Colors.textMuted} maxLength={40} style={styles.input} />
+                  <TextInput value={ownerCode} onChangeText={(v) => setOwnerCode(v.replace(/\D/g, ''))} placeholder={t('wd_owner_code')} placeholderTextColor={Colors.textMuted} keyboardType="number-pad" secureTextEntry maxLength={8} style={styles.input} />
+                  <T type="small" color={Colors.textMuted}>
+                    {t('wd_owner_code_hint')}
+                  </T>
+                </>
+              ) : null}
               <Row gap={Spacing.two}>
-                <Button title={mode === 'out' ? t('cash_take_ok') : t('cash_close_ok')} onPress={mode === 'out' ? take : close} disabled={busy || (mode === 'out' ? !digits(amount) : !amount)} style={{ flex: 1 }} />
+                <Button title={mode === 'out' ? t('cash_take_ok') : t('cash_close_ok')} onPress={mode === 'out' ? take : close} disabled={busy || (mode === 'out' ? !digits(amount) || !reason || responsible.trim().length < 2 : !amount)} style={{ flex: 1 }} />
                 <Button title={t('cancel')} variant="secondary" onPress={() => setMode(null)} />
               </Row>
             </View>
@@ -138,5 +186,6 @@ function Line({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
+  out: { gap: Spacing.two, paddingVertical: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.border },
   input: { height: 48, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: Spacing.three, color: Colors.text, fontSize: 16, backgroundColor: Colors.background },
 });

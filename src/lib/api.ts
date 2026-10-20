@@ -82,11 +82,17 @@ export const startShift = (code: string, b: { staff: string; clubId: string }) =
 export const endShift = (code: string, id: string) => call<{ ok: true; end: number }>('shift-end', { method: 'POST', code, body: { id } });
 export const fetchShifts = async (code: string, days = 30) => (await call<{ shifts: Shift[] }>('shifts', { code, query: `&days=${days}` }))?.shifts ?? null;
 
+export type Withdrawal = { ts: number; amount: number; reason: string; note: string; staff: string; responsible: string; confirmed: boolean; clubId?: string };
 /** The cash drawer of a club: opened with a count, money taken out, closed with a count. */
-export type CashDrawer = { id: string; clubId: string; staff: string; open: number; openCash: number; outs: { ts: number; amount: number; note: string; staff: string }[]; close: number | null; counted?: number; expected: number; cashIn: number; refunds: number; taken?: number };
+export type CashDrawer = { id: string; clubId: string; staff: string; open: number; openCash: number; outs: Withdrawal[]; close: number | null; counted?: number; expected: number; cashIn: number; refunds: number; taken?: number };
 export const fetchCash = async (code: string, clubId: string) => (await call<{ drawer: CashDrawer | null }>('cash', { code, query: `&clubId=${clubId}` }))?.drawer;
 export const cashOpen = async (code: string, b: { clubId: string; staff: string; amount: number }) => (await call<{ drawer: CashDrawer }>('cash-open', { method: 'POST', code, body: b }))?.drawer ?? null;
-export const cashOut = async (code: string, b: { id: string; amount: number; note: string; staff: string }) => (await call<{ drawer: CashDrawer }>('cash-out', { method: 'POST', code, body: b }))?.drawer ?? null;
+/** null = refused (no connection, more than in the drawer) and `wrongCode` when the owner's code did not match. */
+export const cashOut = async (code: string, b: { id: string; amount: number; reason: string; note: string; staff: string; responsible: string; ownerCode: string }) => {
+  const r = await raw('cash-out', { method: 'POST', code, body: b });
+  return { drawer: r.status === 200 ? (r.data as { drawer: CashDrawer }).drawer : null, wrongCode: r.status === 403 };
+};
+export const fetchWithdrawals = async (code: string, days = 30) => (await call<{ withdrawals: Withdrawal[] }>('withdrawals', { code, query: `&days=${days}` }))?.withdrawals ?? null;
 export const cashClose = async (code: string, b: { id: string; counted: number; staff: string }) => (await call<{ drawer: CashDrawer }>('cash-close', { method: 'POST', code, body: b }))?.drawer ?? null;
 export const fetchCashes = async (code: string, days = 30) => (await call<{ cashes: CashDrawer[] }>('cashes', { code, query: `&days=${days}` }))?.cashes ?? null;
 
