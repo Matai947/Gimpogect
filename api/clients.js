@@ -745,7 +745,7 @@ module.exports = async function handler(req, res) {
       const code = String(body.ownerCode || '');
       let confirmedBy = manages() ? staffName('') : '';
       if (!confirmedBy && code) {
-        const gate = await guessGates(req, 'confirm');
+        const gate = await guessGates(req, 'staff'); // the same codes as at the staff login, so the same counters
         if (!gate) return res.status(429).json({ error: 'locked' });
         const h = (v) => crypto.createHmac('sha256', TOKEN_SECRET).update(v).digest();
         if (crypto.timingSafeEqual(h(code), h(OWNER_CODE))) confirmedBy = 'owner';
