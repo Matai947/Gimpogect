@@ -9,7 +9,7 @@ import { applyContent, promoByCode, promoDiscount, type Content, type ContentSec
 import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { trainerLoginRemote, checkinRemote, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient } from '@/lib/api';
+import { trainerLoginRemote, checkinRemote, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient, serverNow } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -1060,9 +1060,9 @@ export function useCanManage() {
 }
 
 export function useNow() {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => serverNow());
   useEffect(() => {
-    const iv = setInterval(() => setNow(Date.now()), 30000);
+    const iv = setInterval(() => setNow(serverNow()), 30000);
     return () => clearInterval(iv);
   }, []);
   return now;
