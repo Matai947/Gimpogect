@@ -664,10 +664,19 @@ module.exports = async function handler(req, res) {
       const note = str(body.note, 80);
       const responsible = str(body.responsible, 40);
       if (!d || d.close || amount < 1 || reason.length < 3 || responsible.length < 2 || [reason, note, responsible].some((v) => /[<>]/.test(v))) return res.status(400).json({ error: 'bad data' });
-      const code = String(body.ownerCode || '');
-      const confirmed = !!OWNER_CODE && code.length === OWNER_CODE.length && crypto.timingSafeEqual(Buffer.from(code), Buffer.from(OWNER_CODE));
-      if (code && !confirmed) return res.status(403).json({ error: 'wrong code' });
       if (amount > (await cashSummary(d)).expected) return res.status(400).json({ error: 'more than in the drawer' });
+      // The owner's code typed here is guessable, so it locks like a trainer PIN: 5 misses, 15 minutes.
+      const code = String(body.ownerCode || '');
+      let confirmed = false;
+      if (code) {
+        const lock = (await sb('settings?key=eq.ownerlock&select=data'))[0]?.data || { fails: 0, lockUntil: 0 };
+        if (lock.lockUntil > Date.now()) return res.status(429).json({ error: 'locked' });
+        const h = (v) => crypto.createHmac('sha256', TOKEN_SECRET).update(v).digest();
+        confirmed = !!OWNER_CODE && crypto.timingSafeEqual(h(code), h(OWNER_CODE));
+        const fails = confirmed ? 0 : lock.fails + 1;
+        await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'ownerlock', data: { fails, lockUntil: fails >= 5 ? Date.now() + 15 * 60000 : 0 } }) });
+        if (!confirmed) return res.status(403).json({ error: 'wrong code' });
+      }
       if (d.outs.length >= 200) return res.status(400).json({ error: 'too many' });
       d.outs.push({ ts: Date.now(), amount, reason, note, staff: str(body.staff, 40), responsible, confirmed });
       await cashPut(d);
