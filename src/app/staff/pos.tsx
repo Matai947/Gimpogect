@@ -387,7 +387,7 @@ export default function StaffPosScreen() {
               ) : null}
             </Row>
             <Row gap={6} style={{ flexWrap: 'wrap' }}>
-              {(['cash', 'kaspi', 'card', 'transfer'] as PayMethod[]).map((m) => (
+              {(['cash', 'kaspi', 'card'] as PayMethod[]).map((m) => (
                 <Chip key={m} label={methodLabel[m]} active={method === m} onPress={() => setMethod(m)} />
               ))}
               {client ? <Chip label={t('pos_partial')} icon="time-outline" active={partial} onPress={() => setPartial((v) => !v)} /> : null}
