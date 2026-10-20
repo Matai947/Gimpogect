@@ -86,6 +86,11 @@ function checkSection(section, d) {
     if (v == null || v === '') return;
     if (typeof v !== 'string' || !SAFE_URL.test(v)) throw new Error('url');
   };
+  // Every section is an object (or a list for promotions); a bare number or string would break the app that reads it.
+  if (!d || typeof d !== 'object') throw new Error('shape');
+  if (section === 'rules') Object.values(d).forEach((lines) => {
+    if (!Array.isArray(lines) || lines.some((l) => typeof l !== 'string')) throw new Error('shape');
+  });
   if (section === 'photos') Object.values(d).forEach((list) => (Array.isArray(list) ? list : [list]).forEach(https));
   if (section === 'trainers') {
     Object.values(d.overrides || {}).forEach((t) => https(t.photoUrl));
@@ -209,7 +214,7 @@ const adminFrom = async (req) => {
   const expect = sign(who + '.' + version + '.' + exp);
   if (sig.length !== expect.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect))) return null;
   const rec = (await sb(`settings?key=eq.admin:${who.slice(1)}&select=data`))[0]?.data;
-  return rec && String(rec.at) === version ? { id: rec.id, name: rec.name } : null;
+  return rec && String(rec.at) === version ? { id: rec.id, name: rec.name, role: rec.role === 'manager' ? 'manager' : 'admin' } : null;
 };
 const listAdmins = async () => (await sb('settings?key=like.admin:*&select=data&order=key')).map((r) => r.data);
 
@@ -263,6 +268,8 @@ module.exports = async function handler(req, res) {
   const op = String(req.query.op || '');
   const admin = req.headers['x-code'] ? await adminFrom(req) : null;
   const authed = () => isOwner(req) || !!admin;
+  // Three roles: the administrator runs the desk; the manager also edits goods, prices and the rest of the content and confirms refunds and withdrawals; the owner sees everything.
+  const manages = () => isOwner(req) || admin?.role === 'manager';
   const staffName = (fallback) => (admin ? admin.name : isOwner(req) ? 'owner' : str(fallback, 40));
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
 
@@ -398,7 +405,9 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST' && op === 'staff-login') {
       const code = String(body.code || '');
       if (!/^\d{4,8}$/.test(code)) return res.status(400).json({ error: 'bad code' });
-      const gate = await codeGate('stafflock');
+      // Locked per device address, so a stranger's guesses never lock the owner or the staff out of their own phones.
+      const ip = String(req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+      const gate = await codeGate('stafflock:' + (ip ? crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16) : 'any'));
       if (!gate) return res.status(429).json({ error: 'locked' });
       if (code.length === OWNER_CODE.length && crypto.timingSafeEqual(Buffer.from(code), Buffer.from(OWNER_CODE))) {
         await gate.hit();
@@ -410,7 +419,7 @@ module.exports = async function handler(req, res) {
         return res.status(401).json({ error: 'wrong code' });
       }
       await gate.hit();
-      return res.status(200).json({ role: 'staff', token: adminToken(who.id, who.at), name: who.name, id: who.id });
+      return res.status(200).json({ role: who.role === 'manager' ? 'manager' : 'admin', token: adminToken(who.id, who.at), name: who.name, id: who.id });
     }
 
     if (!authed()) return res.status(401).json({ error: 'code' });
@@ -569,7 +578,7 @@ module.exports = async function handler(req, res) {
 
     // Only the owner returns money.
     if (req.method === 'POST' && op === 'refund') {
-      if (!isOwner(req)) return res.status(403).json({ error: 'owner only' });
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
       const saleId = str(body.saleId, 24);
       const reason = str(body.reason, 80);
       if (reason.length < 3 || /[<>]/.test(reason)) return res.status(400).json({ error: 'reason required' });
@@ -580,7 +589,7 @@ module.exports = async function handler(req, res) {
       const amount = body.amount == null ? left : int(body.amount, 10000000);
       if (amount < 1 || amount > left) return res.status(400).json({ error: 'bad amount' });
       const now = Date.now();
-      const ref = { id: 'F' + now.toString(36) + Math.random().toString(36).slice(2, 5), ts: now, kind: 'refund', title: 'Возврат: ' + sale.title, name: sale.name, memberId: sale.memberId, amount, clubId: sale.clubId, method: sale.method, staff: 'owner', reason, refundOf: saleId, ...(sale.trainerId ? { trainerId: sale.trainerId } : {}) };
+      const ref = { id: 'F' + now.toString(36) + Math.random().toString(36).slice(2, 5), ts: now, kind: 'refund', title: 'Возврат: ' + sale.title, name: sale.name, memberId: sale.memberId, amount, clubId: sale.clubId, method: sale.method, staff: staffName(''), reason, refundOf: saleId, ...(sale.trainerId ? { trainerId: sale.trainerId } : {}) };
       await sb('sales', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: ref.id, ts: now, data: ref }) });
       await sb(`sales?id=eq.${encodeURIComponent(saleId)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...sale, refunded: (sale.refunded || 0) + amount } }) });
       return res.status(200).json({ ok: true });
@@ -588,6 +597,7 @@ module.exports = async function handler(req, res) {
 
     /* ---- trainer PINs: administrators set them, nobody can read them back ---- */
     if (req.method === 'POST' && op === 'trainer-pin') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
       const id = str(body.trainerId, 6);
       const pin = String(body.pin ?? '');
       if (!TRAINER_ID.test(id) || !/^\d{6,8}$/.test(pin)) return res.status(400).json({ error: 'bad data' });
@@ -597,6 +607,7 @@ module.exports = async function handler(req, res) {
     /* ---- personal sessions: which client a trainer trains, when ----
        Kept in private settings rows (never in the public content), seen only by the administrators and by that trainer. */
     if (req.method === 'POST' && op === 'appt-save') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
       const now = Date.now();
       const id = str(body.id, 24) || 'A' + now.toString(36) + Math.random().toString(36).slice(2, 5);
       const plain = (v) => !/[<>]/.test(v);
@@ -626,6 +637,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ appts: rows.map((r) => r.data) });
     }
     if (req.method === 'POST' && op === 'appt-del') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
       const id = str(body.id, 24);
       if (!/^[A-Za-z0-9]{3,24}$/.test(id)) return res.status(400).json({ error: 'bad id' });
       await sb(`settings?key=eq.appt:${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
@@ -711,22 +723,24 @@ module.exports = async function handler(req, res) {
       const responsible = str(body.responsible, 40);
       if (!d || d.close || amount < 1 || reason.length < 3 || responsible.length < 2 || [reason, note, responsible].some((v) => /[<>]/.test(v))) return res.status(400).json({ error: 'bad data' });
       if (amount > (await cashSummary(d)).expected) return res.status(400).json({ error: 'more than in the drawer' });
-      // The owner's code typed here is guessable, so it locks like a trainer PIN: 5 misses, 15 minutes.
+      // Confirmation: a manager or the owner confirms by doing it; an administrator types the owner's or a manager's code (locked like a PIN: 5 misses, 15 minutes).
       const code = String(body.ownerCode || '');
-      let confirmed = false;
-      if (code) {
+      let confirmedBy = manages() ? staffName('') : '';
+      if (!confirmedBy && code) {
         const gate = await codeGate('ownerlock');
         if (!gate) return res.status(429).json({ error: 'locked' });
         const h = (v) => crypto.createHmac('sha256', TOKEN_SECRET).update(v).digest();
-        confirmed = !!OWNER_CODE && crypto.timingSafeEqual(h(code), h(OWNER_CODE));
-        if (!confirmed) {
+        if (crypto.timingSafeEqual(h(code), h(OWNER_CODE))) confirmedBy = 'owner';
+        else confirmedBy = (await listAdmins()).find((x) => x.role === 'manager' && checkPassword(code, x.hash))?.name || '';
+        if (!confirmedBy) {
           await gate.miss();
           return res.status(403).json({ error: 'wrong code' });
         }
         await gate.hit();
       }
+      const confirmed = !!confirmedBy;
       if (d.outs.length >= 200) return res.status(400).json({ error: 'too many' });
-      d.outs.push({ ts: Date.now(), amount, reason, note, staff: staffName(body.staff), responsible, confirmed });
+      d.outs.push({ ts: Date.now(), amount, reason, note, staff: staffName(body.staff), responsible, confirmed, confirmedBy });
       await cashPut(d);
       return res.status(200).json({ ok: true, drawer: { ...d, ...(await cashSummary(d)) } });
     }
@@ -765,6 +779,7 @@ module.exports = async function handler(req, res) {
 
     // Switch a trainer's access off: the PIN is deleted and every token already issued stops working.
     if (req.method === 'POST' && op === 'trainer-pin-clear') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
       const id = str(body.trainerId, 6);
       if (!TRAINER_ID.test(id)) return res.status(400).json({ error: 'bad data' });
       await sb(`settings?key=eq.trainerpin:${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
@@ -783,7 +798,7 @@ module.exports = async function handler(req, res) {
         const name = str(body.name, 40);
         const code = String(body.code ?? '');
         const id = str(body.id, 13);
-        if (name.length < 2 || /[<>]/.test(name) || (id && !ADMIN_ID.test(id)) || (code && !/^\d{4,8}$/.test(code)) || (!id && !code)) return res.status(400).json({ error: 'bad data' });
+        if (name.length < 2 || /[<>]/.test(name) || (id && !ADMIN_ID.test(id)) || (code && !/^\d{6,8}$/.test(code)) || (!id && !code)) return res.status(400).json({ error: 'bad data' });
         if (code && code.length === OWNER_CODE.length && code === OWNER_CODE) return res.status(400).json({ error: 'bad data' });
         const all = await listAdmins();
         if (code && all.some((a) => a.id !== id && checkPassword(code, a.hash))) return res.status(409).json({ error: 'code taken' });
@@ -791,7 +806,8 @@ module.exports = async function handler(req, res) {
         const old = id ? all.find((a) => a.id === id) : null;
         if (id && !old) return res.status(404).json({ error: 'unknown' });
         const now = Date.now();
-        const rec = { id: id || 'a' + now.toString(36) + Math.random().toString(36).slice(2, 5), name, hash: code ? hashPassword(code) : old.hash, at: code ? now : old.at, since: old ? old.since : now };
+        const role = body.role === 'manager' ? 'manager' : body.role === 'admin' || !old ? 'admin' : old.role;
+        const rec = { id: id || 'a' + now.toString(36) + Math.random().toString(36).slice(2, 5), name, role, hash: code ? hashPassword(code) : old.hash, at: code ? now : old.at, since: old ? old.since : now };
         await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'admin:' + rec.id, data: rec }) });
         return res.status(200).json({ ok: true, id: rec.id });
       }
@@ -805,6 +821,7 @@ module.exports = async function handler(req, res) {
 
     /* ---- editable content: administrators ---- */
     if (req.method === 'POST' && op === 'content-save') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
       const section = String(body.section);
       if (!CONTENT_SECTIONS.includes(section)) return res.status(400).json({ error: 'bad section' });
       let data;
@@ -822,6 +839,7 @@ module.exports = async function handler(req, res) {
 
     // A photo from an administrator's phone, stored in the public media bucket; the answer is its address.
     if (req.method === 'POST' && op === 'upload') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
       const kind = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[String(body.ext).toLowerCase()];
       const bytes = kind && typeof body.data === 'string' ? Buffer.from(body.data, 'base64') : null;
       if (!bytes || bytes.length < 200 || bytes.length > 2500000) return res.status(400).json({ error: 'bad image' });
@@ -850,6 +868,7 @@ module.exports = async function handler(req, res) {
 
     /* ---- trainer load, entered by the administrators ---- */
     if (req.method === 'POST' && op === 'load') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
       const trainerId = /^t\d{1,3}$/.test(String(body.trainerId)) ? String(body.trainerId) : '';
       const date = DAY.test(String(body.date)) ? String(body.date) : '';
       const sessions = Math.round(Number(body.sessions));
@@ -868,6 +887,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'POST' && op === 'load-del') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
       const id = str(body.id, 24);
       if (!/^L[a-z0-9]{3,23}$/.test(id)) return res.status(400).json({ error: 'bad id' });
       // Staff may only undo a fresh entry (a typo); older entries are the owner's records and only the owner removes them.

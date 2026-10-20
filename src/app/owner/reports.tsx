@@ -304,7 +304,7 @@ export default function OwnerReports() {
                     {formatPrice(w.amount)}
                   </T>
                   <T type="small" color={w.confirmed ? Colors.success : Colors.textMuted}>
-                    {w.confirmed ? t('wd_confirmed') : t('wd_unconfirmed')}
+                    {w.confirmed ? t('wd_confirmed_by', { name: w.confirmedBy === 'owner' ? t('role_owner') : w.confirmedBy ?? '' }) : t('wd_unconfirmed')}
                   </T>
                 </View>
               </Row>

@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Field } from '@/components/admin/fields';
-import { Button, Row, T } from '@/components/ui';
+import { Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { deleteAdmin, fetchAdmins, saveAdmin, type AdminRec } from '@/lib/api';
+import { deleteAdmin, fetchAdmins, saveAdmin, type AdminRec, type StaffRole } from '@/lib/api';
 import { useApp, useI18n } from '@/store/app-context';
 
 /** Owner: the administrators and their personal codes. A code is never shown back, only set anew. */
@@ -14,6 +14,7 @@ export function AdminsEditor({ accent }: { accent: string }) {
   const [list, setList] = useState<AdminRec[] | null>(null);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
+  const [role, setRole] = useState<StaffRole>('admin');
   const [editing, setEditing] = useState<string | null>(null); // admin id whose name/code is being changed
   const [sure, setSure] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ text: string; bad: boolean } | null>(null);
@@ -26,12 +27,13 @@ export function AdminsEditor({ accent }: { accent: string }) {
 
   const save = async () => {
     setBusy(true);
-    const r = await saveAdmin(staffCode, { id: editing ?? undefined, name: name.trim(), code });
+    const r = await saveAdmin(staffCode, { id: editing ?? undefined, name: name.trim(), code, role });
     setBusy(false);
     if (r.status !== 200) return setMsg({ text: r.status === 409 ? t('admin_code_taken') : r.status === 0 ? t('cash_fail') : t('admin_bad'), bad: true });
     setMsg({ text: t('admin_saved', { name: name.trim() }), bad: false });
     setName('');
     setCode('');
+    setRole('admin');
     setEditing(null);
     void load();
   };
@@ -51,6 +53,7 @@ export function AdminsEditor({ accent }: { accent: string }) {
     setEditing(a.id);
     setName(a.name);
     setCode('');
+    setRole(a.role ?? 'admin');
     setMsg(null);
   };
 
@@ -72,7 +75,7 @@ export function AdminsEditor({ accent }: { accent: string }) {
                 {a.name}
               </T>
               <T type="small" color={Colors.textMuted}>
-                {t('admin_code_set', { date: new Date(a.at).toLocaleDateString('ru-RU') })}
+                {a.role === 'manager' ? t('role_manager') : t('role_admin')} • {t('admin_code_set', { date: new Date(a.at).toLocaleDateString('ru-RU') })}
               </T>
             </View>
             <T type="small" color={accent} style={{ fontWeight: '700', padding: 6 }} onPress={() => startEdit(a)}>
@@ -90,6 +93,16 @@ export function AdminsEditor({ accent }: { accent: string }) {
           {editing ? t('admin_edit_title') : t('admin_add_title')}
         </T>
         <Field label={t('admin_name')} value={name} onChange={setName} placeholder="Айбол" />
+        <T type="small" color={Colors.textMuted}>
+          {t('admin_role')}
+        </T>
+        <ChipRow>
+          <Chip label={t('role_admin')} active={role === 'admin'} onPress={() => setRole('admin')} />
+          <Chip label={t('role_manager')} active={role === 'manager'} onPress={() => setRole('manager')} />
+        </ChipRow>
+        <T type="small" color={Colors.textMuted}>
+          {role === 'manager' ? t('role_manager_hint') : t('role_admin_hint')}
+        </T>
         <Field label={editing ? t('admin_new_code') : t('admin_code')} value={code} onChange={(v) => setCode(v.replace(/\D/g, '').slice(0, 8))} keyboard="number-pad" placeholder="••••••" />
         <T type="small" color={Colors.textMuted}>
           {t('admin_code_hint')}
@@ -100,7 +113,7 @@ export function AdminsEditor({ accent }: { accent: string }) {
           </T>
         ) : null}
         <Row gap={Spacing.two}>
-          <Button title={editing ? t('save') : t('admin_add')} onPress={save} disabled={busy || name.trim().length < 2 || (!editing && code.length < 4) || (code.length > 0 && code.length < 4)} style={{ flex: 1, backgroundColor: accent }} />
+          <Button title={editing ? t('save') : t('admin_add')} onPress={save} disabled={busy || name.trim().length < 2 || (!editing && code.length < 6) || (code.length > 0 && code.length < 6)} style={{ flex: 1, backgroundColor: accent }} />
           {editing ? (
             <Button
               title={t('cancel')}

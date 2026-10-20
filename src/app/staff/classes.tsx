@@ -10,7 +10,7 @@ import { Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { addDays, clubById, formatDateHuman, toISODate, trainerById, trainers } from '@/data/mock';
 import { deleteLoad, fetchLoads, postLoad, type TrainerLoad } from '@/lib/api';
-import { useApp, useI18n } from '@/store/app-context';
+import { useCanManage, useApp, useI18n } from '@/store/app-context';
 
 /** The trainers' schedule is not in the system, so the administrator records how many sessions each trainer worked. */
 export default function StaffTrainerLoadScreen() {
@@ -23,6 +23,7 @@ export default function StaffTrainerLoadScreen() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<'ok' | 'fail' | null>(null);
   const [rows, setRows] = useState<TrainerLoad[]>([]);
+  const canManage = useCanManage();
 
   const load = useCallback(async () => {
     if (!staffCode) return;
@@ -66,7 +67,12 @@ export default function StaffTrainerLoadScreen() {
         <T type="subheading">{t('tl_title')}</T>
         <T type="caption">{t('tl_hint')}</T>
 
-        <View style={styles.card}>
+        {!canManage ? (
+          <T type="small" color={Colors.textMuted}>
+            {t('manager_only')}
+          </T>
+        ) : null}
+        {canManage ? <View style={styles.card}>
           <T type="label" color={Colors.textSecondary}>
             {t('tl_trainer')}
           </T>
@@ -113,12 +119,12 @@ export default function StaffTrainerLoadScreen() {
             </T>
           ) : null}
           <Button title={t('tl_save')} icon="checkmark-circle-outline" onPress={() => void save()} disabled={busy} style={{ backgroundColor: StaffAccent }} />
-        </View>
+        </View> : null}
 
-        <View style={styles.card}>
+        {canManage ? <View style={styles.card}>
           <T type="subheading">{t('appt_title')}</T>
           <AppointmentsEditor accent={StaffAccent} />
-        </View>
+        </View> : null}
 
         <T type="subheading">{t('tl_recent')}</T>
         {rows.length === 0 ? (

@@ -6,7 +6,7 @@ import { Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice } from '@/data/mock';
 import { cashClose, cashIn, cashOpen, cashOut, fetchCash, type CashDrawer } from '@/lib/api';
-import { useApp, useI18n, useNow, useRawSales } from '@/store/app-context';
+import { useApp, useCanManage, useI18n, useNow, useRawSales } from '@/store/app-context';
 
 const digits = (s: string) => Number(s.replace(/\D/g, '')) || 0;
 
@@ -16,6 +16,7 @@ export function CashDrawerCard() {
   const { staff, staffCode } = useApp();
   const now = useNow();
   const sales = useRawSales();
+  const canManage = useCanManage();
   const clubId = staff?.clubId ?? 'c1';
   const who = staff?.name ?? '';
   const [drawer, setDrawer] = useState<CashDrawer | null | undefined>(undefined);
@@ -117,7 +118,7 @@ export function CashDrawerCard() {
                   {o.note ? ` • ${o.note}` : ''}
                 </T>
                 <T type="small" color={Colors.textMuted} numberOfLines={1}>
-                  {o.staff} → {o.responsible} • {o.confirmed ? t('wd_confirmed') : t('wd_unconfirmed')}
+                  {o.staff} → {o.responsible} • {o.confirmed ? t('wd_confirmed_by', { name: o.confirmedBy === 'owner' ? t('role_owner') : o.confirmedBy ?? '' }) : t('wd_unconfirmed')}
                 </T>
               </View>
               <T type="small" style={{ fontWeight: '700' }}>
@@ -138,10 +139,14 @@ export function CashDrawerCard() {
                   </ChipRow>
                   <TextInput value={note} onChangeText={setNote} placeholder={t('cash_take_note')} placeholderTextColor={Colors.textMuted} maxLength={80} style={styles.input} />
                   <TextInput value={responsible} onChangeText={setResponsible} placeholder={t('wd_responsible')} placeholderTextColor={Colors.textMuted} maxLength={40} style={styles.input} />
-                  <TextInput value={ownerCode} onChangeText={(v) => setOwnerCode(v.replace(/\D/g, ''))} placeholder={t('wd_owner_code')} placeholderTextColor={Colors.textMuted} keyboardType="number-pad" secureTextEntry maxLength={8} style={styles.input} />
-                  <T type="small" color={Colors.textMuted}>
-                    {t('wd_owner_code_hint')}
-                  </T>
+                  {canManage ? null : (
+                    <>
+                      <TextInput value={ownerCode} onChangeText={(v) => setOwnerCode(v.replace(/\D/g, ''))} placeholder={t('wd_owner_code')} placeholderTextColor={Colors.textMuted} keyboardType="number-pad" secureTextEntry maxLength={8} style={styles.input} />
+                      <T type="small" color={Colors.textMuted}>
+                        {t('wd_owner_code_hint')}
+                      </T>
+                    </>
+                  )}
                 </>
               ) : null}
               <Row gap={Spacing.two}>

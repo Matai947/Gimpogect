@@ -53,11 +53,12 @@ export const fetchQrProof = async (id: string, token: string) => (await call<{ c
 /** Staff mode: the owner's code or an administrator's personal code. 401 = wrong, 429 = locked for 15 minutes, 0 = offline. */
 export const staffLoginRemote = async (code: string) => {
   const r = await raw('staff-login', { method: 'POST', body: { code } });
-  return { status: r.status, data: r.status === 200 ? (r.data as { role: 'owner' } | { role: 'staff'; token: string; name: string; id: string }) : null };
+  return { status: r.status, data: r.status === 200 ? (r.data as { role: 'owner' } | { role: 'admin' | 'manager'; token: string; name: string; id: string }) : null };
 };
-export type AdminRec = { id: string; name: string; at: number; since: number };
+export type StaffRole = 'admin' | 'manager';
+export type AdminRec = { id: string; name: string; role?: StaffRole; at: number; since: number };
 export const fetchAdmins = async (code: string) => (await call<{ admins: AdminRec[] }>('admins', { code }))?.admins ?? null;
-export const saveAdmin = async (code: string, b: { id?: string; name: string; code: string }) => ({ status: (await raw('admin-save', { method: 'POST', code, body: b })).status });
+export const saveAdmin = async (code: string, b: { id?: string; name: string; code: string; role: StaffRole }) => ({ status: (await raw('admin-save', { method: 'POST', code, body: b })).status });
 export const deleteAdmin = (code: string, id: string) => call<{ ok: true }>('admin-del', { method: 'POST', code, body: { id } });
 
 export const fetchLeads = async (code: string) => (await call<{ leads: Lead[] }>('leads', { code }))?.leads ?? null;
@@ -92,7 +93,7 @@ export const startShift = (code: string, b: { staff: string; clubId: string }) =
 export const endShift = (code: string, id: string) => call<{ ok: true; end: number }>('shift-end', { method: 'POST', code, body: { id } });
 export const fetchShifts = async (code: string, days = 30) => (await call<{ shifts: Shift[] }>('shifts', { code, query: `&days=${days}` }))?.shifts ?? null;
 
-export type Withdrawal = { ts: number; amount: number; reason: string; note: string; staff: string; responsible: string; confirmed: boolean; clubId?: string };
+export type Withdrawal = { ts: number; amount: number; reason: string; note: string; staff: string; responsible: string; confirmed: boolean; confirmedBy?: string; clubId?: string };
 /** The cash drawer of a club: opened with a count, money taken out, closed with a count. */
 export type CashDrawer = { id: string; clubId: string; staff: string; open: number; openCash: number; outs: Withdrawal[]; ins?: { ts: number; amount: number; note: string; staff: string }[]; added?: number; close: number | null; counted?: number; expected: number; cashIn: number; refunds: number; taken?: number };
 export const fetchCash = async (code: string, clubId: string) => (await call<{ drawer: CashDrawer | null }>('cash', { code, query: `&clubId=${clubId}` }))?.drawer;

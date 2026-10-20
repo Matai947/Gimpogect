@@ -32,7 +32,7 @@ export default function StaffLoginScreen() {
       router.replace('/owner' as Href); // typed-routes cache can lag behind new route folders
       return;
     }
-    staffLogin(r.data.name, clubId, r.data.token);
+    staffLogin(r.data.name, clubId, r.data.token, r.data.role);
     router.replace('/staff');
   };
 

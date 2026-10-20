@@ -10,12 +10,13 @@ import { ProductPhoto } from '@/components/product-photo';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice, priceLabel } from '@/data/mock';
 import { shopCategories, type ShopCategory } from '@/data/shop';
-import { useApp, useCatalog, useI18n } from '@/store/app-context';
+import { useCanManage, useApp, useCatalog, useI18n } from '@/store/app-context';
 
 export default function StaffProductsScreen() {
   const { t, td } = useI18n();
   const { all, hidden, isCustom } = useCatalog();
   const { upsertProduct, restoreProduct, productOverrides } = useApp();
+  const canManage = useCanManage();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'Все' | ShopCategory | 'hidden'>('Все');
 
@@ -31,12 +32,12 @@ export default function StaffProductsScreen() {
       <StaffHeader
         title={t('staff_tab_products')}
         right={
-          <Pressable onPress={() => router.push('/staff/product-edit')} style={styles.addBtn} accessibilityLabel={t('add_product')}>
+          canManage ? <Pressable onPress={() => router.push('/staff/product-edit')} style={styles.addBtn} accessibilityLabel={t('add_product')}>
             <Ionicons name="add" size={18} color={Colors.onAccent} />
             <T type="small" color={Colors.onAccent} style={{ fontWeight: '800' }}>
               {t('add_product')}
             </T>
-          </Pressable>
+          </Pressable> : null
         }
       />
       <View style={styles.search}>
@@ -51,7 +52,7 @@ export default function StaffProductsScreen() {
       </ChipRow>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <Button title={t('adm_open')} icon="settings-outline" variant="secondary" onPress={() => router.push('/staff/settings' as Href)} />
+        {canManage ? <Button title={t('adm_open')} icon="settings-outline" variant="secondary" onPress={() => router.push('/staff/settings' as Href)} /> : <T type="small" color={Colors.textMuted}>{t('manager_only')}</T>}
         <T type="small" color={Colors.textMuted}>
           {t('products_n', { n: list.length })} • {t('products_manage_sub')}
         </T>
@@ -60,7 +61,7 @@ export default function StaffProductsScreen() {
           const custom = isCustom(p.id);
           const edited = !custom && !!productOverrides[p.id];
           return (
-            <Pressable key={p.id} onPress={() => router.push({ pathname: '/staff/product-edit', params: { id: p.id } })} style={({ pressed }) => [styles.row, pressed && { backgroundColor: Colors.surfaceAlt }, isHidden && { opacity: 0.6 }]}>
+            <Pressable key={p.id} disabled={!canManage} onPress={() => router.push({ pathname: '/staff/product-edit', params: { id: p.id } })} style={({ pressed }) => [styles.row, pressed && { backgroundColor: Colors.surfaceAlt }, isHidden && { opacity: 0.6 }]}>
               <ProductPhoto uri={p.image} style={styles.thumb} transition={150} />
               <View style={{ flex: 1, gap: 2 }}>
                 <Row gap={6}>
@@ -94,7 +95,7 @@ export default function StaffProductsScreen() {
                 </Pressable>
               ) : (
                 <View style={{ alignItems: 'center', gap: 2 }}>
-                  <Switch value={p.inStock} onValueChange={(v) => upsertProduct({ ...p, inStock: v })} trackColor={{ true: StaffAccent, false: Colors.border }} thumbColor="#FFFFFF" />
+                  <Switch value={p.inStock} disabled={!canManage} onValueChange={(v) => upsertProduct({ ...p, inStock: v })} trackColor={{ true: StaffAccent, false: Colors.border }} thumbColor="#FFFFFF" />
                   <T type="small" color={Colors.textMuted} style={{ fontSize: 10 }}>
                     {p.inStock ? t('in_stock') : t('out_of_stock')}
                   </T>

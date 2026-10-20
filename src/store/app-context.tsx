@@ -48,7 +48,7 @@ export type Order = {
   memberId?: string;
 };
 
-export type StaffSession = { name: string; clubId: string; since: string };
+export type StaffSession = { name: string; clubId: string; since: string; role?: 'admin' | 'manager' };
 /** A visit lasts 3 hours from the entry, unless staff mark the exit earlier. */
 export const SESSION_MS = 2 * 60 * 60 * 1000;
 
@@ -134,7 +134,7 @@ type Actions = {
   setCoachPlan: (plan: WeekPlan | null) => void;
   setCoachApiKey: (key: string | null) => void;
   setLang: (lang: Lang) => void;
-  staffLogin: (name: string, clubId: string, code: string) => void;
+  staffLogin: (name: string, clubId: string, code: string, role: 'admin' | 'manager') => void;
   staffLogout: () => void;
   ownerLogin: (code: string) => void;
   ownerLogout: () => void;
@@ -376,8 +376,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   /* ---------- staff mode ---------- */
 
-  const staffLogin = useCallback((name: string, clubId: string, code: string) => {
-    setState((s) => ({ ...s, staffCode: code, staff: { name, clubId, since: toISODate(new Date()) } }));
+  const staffLogin = useCallback((name: string, clubId: string, code: string, role: 'admin' | 'manager') => {
+    setState((s) => ({ ...s, staffCode: code, staff: { name, clubId, since: toISODate(new Date()), role } }));
   }, []);
 
   const staffLogout = useCallback(() => setState((s) => ({ ...s, staff: null, staffCode: s.owner ? s.staffCode : '' })), []);
@@ -1053,6 +1053,12 @@ export function useCartSummary(promo?: string) {
 }
 
 /** Current time that refreshes every 30 s, for "who is inside" views. */
+/** The manager and the owner edit goods, prices and content and confirm money going back; the administrator only runs the desk. */
+export function useCanManage() {
+  const { staff, owner } = useApp();
+  return owner || staff?.role === 'manager';
+}
+
 export function useNow() {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
