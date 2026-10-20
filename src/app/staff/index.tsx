@@ -19,7 +19,7 @@ type Result = { kind: 'member'; member: MemberInfo } | { kind: 'order'; id: stri
 
 export default function StaffScanScreen() {
   const { t } = useI18n();
-  const { user, orders, staff, staffCode, logCheckin, autoAdmit, setAutoAdmit } = useApp();
+  const { orders, staff, staffCode, logCheckin, autoAdmit, setAutoAdmit } = useApp();
   const [unverified, setUnverified] = useState(false);
   const present = usePresence();
   const { byId, list } = useMembers();
@@ -157,16 +157,6 @@ export default function StaffScanScreen() {
             </T>
           </Pressable>
         </View>
-        {user ? (
-          <Pressable onPress={() => handle(JSON.stringify({ v: 1, t: 'member', uid: user.id }))} hitSlop={8} style={{ alignSelf: 'center' }}>
-            <Row gap={6}>
-              <Ionicons name="qr-code-outline" size={14} color={StaffAccent} />
-              <T type="small" color={StaffAccent} style={{ fontWeight: '700' }}>
-                {t('scan_demo_self')}
-              </T>
-            </Row>
-          </Pressable>
-        ) : null}
 
         <OneFitEntry />
 

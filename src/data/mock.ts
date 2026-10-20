@@ -272,33 +272,8 @@ export const plans: Plan[] = [
   { id: 'i8', name: '12 Месяцев Безлимитный', months: 12, days: 365, price: 170000, perMonth: 14167, freezeDays: 14, features: ['Безлимит','Срок: 365 дн.','Заморозка: 2 раза по 7 дн.'] },
 ];
 
-export const news: NewsItem[] = [
-  {
-    id: 'n1',
-    title: 'Открытие клуба на Сейфуллина',
-    subtitle: '15 октября • Алматы',
-    image: 'https://images.unsplash.com/photo-1741156229623-da94e6d7977d?w=1200&q=80',
-    date: '2026-09-25',
-    body: 'Пятый клуб сети в Алматы откроется 15 октября. Действующим членам клуба — неделя бесплатных тренировок в новом зале и скидка 20% на продление.',
-  },
-  {
-    id: 'n2',
-    title: 'Марафон «30 дней силы»',
-    subtitle: 'Старт 1 октября • Призы от партнёров',
-    image: 'https://images.unsplash.com/photo-1607962837359-5e7e89f86776?w=1200&q=80',
-    date: '2026-09-20',
-    body: 'Отмечайте тренировки в приложении 30 дней подряд и получите месяц абонемента в подарок. Лучшие результаты — призы от партнёров.',
-  },
-  {
-    id: 'n3',
-    title: 'Новые групповые: Mobility Flow',
-    subtitle: 'Каждый вторник и четверг',
-    image: 'https://images.unsplash.com/photo-1758448756350-3d0eec02ba37?w=1200&q=80',
-    date: '2026-09-12',
-    body: 'Программа для суставов и мобильности, идеально сочетается с силовыми тренировками. Запись открыта в расписании.',
-  },
-];
-
+/** Club news. Empty for now: the home screen hides the block until there is something real to show. */
+export const news: NewsItem[] = [];
 export const categories: ('Все' | Category)[] = ['Все', 'Йога', 'Сила', 'Кардио', 'Бокс', 'Танцы', 'Аква', 'Растяжка'];
 
 /* ---------- helpers ---------- */

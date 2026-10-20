@@ -204,24 +204,6 @@ function extendMembership(cur: Membership | null, planId: string): Membership {
 
 const AppContext = createContext<(State & Actions) | null>(null);
 
-function demoVisits(): Visit[] {
-  const today = new Date();
-  const offsets = [1, 3, 4, 6, 8, 10, 11, 13, 15, 17, 18, 20, 22, 24, 27, 29, 31, 34, 36, 38, 41, 43, 45, 48];
-  return offsets.map((o) => ({ date: toISODate(addDays(today, -o)), clubId: o % 3 === 0 ? 'c2' : 'c1' }));
-}
-
-/** 8 weekly points ending at the current weight, trending according to the goal. */
-function demoWeights(current = 80.1, goal: FitnessProfile['goal'] = 'lose') {
-  const today = new Date();
-  const slope = goal === 'lose' ? 0.55 : goal === 'gain' ? -0.35 : 0.08; // kg per week going back in time
-  const wobble = [0.2, -0.1, 0.15, -0.2, 0.1, -0.15, 0.05, 0];
-  return Array.from({ length: 8 }, (_, i) => {
-    const weeksAgo = 7 - i;
-    const kg = Math.round((current + slope * weeksAgo + wobble[i]) * 10) / 10;
-    return { date: toISODate(addDays(today, -weeksAgo * 7)), kg };
-  });
-}
-
 export function cartKey(productId: string, option?: string) {
   return option ? `${productId}::${option}` : productId;
 }
@@ -334,8 +316,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       token,
       // A new client has no plan: the administrator issues it at the front desk after payment, and only then the QR appears.
       membership: s.membership,
-      visits: s.visits.length ? s.visits : demoVisits(),
-      weightLog: s.weightLog.length ? s.weightLog : demoWeights(),
+      visits: s.visits,
+      weightLog: s.weightLog,
     }));
     return true;
   }, []);
@@ -357,8 +339,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       user: { id, name: me.name ?? 'Гость', phone, homeClubId: me.homeClubId ?? 'c1', profile: full },
       token,
       membership: me.membership ?? s.membership,
-      visits: s.visits.length ? s.visits : demoVisits(),
-      weightLog: full ? demoWeights(full.weightKg, full.goal) : s.weightLog,
+      visits: s.visits,
+      weightLog: full?.weightKg && !s.weightLog.length ? [{ date: toISODate(new Date()), kg: full.weightKg }] : s.weightLog,
     }));
     return 'ok';
   }, []);
@@ -486,10 +468,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!s.user) return s;
       const today = toISODate(new Date());
       const firstTime = !s.user.profile;
-      // First time: rebuild the demo weight history around the real weight. Later edits just log today's weight.
-      const weightLog = firstTime
-        ? demoWeights(profile.weightKg, profile.goal)
-        : [...s.weightLog.filter((w) => w.date !== today), { date: today, kg: profile.weightKg }];
+      // The first weight opens the log; later edits log today's weight.
+      const weightLog = firstTime ? [{ date: today, kg: profile.weightKg }] : [...s.weightLog.filter((w) => w.date !== today), { date: today, kg: profile.weightKg }];
       return { ...s, user: { ...s.user, profile }, weightLog };
     });
   }, []);

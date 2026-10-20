@@ -1,8 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { Badge, Button, Card, Row, Screen, T } from '@/components/ui';
@@ -14,7 +13,7 @@ import { useApp, useI18n, useMembershipInfo } from '@/store/app-context';
 const REFRESH_SEC = 30;
 
 export default function QrScreen() {
-  const { user, checkIn, visits, token } = useApp();
+  const { user, visits, token } = useApp();
   const { t, td } = useI18n();
   const membership = useMembershipInfo();
   const [tick, setTick] = useState(0);
@@ -47,13 +46,6 @@ export default function QrScreen() {
   const payload = JSON.stringify({ v: 2, t: 'member', uid: user?.id ?? 'guest', n: tick, ...(proof ? { c: proof } : {}) });
 
   const dayClosed = !!membership.plan?.dayOnly && clubHour() >= DAY_ONLY_UNTIL;
-
-  const simulate = () => {
-    if (!membership.active || membership.frozen || dayClosed) return;
-    checkIn(club?.id ?? 'c1');
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    Alert.alert(t('welcome_title'), t('welcome_body', { club: club?.name ?? '' }), [{ text: t('thanks'), onPress: () => router.back() }]);
-  };
 
   return (
     <Screen scroll={false} edges={[]} contentStyle={{ padding: Spacing.three, gap: Spacing.three, alignItems: 'center', justifyContent: 'center' }}>
@@ -96,7 +88,7 @@ export default function QrScreen() {
       </Card>
 
       {membership.active && !membership.frozen ? (
-        <Button title={visitedToday ? t('qr_visited') : t('qr_demo_checkin')} variant="secondary" icon="log-in-outline" onPress={simulate} disabled={visitedToday} style={{ alignSelf: 'stretch' }} />
+        visitedToday ? <Badge label={t('qr_visited')} color={Colors.success} /> : null
       ) : (
         <Button title={t('to_plans')} icon="card-outline" onPress={() => router.replace('/membership')} style={{ alignSelf: 'stretch' }} />
       )}

@@ -59,7 +59,6 @@ export default function HomeScreen() {
             {homeClub?.name.replace('Seven Gym ', '') ?? ''}
           </T>
         </Pressable>
-        <IconButton icon="notifications-outline" onPress={() => router.push('/news/n1')} />
       </View>
 
       {/* Membership pass */}
@@ -325,7 +324,7 @@ export default function HomeScreen() {
       </View>
 
       {/* News */}
-      <View style={[styles.section, { paddingHorizontal: 0 }]}>
+      {news.length ? <View style={[styles.section, { paddingHorizontal: 0 }]}>
         <View style={{ paddingHorizontal: Spacing.three }}>
           <SectionHeader title={t('home_news')} />
         </View>
@@ -343,7 +342,7 @@ export default function HomeScreen() {
             </Pressable>
           ))}
         </ScrollView>
-      </View>
+      </View> : null}
     </Screen>
   );
 }
