@@ -65,6 +65,28 @@ export default function OwnerReports() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shifts, from, club]);
 
+  /** One line per day with any money movement: income, cash and non-cash, refunds, withdrawals, and the drawer count. */
+  const dayRows = useMemo(() => {
+    const dayOf = (ts: number) => new Date(ts + ALMATY).toISOString().slice(0, 10);
+    const map = new Map<string, { income: number; cash: number; nonCash: number; refunds: number; taken: number; diff: number | null }>();
+    const at = (d: string) => map.get(d) ?? (map.set(d, { income: 0, cash: 0, nonCash: 0, refunds: 0, taken: 0, diff: null }), map.get(d)!);
+    sales.filter((x) => x.ts >= from && inClub(x.clubId)).forEach((x) => {
+      const r = at(dayOf(x.ts));
+      const v = x.kind === 'refund' || x.kind === 'debt' ? -x.amount : x.amount;
+      if (x.kind === 'refund') r.refunds += x.amount;
+      else if (x.kind !== 'debt') r.income += x.amount;
+      if (x.method === 'cash') r.cash += v;
+      else if (x.method !== 'desk') r.nonCash += v;
+    });
+    wdRows.forEach((w) => (at(dayOf(w.ts)).taken += w.amount));
+    cashRows.filter((c) => c.close).forEach((c) => {
+      const r = at(dayOf(c.close!));
+      r.diff = (r.diff ?? 0) + (c.counted ?? 0) - c.expected;
+    });
+    return [...map.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([d, r]) => ({ d, ...r }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sales, wdRows, cashRows, from, club]);
+
   const personal = useMemo(() => {
     const rows = sales.filter((x) => x.ts >= from && inClub(x.clubId) && x.trainerId);
     const perTrainer = trainers.map((tr) => {
@@ -113,6 +135,39 @@ export default function OwnerReports() {
             {t('rep_by_hour')}
           </T>
           <Columns values={attendance.byHour} labels={HOURS.map((h) => String(h))} small />
+        </View>
+
+        {/* the day: what the owner asks the cashier about */}
+        <View style={styles.card}>
+          <T type="subheading">{t('rep_days')}</T>
+          {dayRows.length === 0 ? (
+            <T type="small" color={Colors.textMuted}>
+              {t('rep_days_none')}
+            </T>
+          ) : (
+            dayRows.map((r) => (
+              <View key={r.d} style={[styles.line, { gap: 2 }]}>
+                <Row style={{ justifyContent: 'space-between' }}>
+                  <T type="small" style={{ fontWeight: '700' }}>
+                    {formatDateHuman(r.d)}
+                  </T>
+                  <T type="small" color={OwnerAccent} style={{ fontWeight: '700' }}>
+                    {formatPrice(r.income - r.refunds)}
+                  </T>
+                </Row>
+                <T type="small" color={Colors.textSecondary}>
+                  {t('rep_day_cash')}: {formatPrice(r.cash)} • {t('rep_day_noncash')}: {formatPrice(r.nonCash)}
+                  {r.refunds ? ` • ${t('rep_refunds')}: ${formatPrice(r.refunds)}` : ''}
+                  {r.taken ? ` • ${t('cash_taken')}: ${formatPrice(r.taken)}` : ''}
+                </T>
+                {r.diff !== null ? (
+                  <T type="small" color={r.diff === 0 ? Colors.success : Colors.danger}>
+                    {t('rep_day_count')}: {r.diff === 0 ? t('cash_diff_ok') : r.diff < 0 ? t('cash_diff_short', { sum: formatPrice(-r.diff) }) : t('cash_diff_over', { sum: formatPrice(r.diff) })}
+                  </T>
+                ) : null}
+              </View>
+            ))
+          )}
         </View>
 
         {/* trainers */}

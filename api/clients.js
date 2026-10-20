@@ -632,7 +632,8 @@ module.exports = async function handler(req, res) {
         else if (x.kind === 'refund') refunds += x.amount;
       }
       const taken = d.outs.reduce((n, o) => n + o.amount, 0);
-      return { cashIn, refunds, taken, expected: d.openCash + cashIn - refunds - taken };
+      const added = (d.ins || []).reduce((n, o) => n + o.amount, 0);
+      return { cashIn, refunds, taken, added, expected: d.openCash + added + cashIn - refunds - taken };
     };
     const cashRows = async (days) => (await pageAll(`settings?select=data&key=like.cash:*&${enc('data->>open')}=gte.${Date.now() - days * 86400000}&order=key.desc`)).map((r) => r.data);
     const cashPut = (d) => sb(`settings?key=eq.cash:${d.id}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: d }) });
@@ -687,6 +688,18 @@ module.exports = async function handler(req, res) {
       }
       if (d.outs.length >= 200) return res.status(400).json({ error: 'too many' });
       d.outs.push({ ts: Date.now(), amount, reason, note, staff: str(body.staff, 40), responsible, confirmed });
+      await cashPut(d);
+      return res.status(200).json({ ok: true, drawer: { ...d, ...(await cashSummary(d)) } });
+    }
+    // Cash put into the drawer: change money at the start, a top-up from the safe. Appended, never removed.
+    if (req.method === 'POST' && op === 'cash-in') {
+      const d = await cashGet(str(body.id, 20));
+      const amount = int(body.amount, 100000000);
+      const note = str(body.note, 80);
+      if (!d || d.close || amount < 1 || /[<>]/.test(note)) return res.status(400).json({ error: 'bad data' });
+      d.ins = d.ins || [];
+      if (d.ins.length >= 200) return res.status(400).json({ error: 'too many' });
+      d.ins.push({ ts: Date.now(), amount, note, staff: str(body.staff, 40) });
       await cashPut(d);
       return res.status(200).json({ ok: true, drawer: { ...d, ...(await cashSummary(d)) } });
     }

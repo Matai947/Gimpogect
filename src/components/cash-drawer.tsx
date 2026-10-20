@@ -5,7 +5,7 @@ import { clockTime } from '@/components/shift-bar';
 import { Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice } from '@/data/mock';
-import { cashClose, cashOpen, cashOut, fetchCash, type CashDrawer } from '@/lib/api';
+import { cashClose, cashIn, cashOpen, cashOut, fetchCash, type CashDrawer } from '@/lib/api';
 import { useApp, useI18n, useNow, useRawSales } from '@/store/app-context';
 
 const digits = (s: string) => Number(s.replace(/\D/g, '')) || 0;
@@ -19,7 +19,7 @@ export function CashDrawerCard() {
   const clubId = staff?.clubId ?? 'c1';
   const who = staff?.name ?? '';
   const [drawer, setDrawer] = useState<CashDrawer | null | undefined>(undefined);
-  const [mode, setMode] = useState<'out' | 'close' | null>(null);
+  const [mode, setMode] = useState<'in' | 'out' | 'close' | null>(null);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [reason, setReason] = useState('');
@@ -57,6 +57,7 @@ export function CashDrawerCard() {
   };
 
   const open = () => run(() => cashOpen(staffCode, { clubId, staff: who, amount: digits(amount) }), setDrawer);
+  const put = () => run(() => cashIn(staffCode, { id: drawer!.id, amount: digits(amount), note, staff: who }), setDrawer);
   const take = async () => {
     setBusy(true);
     const r = await cashOut(staffCode, { id: drawer!.id, amount: digits(amount), reason, note, staff: who, responsible: responsible.trim(), ownerCode });
@@ -103,6 +104,7 @@ export function CashDrawerCard() {
           </T>
           <View style={{ gap: 2 }}>
             <Line label={t('cash_start')} value={formatPrice(drawer.openCash)} />
+            {drawer.added ? <Line label={t('cash_added')} value={`+${formatPrice(drawer.added)}`} /> : null}
             <Line label={t('cash_in')} value={`+${formatPrice(drawer.cashIn)}`} />
             {drawer.refunds ? <Line label={t('cash_refunds')} value={`−${formatPrice(drawer.refunds)}`} /> : null}
             {drawer.taken ? <Line label={t('cash_taken')} value={`−${formatPrice(drawer.taken)}`} /> : null}
@@ -125,7 +127,8 @@ export function CashDrawerCard() {
           ))}
           {mode ? (
             <View style={{ gap: Spacing.two }}>
-              {input(mode === 'out' ? t('cash_amount_ph') : t('cash_counted'))}
+              {input(mode === 'close' ? t('cash_counted') : t('cash_amount_ph'))}
+              {mode === 'in' ? <TextInput value={note} onChangeText={setNote} placeholder={t('cash_in_note')} placeholderTextColor={Colors.textMuted} maxLength={80} style={styles.input} /> : null}
               {mode === 'out' ? (
                 <>
                   <ChipRow>
@@ -142,12 +145,13 @@ export function CashDrawerCard() {
                 </>
               ) : null}
               <Row gap={Spacing.two}>
-                <Button title={mode === 'out' ? t('cash_take_ok') : t('cash_close_ok')} onPress={mode === 'out' ? take : close} disabled={busy || (mode === 'out' ? !digits(amount) || !reason || responsible.trim().length < 2 : !amount)} style={{ flex: 1 }} />
+                <Button title={mode === 'in' ? t('cash_in_ok') : mode === 'out' ? t('cash_take_ok') : t('cash_close_ok')} onPress={mode === 'in' ? put : mode === 'out' ? take : close} disabled={busy || (mode === 'out' ? !digits(amount) || !reason || responsible.trim().length < 2 : mode === 'in' ? !digits(amount) : !amount)} style={{ flex: 1 }} />
                 <Button title={t('cancel')} variant="secondary" onPress={() => setMode(null)} />
               </Row>
             </View>
           ) : (
             <Row gap={Spacing.two}>
+              <Button title={t('cash_in_btn')} variant="secondary" onPress={() => setMode('in')} style={{ flex: 1 }} />
               <Button title={t('cash_take_btn')} variant="secondary" onPress={() => setMode('out')} style={{ flex: 1 }} />
               <Button title={t('cash_close_btn')} variant="danger" onPress={() => setMode('close')} style={{ flex: 1 }} />
             </Row>
