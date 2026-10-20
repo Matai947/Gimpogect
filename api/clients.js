@@ -669,13 +669,21 @@ module.exports = async function handler(req, res) {
       const code = String(body.ownerCode || '');
       let confirmed = false;
       if (code) {
-        const lock = (await sb('settings?key=eq.ownerlock&select=data'))[0]?.data || { fails: 0, lockUntil: 0 };
+        // The miss is counted atomically before the code is compared, like trainer-login: two parallel guesses cannot share one slot.
+        await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ key: 'ownerlock', data: { fails: 0, lockUntil: 0 } }) });
+        const lock = (await sb('settings?key=eq.ownerlock&select=data'))[0].data;
         if (lock.lockUntil > Date.now()) return res.status(429).json({ error: 'locked' });
+        const tries = lock.lockUntil ? 0 : lock.fails || 0; // an expired lock starts the count over
+        const counted = await sb(`settings?key=eq.ownerlock&${enc('data->>fails')}=eq.${lock.fails || 0}&${enc('data->>lockUntil')}=eq.${lock.lockUntil || 0}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { fails: tries + 1, lockUntil: 0 } }) });
+        if (counted.length !== 1) return res.status(429).json({ error: 'busy' });
         const h = (v) => crypto.createHmac('sha256', TOKEN_SECRET).update(v).digest();
         confirmed = !!OWNER_CODE && crypto.timingSafeEqual(h(code), h(OWNER_CODE));
-        const fails = confirmed ? 0 : lock.fails + 1;
-        await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'ownerlock', data: { fails, lockUntil: fails >= 5 ? Date.now() + 15 * 60000 : 0 } }) });
-        if (!confirmed) return res.status(403).json({ error: 'wrong code' });
+        const settle = (data) => sb('settings?key=eq.ownerlock', { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data }) });
+        if (!confirmed) {
+          if (tries + 1 >= 5) await settle({ fails: 0, lockUntil: Date.now() + 15 * 60000 });
+          return res.status(403).json({ error: 'wrong code' });
+        }
+        await settle({ fails: 0, lockUntil: 0 });
       }
       if (d.outs.length >= 200) return res.status(400).json({ error: 'too many' });
       d.outs.push({ ts: Date.now(), amount, reason, note, staff: str(body.staff, 40), responsible, confirmed });
