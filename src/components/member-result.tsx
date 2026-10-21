@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { Linking, TextInput, StyleSheet, View } from 'react-native';
 
 import { Avatar, Badge, Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -29,7 +29,12 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   const plans = usePlans();
   // The scanner passes a snapshot; re-read so the card updates right after a plan is issued.
   const member = useMembers().byId(snapshot.id) ?? snapshot;
-  const { staff, staffCode, logCheckin, checkoutMember, grantPlan } = useApp();
+  const { staff, staffCode, logCheckin, checkoutMember, grantPlan, editMembership } = useApp();
+  const [editing, setEditing] = useState(false);
+  const [endText, setEndText] = useState('');
+  const [visitsText, setVisitsText] = useState('');
+  const [editMsg, setEditMsg] = useState<{ text: string; bad: boolean } | null>(null);
+  const [saving, setSaving] = useState(false);
   const here = usePresence().find((p) => p.memberId === snapshot.id);
   const [logged, setLogged] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
@@ -62,6 +67,34 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
     if (!staffCode) return;
     const ok = await resetPasswordRemote(staffCode, member.id);
     if (ok) setResetDone(true);
+  };
+
+  // dd.mm.yyyy typed by the desk -> yyyy-mm-dd; empty when the date does not exist
+  const parseDay = (v: string) => {
+    const m = v.trim().match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+    if (!m) return '';
+    const d = new Date(Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])));
+    const iso = d.toISOString().slice(0, 10);
+    return iso.endsWith(`-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`) ? iso : '';
+  };
+  const showDay = (iso?: string) => (iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}` : '');
+  const openEdit = () => {
+    setEndText(showDay(member.endDate));
+    setVisitsText(member.visitsLeft === undefined ? '' : String(member.visitsLeft));
+    setEditMsg(null);
+    setEditing(true);
+  };
+  const saveEdit = async () => {
+    const endDate = parseDay(endText);
+    if (!endDate) return setEditMsg({ text: t('edit_plan_bad_date'), bad: true });
+    const visits = visitsText.trim() === '' ? undefined : Number(visitsText.replace(/\D/g, ''));
+    setSaving(true);
+    const ok = await editMembership(member.id, { endDate, visitsLeft: visits });
+    setSaving(false);
+    if (!ok) return setEditMsg({ text: t('cash_fail'), bad: true });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setEditing(false);
+    setEditMsg({ text: t('edit_plan_saved', { date: formatDateLong(endDate) }), bad: false });
   };
 
   const giveAccess = () => {
@@ -194,6 +227,51 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             {!decision.ok ? <Button title={t('sell_plan')} variant="secondary" icon="card-outline" onPress={() => setPicking((v) => !v)} /> : null}
           </View>
         )}
+        {/* the desk corrects the current plan: imported passes come without dates and counts */}
+        {member.planId && !member.isSelf ? (
+          editing ? (
+            <View style={styles.picker}>
+              <T type="small" style={{ fontWeight: '700' }}>
+                {t('edit_plan_title', { name: td(member.planName ?? '') })}
+              </T>
+              <Row gap={Spacing.two}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <T type="small" color={Colors.textMuted}>
+                    {t('edit_plan_until')}
+                  </T>
+                  <TextInput value={endText} onChangeText={setEndText} placeholder="31.12.2026" placeholderTextColor={Colors.textMuted} keyboardType="numbers-and-punctuation" style={styles.input} />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <T type="small" color={Colors.textMuted}>
+                    {t('edit_plan_visits')}
+                  </T>
+                  <TextInput value={visitsText} onChangeText={(v) => setVisitsText(v.replace(/\D/g, ''))} placeholder={t('edit_plan_unlimited')} placeholderTextColor={Colors.textMuted} keyboardType="number-pad" style={styles.input} />
+                </View>
+              </Row>
+              <T type="small" color={Colors.textMuted}>
+                {t('edit_plan_hint')}
+              </T>
+              {editMsg?.bad ? (
+                <T type="small" color={Colors.danger}>
+                  {editMsg.text}
+                </T>
+              ) : null}
+              <Row gap={Spacing.two}>
+                <Button title={t('save')} icon="checkmark-circle-outline" onPress={() => void saveEdit()} disabled={saving} style={{ flex: 1 }} />
+                <Button title={t('cancel')} variant="secondary" onPress={() => setEditing(false)} />
+              </Row>
+            </View>
+          ) : (
+            <>
+              <Button title={t('edit_plan')} variant="ghost" size="sm" icon="create-outline" onPress={openEdit} />
+              {editMsg && !editMsg.bad ? (
+                <T type="small" color={Colors.success} style={{ fontWeight: '700' }}>
+                  {editMsg.text}
+                </T>
+              ) : null}
+            </>
+          )
+        ) : null}
         {/* Full client profile for the front desk */}
         <View style={styles.grid}>
           <Fact label={t('fact_since')} value={formatDateLong(member.since)} />
@@ -260,6 +338,7 @@ const styles = StyleSheet.create({
   stripe: { width: 6 },
   verdict: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   planBox: { backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md, padding: 12, gap: 4 },
+  input: { height: 44, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surfaceAlt, paddingHorizontal: Spacing.two, fontSize: 16, color: Colors.text },
   picker: { gap: 8, padding: 12, borderRadius: Radius.md, backgroundColor: Colors.surfaceAlt },
   trial: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: Radius.md, backgroundColor: 'rgba(76,195,138,0.14)', borderWidth: 1, borderColor: 'rgba(76,195,138,0.5)' },
   logged: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: Radius.md, backgroundColor: 'rgba(76,195,138,0.12)' },

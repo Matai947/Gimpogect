@@ -108,6 +108,8 @@ type Actions = {
   updateUser: (patch: Partial<User>) => void;
   completeOnboarding: (profile: FitnessProfile) => void;
   grantPlan: (memberId: string, planId: string, amount?: number) => void;
+  /** The desk corrects a client's current plan: when it ends and how many visits are left. No sale is recorded. */
+  editMembership: (memberId: string, fields: { endDate: string; visitsLeft?: number }) => Promise<boolean>;
   recordSale: (sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff' | 'synced'>) => void;
   refreshSales: () => Promise<void>;
   saveClubConfig: (list: ClubConfig[]) => Promise<boolean>;
@@ -475,6 +477,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /** Staff issues a plan at the front desk: the user's own account, a client registered from another device, or a demo member. */
+  const editMembership = useCallback(
+    async (memberId: string, fields: { endDate: string; visitsLeft?: number }) => {
+      const isSelf = state.user?.id === memberId;
+      const remote = state.remote.find((r) => r.id === memberId);
+      const cur = isSelf ? state.membership : remote?.membership;
+      const planId = cur?.planId ?? remote?.pending?.planId;
+      if (!state.staffCode || !planId || (!isSelf && !remote)) return false;
+      const today = toISODate(new Date());
+      // An imported pass that was still waiting for its first entry starts today once the desk gives it dates.
+      const next: Membership = { planId, startDate: cur?.startDate ?? today, endDate: fields.endDate, freezeDaysLeft: cur?.freezeDaysLeft ?? remote?.pending?.freezeDays ?? 0, ...(cur?.frozenUntil ? { frozenUntil: cur.frozenUntil } : {}), ...(cur?.dayOnly || remote?.pending?.dayOnly ? { dayOnly: true } : {}), ...(fields.visitsLeft !== undefined ? { visitsLeft: fields.visitsLeft } : {}) };
+      const ok = await grantRemote(state.staffCode, { id: memberId, name: isSelf ? state.user!.name : remote!.name, phone: isSelf ? state.user!.phone : remote!.phone, membership: next });
+      if (!ok) return false;
+      setState((s) => (isSelf ? { ...s, membership: next } : { ...s, remote: s.remote.map((x) => (x.id === memberId ? { ...x, membership: next, pending: undefined } : x)) }));
+      return true;
+    },
+    [state.user, state.remote, state.membership, state.staffCode],
+  );
+
   const grantPlan = useCallback(
     (memberId: string, planId: string, amount?: number) => {
       const plan = planById(planId);
@@ -696,6 +716,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateUser,
       completeOnboarding,
       grantPlan,
+      editMembership,
       recordSale,
       refreshSales,
       saveClubConfig,
@@ -735,7 +756,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, recordSale, refreshSales, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, editMembership, recordSale, refreshSales, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
