@@ -180,7 +180,7 @@ async function codeGate(key, limit = 3) {
 async function guessGates(req, kind, account) {
   // Only Cloudflare's own header counts: it is set by the edge and cannot be sent by the client. Without it (local runs) the device gate is shared.
   // On Vercel the platform sets x-real-ip the same way; on either host the client cannot forge the header the host itself writes.
-  const ip = String(req.headers['cf-connecting-ip'] || (process.env.VERCEL ? req.headers['x-real-ip'] : '') || '').trim();
+  const ip = String((process.env.VERCEL ? req.headers['x-real-ip'] : req.headers['cf-connecting-ip']) || '').trim();
   const keys = [[kind + ':ip:' + (ip ? crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16) : 'any'), 3], [kind + ':all', 30]];
   if (account) keys.push([kind + ':' + account, 3]);
   const gates = [];
