@@ -43,7 +43,7 @@ export default function QrScreen() {
       live = false;
     };
   }, [tick, user, token]);
-  const payload = JSON.stringify({ v: 2, t: 'member', uid: user?.id ?? 'guest', n: tick, ...(proof ? { c: proof } : {}) });
+  const payload = JSON.stringify({ uid: user?.id ?? 'guest', ...(proof ? { c: proof } : {}) });
 
   const dayClosed = !!membership.plan?.dayOnly && clubHour() >= DAY_ONLY_UNTIL;
 
@@ -55,7 +55,7 @@ export default function QrScreen() {
 
       <View style={styles.qrCard}>
         {membership.active && !membership.frozen && !dayClosed ? (
-          <QRCode value={payload} size={230} backgroundColor="#FFFFFF" color="#0B0F14" />
+          <QRCode value={payload} size={240} quietZone={8} ecl="M" backgroundColor="#FFFFFF" color="#000000" />
         ) : (
           <View style={{ width: 230, height: 230, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <Ionicons name="lock-closed" size={48} color="#5B6673" />

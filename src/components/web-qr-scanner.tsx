@@ -35,22 +35,52 @@ export function WebQrScanner({ onScan, paused, permissionText, allowText, accent
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
+    type Detector = { detect: (v: HTMLVideoElement) => Promise<{ rawValue: string }[]> };
+    const Native = (globalThis as unknown as { BarcodeDetector?: new (o: { formats: string[] }) => Detector }).BarcodeDetector;
+    let detector: Detector | null = null;
+    try {
+      detector = Native ? new Native({ formats: ['qr_code'] }) : null;
+    } catch {
+      detector = null;
+    }
+    let busy = false;
+    let frame = 0;
+
     const tick = () => {
-      const video = videoRef.current;
-      if (video && ctx && video.readyState >= 2 && !pausedRef.current) {
-        // ponytail: decode at half resolution every frame; good enough for a phone held at arm's length
-        canvas.width = video.videoWidth / 2;
-        canvas.height = video.videoHeight / 2;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
-        if (code?.data) onScanRef.current(code.data);
-      }
       raf = requestAnimationFrame(tick);
+      const video = videoRef.current;
+      if (!video || !ctx || video.readyState < 2 || pausedRef.current || busy) return;
+      if (detector) {
+        busy = true;
+        detector
+          .detect(video)
+          .then((codes) => codes[0]?.rawValue && onScanRef.current(codes[0].rawValue))
+          .catch(() => {
+            detector = null; // a detector that fails once is not trusted again: jsQR takes over
+          })
+          .finally(() => (busy = false));
+        return;
+      }
+      // jsQR: every other frame, alternating the whole picture (scaled) and its centre at full resolution.
+      if (frame++ % 2) return;
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      const centre = frame % 4 === 1;
+      const side = Math.min(w, h);
+      const crop = centre ? Math.round(side * 0.7) : side;
+      const sx = Math.round((w - crop) / 2);
+      const sy = Math.round((h - crop) / 2);
+      const out = Math.min(crop, 720);
+      canvas.width = out;
+      canvas.height = out;
+      ctx.drawImage(video, sx, sy, crop, crop, 0, 0, out, out);
+      const img = ctx.getImageData(0, 0, out, out);
+      const code = jsQR(img.data, out, out, { inversionAttempts: 'dontInvert' });
+      if (code?.data) onScanRef.current(code.data);
     };
 
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+      .getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
       .then((s) => {
         if (cancelled) {
           s.getTracks().forEach((tr) => tr.stop());
