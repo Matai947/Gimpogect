@@ -34,6 +34,8 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   const [endText, setEndText] = useState('');
   const [visitsText, setVisitsText] = useState('');
   const [editMsg, setEditMsg] = useState<{ text: string; bad: boolean } | null>(null);
+  const [editPlan, setEditPlan] = useState<string | null>(null); // the type picked for a client who has none
+  const editable = plans.filter((p) => !p.staffOnly && !p.trial && !p.partner);
   const [saving, setSaving] = useState(false);
   const here = usePresence().find((p) => p.memberId === snapshot.id);
   const [logged, setLogged] = useState<string | null>(null);
@@ -81,15 +83,17 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   const openEdit = () => {
     setEndText(showDay(member.endDate));
     setVisitsText(member.visitsLeft === undefined ? '' : String(member.visitsLeft));
+    setEditPlan(null);
     setEditMsg(null);
     setEditing(true);
   };
   const saveEdit = async () => {
     const endDate = parseDay(endText);
+    if (!member.planId && !editPlan) return setEditMsg({ text: t('edit_plan_pick'), bad: true });
     if (!endDate) return setEditMsg({ text: t('edit_plan_bad_date'), bad: true });
     const visits = visitsText.trim() === '' ? undefined : Number(visitsText.replace(/\D/g, ''));
     setSaving(true);
-    const ok = await editMembership(member.id, { endDate, visitsLeft: visits });
+    const ok = await editMembership(member.id, { planId: member.planId ? undefined : editPlan ?? undefined, endDate, visitsLeft: visits });
     setSaving(false);
     if (!ok) return setEditMsg({ text: t('cash_fail'), bad: true });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -228,12 +232,32 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
           </View>
         )}
         {/* the desk corrects the current plan: imported passes come without dates and counts */}
-        {member.planId && !member.isSelf ? (
+        {!member.isSelf ? (
           editing ? (
             <View style={styles.picker}>
               <T type="small" style={{ fontWeight: '700' }}>
-                {t('edit_plan_title', { name: td(member.planName ?? '') })}
+                {member.planId ? t('edit_plan_title', { name: td(member.planName ?? '') }) : t('edit_plan_new')}
               </T>
+              {!member.planId ? (
+                <Row gap={6} style={{ flexWrap: 'wrap' }}>
+                  {editable.map((p) => (
+                    <Chip
+                      key={p.id}
+                      label={td(p.name)}
+                      active={editPlan === p.id}
+                      onPress={() => {
+                        setEditPlan(p.id);
+                        setVisitsText(p.visits ? String(p.visits) : '');
+                        if (!endText) {
+                          const end = new Date();
+                          end.setDate(end.getDate() + (p.months ? p.months * 30 : p.days || 30));
+                          setEndText(showDay(end.toISOString().slice(0, 10)));
+                        }
+                      }}
+                    />
+                  ))}
+                </Row>
+              ) : null}
               <Row gap={Spacing.two}>
                 <View style={{ flex: 1, gap: 2 }}>
                   <T type="small" color={Colors.textMuted}>
@@ -263,7 +287,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             </View>
           ) : (
             <>
-              <Button title={t('edit_plan')} variant="ghost" size="sm" icon="create-outline" onPress={openEdit} />
+              <Button title={member.planId ? t('edit_plan') : t('edit_plan_set')} variant="ghost" size="sm" icon="create-outline" onPress={openEdit} />
               {editMsg && !editMsg.bad ? (
                 <T type="small" color={Colors.success} style={{ fontWeight: '700' }}>
                   {editMsg.text}
