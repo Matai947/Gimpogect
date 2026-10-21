@@ -4,7 +4,7 @@
     "apk": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://gym-project-c2r.pages.dev" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://sevengim.matai.kz" }
     }
   }
 }
