@@ -307,7 +307,11 @@ module.exports = async function handler(req, res) {
     if (req.method === 'GET' && op === 'clubs') return res.status(200).json({ clubs: await getClubs() });
 
     // Editable content is public too: prices, plans, trainers, rules, schedule, promotions, photos.
-    if (req.method === 'GET' && op === 'content') return res.status(200).json({ content: await getContent() });
+    // The clubs' 1Fit codes go to signed-in staff only: in public anyone could check in to 1Fit without coming to the club.
+    if (req.method === 'GET' && op === 'content') {
+      const { onefit, ...open } = await getContent();
+      return res.status(200).json({ content: authed() && onefit ? { ...open, onefit } : open });
+    }
 
     // A fresh single-use proof for the client's own QR (valid 90 seconds). The scanner sends it back with the check-in,
     // so a screenshot, a guessed phone number or a hand-made QR cannot open the door automatically.

@@ -115,7 +115,7 @@ export const cashClose = async (code: string, b: { id: string; counted: number; 
 export const fetchCashes = async (code: string, days = 30) => (await call<{ cashes: CashDrawer[] }>('cashes', { code, query: `&days=${days}` }))?.cashes ?? null;
 
 /** Editable content (prices, plans, trainers, rules, schedule, promotions, photos), as the administrators set it. */
-export const fetchContent = async () => (await call<{ content: Content }>('content'))?.content ?? null;
+export const fetchContent = async (code?: string) => (await call<{ content: Content }>('content', { code: code || undefined }))?.content ?? null;
 export const saveContentRemote = (code: string, section: ContentSection, data: unknown, by: string) => call<{ ok: true }>('content-save', { method: 'POST', code, body: { section, data, by } });
 /** Uploads a photo (base64) to the public media bucket and returns its address. */
 export const uploadPhoto = async (code: string, ext: string, base64: string) => (await call<{ url: string }>('upload', { method: 'POST', code, body: { ext, data: base64 } }))?.url ?? null;

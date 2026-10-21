@@ -249,7 +249,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setState((s) => ({ ...s, clubConfig: list }));
       });
     const loadContent = () =>
-      fetchContent().then((c) => {
+      fetchContent(state.staffCode).then((c) => {
         if (!live || !c) return;
         applyContent(c);
         // The shop catalogue lives in its own state fields; the server copy replaces them.
@@ -262,7 +262,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       live = false;
       sub.remove();
     };
-  }, [state.hydrated]);
+  }, [state.hydrated, state.staffCode]);
 
   // Register this client in the shared registry whenever the account or profile changes.
   const user = state.user;
