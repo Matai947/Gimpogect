@@ -41,7 +41,7 @@ async function pageAll(query, cap = 30000) {
 
 // Editable content (prices, plans, trainers, rules, schedule, promotions, photos), one settings row per section.
 // Everyone reads it; only the administrators write it. Text that ends up on public pages may not carry markup.
-const CONTENT_SECTIONS = ['catalog', 'plans', 'trainers', 'rules', 'classes', 'promos', 'photos'];
+const CONTENT_SECTIONS = ['catalog', 'plans', 'trainers', 'rules', 'classes', 'promos', 'photos', 'onefit'];
 const SAFE_URL = /^https:\/\/[\w.\-\/%?=&:~+@]+$/;
 function cleanDeep(v, depth = 0) {
   if (depth > 7) throw new Error('deep');
@@ -100,6 +100,9 @@ function checkSection(section, d) {
     Object.values(d.overrides || {}).forEach(planFields);
     (d.custom || []).forEach(planFields);
   }
+  if (section === 'onefit') Object.entries(d).forEach(([k, v]) => {
+    if (!/^c\d{1,3}$/.test(k) || typeof v !== 'string' || v.length > 300 || /[<>"'`\s]/.test(v)) throw new Error('onefit');
+  });
   if (section === 'promos') {
     (Array.isArray(d) ? d : d.list || []).forEach((p) => {
       if (p.kind === 'percent') num(p.value, 0, 100);

@@ -35,6 +35,7 @@ export type Content = {
   classes?: ClassTemplate[];
   promos?: Promo[];
   photos?: Record<string, string[]>; // club id -> photo addresses
+  onefit?: Record<string, string>; // club id -> the text in that club's 1Fit QR (the stand guests scan with the 1Fit app)
 };
 
 export type ContentSection = keyof Content;
