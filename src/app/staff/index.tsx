@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { MemberResult, StaffAccent, entryDecision } from '@/components/member-result';
@@ -27,6 +27,7 @@ export default function StaffScanScreen() {
   const [result, setResult] = useState<Result | null>(null);
   const [manual, setManual] = useState('');
   const [paused, setPaused] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
   const canCamera = Platform.OS !== 'web';
 
   const resolve = useCallback(
@@ -66,6 +67,7 @@ export default function StaffScanScreen() {
     const r = resolve(raw);
     setResult(r);
     setPaused(true);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setUnverified(false);
     if (scanned && autoAdmit && r.kind === 'member' && entryDecision(r.member, t).ok && !present.some((p) => p.memberId === r.member.id)) {
@@ -101,9 +103,9 @@ export default function StaffScanScreen() {
   return (
     <View style={styles.root}>
       <StaffHeader title={t('staff_tab_scan')} />
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* Camera */}
-        <View style={styles.cameraWrap}>
+        <View style={[styles.cameraWrap, result ? styles.cameraFolded : null]}>
           {!canCamera ? (
             <WebQrScanner onScan={(d) => { if (!paused) handle(d, true); }} paused={paused} permissionText={t('scan_permission')} allowText={t('scan_allow')} accent={StaffAccent} />
           ) : permission?.granted ? (
@@ -132,9 +134,35 @@ export default function StaffScanScreen() {
             </Pressable>
           ) : null}
         </View>
-        <T type="small" color={Colors.textSecondary} style={{ textAlign: 'center' }}>
-          {t('scan_hint')}
-        </T>
+        {/* Result */}
+        {result?.kind === 'member' ? <MemberResult member={result.member} onDone={reset} /> : null}
+        {result?.kind === 'notfound' ? (
+          <View style={styles.notice}>
+            <Ionicons name="person-remove-outline" size={22} color={Colors.warning} />
+            <View style={{ flex: 1 }}>
+              <T type="subheading">{t('scan_not_found')}</T>
+              <T type="small" color={Colors.textSecondary}>
+                {result.q}
+              </T>
+            </View>
+          </View>
+        ) : null}
+        {result?.kind === 'unknown' ? (
+          <View style={styles.notice}>
+            <Ionicons name="help-circle-outline" size={22} color={Colors.warning} />
+            <View style={{ flex: 1 }}>
+              <T type="subheading">{t('scan_unknown')}</T>
+              <T type="small" color={Colors.textSecondary}>
+                {t('scan_unknown_sub')}
+              </T>
+            </View>
+          </View>
+        ) : null}
+        {result ? null : (
+          <T type="small" color={Colors.textSecondary} style={{ textAlign: 'center' }}>
+            {t('scan_hint')}
+          </T>
+        )}
         <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <View style={{ flex: 1, paddingRight: Spacing.two }}>
             <T type="body" style={{ fontWeight: '700' }}>
@@ -166,30 +194,6 @@ export default function StaffScanScreen() {
           </T>
         ) : null}
 
-        {/* Result */}
-        {result?.kind === 'member' ? <MemberResult member={result.member} onDone={reset} /> : null}
-        {result?.kind === 'notfound' ? (
-          <View style={styles.notice}>
-            <Ionicons name="person-remove-outline" size={22} color={Colors.warning} />
-            <View style={{ flex: 1 }}>
-              <T type="subheading">{t('scan_not_found')}</T>
-              <T type="small" color={Colors.textSecondary}>
-                {result.q}
-              </T>
-            </View>
-          </View>
-        ) : null}
-        {result?.kind === 'unknown' ? (
-          <View style={styles.notice}>
-            <Ionicons name="help-circle-outline" size={22} color={Colors.warning} />
-            <View style={{ flex: 1 }}>
-              <T type="subheading">{t('scan_unknown')}</T>
-              <T type="small" color={Colors.textSecondary}>
-                {t('scan_unknown_sub')}
-              </T>
-            </View>
-          </View>
-        ) : null}
       </ScrollView>
     </View>
   );
@@ -199,6 +203,7 @@ const CORNER = 26;
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   body: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },
+  cameraFolded: { height: 110 },
   cameraWrap: { height: 280, borderRadius: Radius.xl, overflow: 'hidden', backgroundColor: '#05090C', borderWidth: 1, borderColor: 'rgba(217,100,58,0.35)' },
   noCamera: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two, padding: Spacing.three },
   frame: { position: 'absolute', left: 40, right: 40, top: 40, bottom: 40 },
