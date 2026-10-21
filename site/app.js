@@ -1,6 +1,6 @@
 // Seven Gym marketing site: content, 3 languages (RU / KZ / EN), lead form.
 // ponytail: switch to https://gym.matai.kz/api/clients once that domain points to Cloudflare.
-const API = 'https://gym-project-c2r.pages.dev/api/clients';
+const API = 'https://seven-gym-rho.vercel.app/api/clients';
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const IMG = (id, w = 1000) => `https://images.unsplash.com/photo-${id}?w=${w}&q=80`;
 
