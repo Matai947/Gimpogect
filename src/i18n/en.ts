@@ -58,7 +58,7 @@ export const en: Record<TKey, string> = {
   trainer_quals: 'Qualifications',
   scan_unsupported: 'The camera cannot start here: the link was opened in an in-app browser (WhatsApp, Telegram, Instagram) or not over https. Open this address in Chrome or Safari:',
   scan_denied_how: 'The camera is blocked for this site. Tap the lock icon next to the address → Camera → Allow, then “Allow camera”.',
-  scan_no_camera: 'This device has no camera. Scan from a phone or plug in a USB scanner: it types the QR into the search box and the entry works the same way.',
+  scan_no_cam_device: 'This device has no camera. Scan from a phone or plug in a USB scanner: it types the QR into the search box and the entry works the same way.',
   scan_busy: 'The camera is used by another app or tab. Close it and tap “Allow camera”.',
   role_admin: 'Administrator',
   role_manager: 'Manager',

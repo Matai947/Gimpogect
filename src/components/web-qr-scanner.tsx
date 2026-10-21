@@ -76,7 +76,7 @@ export function WebQrScanner({ onScan, paused, permissionText, allowText, accent
   }, [attempt]);
 
   if (status !== 'idle' && status !== 'running') {
-    const why = status === 'unsupported' ? t('scan_unsupported') : status === 'nocamera' ? t('scan_no_camera') : status === 'busy' ? t('scan_busy') : t('scan_denied_how');
+    const why = status === 'unsupported' ? t('scan_unsupported') : status === 'nocamera' ? t('scan_no_cam_device') : status === 'busy' ? t('scan_busy') : t('scan_denied_how');
     return (
       <View style={styles.center}>
         <Ionicons name="camera-outline" size={34} color={Colors.textMuted} />
