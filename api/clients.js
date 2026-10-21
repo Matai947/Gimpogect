@@ -816,7 +816,8 @@ module.exports = async function handler(req, res) {
         const name = str(body.name, 40);
         const code = String(body.code ?? '');
         const id = str(body.id, 13);
-        if (name.length < 2 || /[<>]/.test(name) || (id && !ADMIN_ID.test(id)) || (code && !/^\d{6,8}$/.test(code)) || (!id && !code)) return res.status(400).json({ error: 'bad data' });
+        // U+FFFD = text that arrived in a broken encoding; it would show as question marks everywhere.
+        if (name.length < 2 || /[<>�]/.test(name) || (id && !ADMIN_ID.test(id)) || (code && !/^\d{6,8}$/.test(code)) || (!id && !code)) return res.status(400).json({ error: 'bad data' });
         if (code && code.length === OWNER_CODE.length && code === OWNER_CODE) return res.status(400).json({ error: 'bad data' });
         const all = await listAdmins();
         if (code && all.some((a) => a.id !== id && checkPassword(code, a.hash))) return res.status(409).json({ error: 'code taken' });
