@@ -150,7 +150,7 @@ export default function StaffScanScreen() {
         {/* Manual entry */}
         <View style={styles.manual}>
           <Ionicons name="search" size={18} color={Colors.textSecondary} />
-          <TextInput value={manual} onChangeText={setManual} placeholder={t('scan_manual_ph')} placeholderTextColor={Colors.textMuted} style={styles.manualInput} onSubmitEditing={() => handle(manual)} returnKeyType="search" />
+          <TextInput value={manual} onChangeText={setManual} placeholder={t('scan_manual_ph')} placeholderTextColor={Colors.textMuted} style={styles.manualInput} onSubmitEditing={() => handle(manual, /^\s*\{/.test(manual))} returnKeyType="search" />
           <Pressable onPress={() => handle(manual)} disabled={!manual.trim()} style={[styles.findBtn, !manual.trim() && { opacity: 0.4 }]}>
             <T type="small" color={Colors.onAccent} style={{ fontWeight: '800' }}>
               {t('scan_find')}
