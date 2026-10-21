@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BarcodeSheet, cleanBarcode } from '@/components/barcode-sheet';
 import { StaffAccent } from '@/components/member-result';
 import { Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -20,7 +21,7 @@ const optionLabels: NonNullable<Product['options']>['label'][] = ['Вкус', '�
 export default function ProductEditScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { t, td } = useI18n();
-  const { byId, isCustom } = useCatalog();
+  const { byId, isCustom, all } = useCatalog();
   const { upsertProduct, deleteProduct, staffCode } = useApp();
   const existing = id ? byId(id) : undefined;
 
@@ -37,6 +38,9 @@ export default function ProductEditScreen() {
   const [optionValues, setOptionValues] = useState(existing?.options?.values.join(', ') ?? '');
   const [badge, setBadge] = useState<(typeof badges)[number]>(existing?.badge ?? 'none');
   const [inStock, setInStock] = useState(existing?.inStock ?? true);
+  const [barcode, setBarcode] = useState(existing?.barcode ?? '');
+  const [scanOpen, setScanOpen] = useState(false);
+  const barcodeOwner = barcode ? all.find((p) => p.barcode === barcode && p.id !== existing?.id) : undefined;
   const [nutritionOpen, setNutritionOpen] = useState(!!existing?.nutrition);
   const [serving, setServing] = useState(existing?.nutrition?.serving ?? '');
   const [protein, setProtein] = useState(existing?.nutrition ? String(existing.nutrition.protein) : '');
@@ -45,7 +49,7 @@ export default function ProductEditScreen() {
   const [calories, setCalories] = useState(existing?.nutrition ? String(existing.nutrition.calories) : '');
 
   const priceN = parseInt(price.replace(/\D/g, ''), 10);
-  const valid = name.trim().length >= 2 && !!category && priceN > 0;
+  const valid = name.trim().length >= 2 && !!category && priceN > 0 && !barcodeOwner;
 
   const pickImage = async (camera: boolean) => {
     try {
@@ -92,6 +96,7 @@ export default function ProductEditScreen() {
       badge: badge === 'none' ? undefined : badge,
       nutrition: nutritionOpen && (protein || carbs || fat || calories) ? { serving: serving.trim() || '—', protein: Number(protein) || 0, carbs: Number(carbs) || 0, fat: Number(fat) || 0, calories: Number(calories) || 0 } : undefined,
       inStock,
+      barcode: cleanBarcode(barcode) || undefined,
     };
     upsertProduct(product);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -184,6 +189,18 @@ export default function ProductEditScreen() {
               <Field value={oldPrice} onChange={(v) => setOldPrice(v.replace(/\D/g, ''))} placeholder="28990" keyboardType="number-pad" />
             </View>
           </Row>
+
+          <Label text={t('bc_label')} />
+          <Row gap={Spacing.two}>
+            <Field value={barcode} onChange={(v) => setBarcode(v.replace(/[^0-9A-Za-z-]/g, ''))} placeholder="4870000000000" keyboardType="number-pad" style={{ flex: 1 }} />
+            <Button title={t('bc_scan')} icon="barcode-outline" size="sm" onPress={() => setScanOpen(true)} style={{ backgroundColor: StaffAccent }} />
+          </Row>
+          {barcodeOwner ? (
+            <T type="small" color={Colors.danger}>
+              {t('bc_taken', { name: barcodeOwner.name })}
+            </T>
+          ) : null}
+          <BarcodeSheet visible={scanOpen} onClose={() => setScanOpen(false)} onCode={setBarcode} accent={StaffAccent} />
 
           <Label text={t('p_unit')} />
           <Field value={unit} onChange={setUnit} placeholder={t('p_unit_ph')} />

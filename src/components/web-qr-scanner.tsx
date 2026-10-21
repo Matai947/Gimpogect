@@ -11,7 +11,7 @@ import { useI18n } from '@/store/app-context';
  * Browser QR scanner: getUserMedia + jsQR on a canvas. Works in Safari and Chrome,
  * unlike the BarcodeDetector API that expo-camera relies on for web.
  */
-export function WebQrScanner({ onScan, paused, permissionText, allowText, accent }: { onScan: (data: string) => void; paused: boolean; permissionText: string; allowText: string; accent: string }) {
+export function WebQrScanner({ onScan, paused, permissionText, allowText, accent, barcodes }: { onScan: (data: string) => void; paused: boolean; permissionText: string; allowText: string; accent: string; barcodes?: boolean }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const onScanRef = useRef(onScan);
   const pausedRef = useRef(paused);
@@ -39,10 +39,17 @@ export function WebQrScanner({ onScan, paused, permissionText, allowText, accent
     const Native = (globalThis as unknown as { BarcodeDetector?: new (o: { formats: string[] }) => Detector }).BarcodeDetector;
     let detector: Detector | null = null;
     try {
-      detector = Native ? new Native({ formats: ['qr_code'] }) : null;
+      detector = Native && !barcodes ? new Native({ formats: ['qr_code'] }) : null;
     } catch {
       detector = null;
     }
+    // Product barcodes: the browser's own detector rarely knows them (never on iPhone), so the polyfill (zxing) reads them everywhere.
+    if (barcodes)
+      import('barcode-detector/ponyfill')
+        .then(({ BarcodeDetector }) => {
+          if (!cancelled) detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf'] }) as unknown as Detector;
+        })
+        .catch(() => setStatus('unsupported'));
     let busy = false;
     let frame = 0;
 
@@ -56,11 +63,12 @@ export function WebQrScanner({ onScan, paused, permissionText, allowText, accent
           .detect(video)
           .then((codes) => codes[0]?.rawValue && onScanRef.current(codes[0].rawValue))
           .catch(() => {
-            detector = null; // a detector that fails once is not trusted again: jsQR takes over
+            if (!barcodes) detector = null; // a QR detector that fails once is not trusted again: jsQR takes over
           })
           .finally(() => (busy = false));
         return;
       }
+      if (barcodes) return; // the barcode reader is still loading
       // jsQR: every other frame, alternating the whole picture (scaled) and its centre at full resolution.
       if (frame++ % 2) return;
       const w = video.videoWidth;
@@ -103,7 +111,7 @@ export function WebQrScanner({ onScan, paused, permissionText, allowText, accent
       cancelAnimationFrame(raf);
       stream?.getTracks().forEach((tr) => tr.stop());
     };
-  }, [attempt]);
+  }, [attempt, barcodes]);
 
   if (status !== 'idle' && status !== 'running') {
     const why = status === 'unsupported' ? t('scan_unsupported') : status === 'nocamera' ? t('scan_no_cam_device') : status === 'busy' ? t('scan_busy') : t('scan_denied_how');

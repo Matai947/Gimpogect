@@ -16,6 +16,7 @@ export type Product = {
   badge?: 'Хит' | 'Новинка' | 'Скидка';
   nutrition?: { serving: string; protein: number; carbs: number; fat: number; calories: number };
   inStock: boolean;
+  barcode?: string; // EAN/UPC printed on the package, read by the register's scanner
 };
 
 export const shopCategories: { key: 'Все' | ShopCategory; icon: string }[] = [

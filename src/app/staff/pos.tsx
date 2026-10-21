@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { useMemo, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, Share, StyleSheet, TextInput, View } from 'react-native';
 
+import { BarcodeSheet, cleanBarcode } from '@/components/barcode-sheet';
 import { CashDrawerCard } from '@/components/cash-drawer';
 import { StaffAccent } from '@/components/member-result';
 import { StaffHeader } from '@/components/staff-header';
@@ -43,6 +44,9 @@ export default function StaffPosScreen() {
   const [partial, setPartial] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   const [settle, setSettle] = useState('');
+  const [scanOpen, setScanOpen] = useState(false);
+  const [code, setCode] = useState('');
+  const [codeMsg, setCodeMsg] = useState('');
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -79,6 +83,17 @@ export default function StaffPosScreen() {
   const add = (l: Omit<Line, 'qty'>) => {
     setError(null);
     setLines((ls) => (ls.some((x) => x.key === l.key) ? ls.map((x) => (x.key === l.key ? { ...x, qty: x.qty + 1 } : x)) : [...ls, { ...l, qty: 1 }]));
+  };
+  /** A scanned or typed barcode puts its product into the check. */
+  const addByCode = (raw: string) => {
+    const c = cleanBarcode(raw);
+    setCode('');
+    if (!c) return;
+    const p = products.find((x) => x.barcode === c);
+    if (!p) return setCodeMsg(t('bc_unknown', { code: c }));
+    if (!p.inStock) return setCodeMsg(t('bc_out', { name: p.name }));
+    setCodeMsg('');
+    add({ key: `p:${p.id}`, title: p.name, price: p.price, productId: p.id });
   };
   const bump = (key: string, d: number) => setLines((ls) => ls.map((x) => (x.key === key ? { ...x, qty: x.qty + d } : x)).filter((x) => x.qty > 0));
 
@@ -268,6 +283,19 @@ export default function StaffPosScreen() {
             </Row>
           </View>
         ) : null}
+
+        {/* barcode: the camera, or a USB scanner that types the code and presses Enter */}
+        <Row gap={Spacing.two} style={styles.customRow}>
+          <Ionicons name="barcode-outline" size={18} color={StaffAccent} />
+          <TextInput value={code} onChangeText={setCode} onSubmitEditing={() => addByCode(code)} placeholder={t('bc_pos_ph')} placeholderTextColor={Colors.textMuted} returnKeyType="done" style={[styles.searchInput, { height: 40 }]} />
+          <Button title={t('bc_scan')} icon="scan-outline" size="sm" onPress={() => setScanOpen(true)} style={{ backgroundColor: StaffAccent }} />
+        </Row>
+        {codeMsg ? (
+          <T type="small" color={Colors.danger}>
+            {codeMsg}
+          </T>
+        ) : null}
+        <BarcodeSheet visible={scanOpen} onClose={() => setScanOpen(false)} onCode={addByCode} accent={StaffAccent} />
 
         {/* catalogue */}
         <ChipRow>

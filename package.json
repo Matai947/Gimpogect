@@ -11,6 +11,7 @@
     "@expo/ui": "~57.0.20",
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "barcode-detector": "^3.2.3",
     "expo": "~57.0.25",
     "expo-auth-session": "~57.0.13",
     "expo-camera": "~57.0.6",

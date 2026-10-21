@@ -24,7 +24,7 @@ export default function StaffProductsScreen() {
     const q = query.trim().toLowerCase();
     return all
       .filter((p) => (category === 'hidden' ? hidden.includes(p.id) : category === 'Все' ? !hidden.includes(p.id) : p.category === category && !hidden.includes(p.id)))
-      .filter((p) => (q ? p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) : true));
+      .filter((p) => (q ? p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || (!!p.barcode && p.barcode.includes(q)) : true));
   }, [all, hidden, category, query]);
 
   return (
