@@ -307,10 +307,10 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
         {!member.isSelf && member.planId && member.active ? (
           member.frozen ? (
             <Button title={t('unfreeze')} icon="sunny-outline" variant="secondary" size="sm" onPress={() => void doFreeze(0)} />
-          ) : member.freezeDaysLeft > 0 ? (
+          ) : member.freezeDaysLeft > 0 && member.freezesLeft !== 0 ? (
             freezing ? (
               <Row gap={6} style={{ flexWrap: 'wrap' }}>
-                {[7, 14, 30, member.freezeDaysLeft].filter((d, i, a) => d <= member.freezeDaysLeft && a.indexOf(d) === i).map((d) => (
+                {((cap) => [3, 5, 7, 10, 14, cap].filter((d, i, a) => d >= 1 && d <= cap && a.indexOf(d) === i).sort((x, y) => x - y))(Math.min(member.freezeMax || member.freezeDaysLeft, member.freezeDaysLeft)).map((d) => (
                   <Chip key={d} label={t('freeze_for', { n: d })} onPress={() => void doFreeze(d)} />
                 ))}
                 <Chip label={t('cancel')} onPress={() => setFreezing(false)} />
@@ -332,7 +332,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
           <Fact label={t('fact_visits_total')} value={String(member.visitsTotal)} />
           <Fact label={t('fact_age_goal')} value={[member.age ? t('age_n', { n: member.age }) : '', member.goal ? goalTitle(member.goal) : ''].filter(Boolean).join(' • ') || '—'} />
           <Fact label={t('fact_trainer')} value={member.trainerId ? (trainerById(member.trainerId)?.name ?? '—') : t('fact_no_trainer')} />
-          <Fact label={t('fact_freeze')} value={member.frozen && member.frozenUntil ? t('frozen_until', { date: formatDateLong(member.frozenUntil) }) : t('days_n', { n: member.freezeDaysLeft })} accent={member.frozen} />
+          <Fact label={t('fact_freeze')} value={member.frozen && member.frozenUntil ? t('frozen_until', { date: formatDateLong(member.frozenUntil) }) : member.freezesLeft === 0 ? t('ms_freeze_used') : t('ms_freeze_rule', { k: member.freezesLeft ?? 1, n: Math.min(member.freezeMax || member.freezeDaysLeft, member.freezeDaysLeft) })} accent={member.frozen} />
           {member.params ? <Fact label={t('my_params')} value={member.params} /> : null}
           {member.bookingsToday ? <Fact label={t('fact_bookings_today')} value={String(member.bookingsToday)} accent /> : null}
           {member.ordersReady ? <Fact label={t('fact_orders_ready')} value={String(member.ordersReady)} accent /> : null}

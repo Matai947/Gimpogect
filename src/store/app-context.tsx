@@ -18,6 +18,8 @@ export type Membership = {
   endDate: string;
   frozenUntil?: string;
   freezeDaysLeft: number;
+  freezesLeft?: number; // freezes still allowed (unset on old passes: the server works it out)
+  freezeMax?: number; // days in one freeze
   visitsLeft?: number; // only for plans with a visit counter
   dayOnly?: boolean; // daytime plan: no entry from 17:00 (the server checks it too)
 };
@@ -204,9 +206,12 @@ function extendMembership(cur: Membership | null, planId: string): Membership {
   const end = stillActive ? new Date(cur!.endDate) : new Date();
   if (plan.days) end.setDate(end.getDate() + plan.days);
   else end.setMonth(end.getMonth() + plan.months);
-  const freezeDays = plan.trial ? 0 : (plan.freezeDays ?? 0);
+  const perFreeze = plan.trial ? 0 : (plan.freezeDays ?? 0);
+  const count = perFreeze ? (plan.freezeCount ?? 1) : 0;
+  const freezeDays = perFreeze * count;
+  const freezesLeft = (stillActive ? (cur!.freezesLeft ?? 0) : 0) + count;
   const visitsLeft = plan.visits ? (stillActive && cur!.visitsLeft !== undefined ? cur!.visitsLeft : 0) + plan.visits : undefined;
-  return { planId, startDate: stillActive ? cur!.startDate : today, endDate: toISODate(end), freezeDaysLeft: (stillActive ? cur!.freezeDaysLeft : 0) + freezeDays, ...(visitsLeft !== undefined ? { visitsLeft } : {}), ...(plan.dayOnly ? { dayOnly: true } : {}) };
+  return { planId, startDate: stillActive ? cur!.startDate : today, endDate: toISODate(end), freezeDaysLeft: (stillActive ? cur!.freezeDaysLeft : 0) + freezeDays, freezesLeft, freezeMax: perFreeze || (stillActive ? cur!.freezeMax : 0) || 0, ...(visitsLeft !== undefined ? { visitsLeft } : {}), ...(plan.dayOnly ? { dayOnly: true } : {}) };
 }
 
 const AppContext = createContext<(State & Actions) | null>(null);
@@ -888,6 +893,8 @@ export type MemberInfo = {
   goal?: Goal;
   trainerId?: string;
   freezeDaysLeft: number;
+  freezesLeft?: number;
+  freezeMax?: number;
   visitsLeft?: number;
   pendingActivation: boolean; // an imported pass that starts at the first entry
   bookingsToday: number;
@@ -926,6 +933,8 @@ export function useMembers() {
         goal: m.goal,
         trainerId: m.trainerId,
         freezeDaysLeft: m.freezeDaysLeft,
+        freezesLeft: m.freezesLeft,
+        freezeMax: m.freezeMax,
         visitsLeft: m.visitsLeft,
         pendingActivation: !!m.pendingActivation,
         bookingsToday: isSelf ? bookings.filter((b) => sessionById(b)?.date === todayIso).length : 0,
@@ -941,7 +950,7 @@ export function useMembers() {
     const fresh = remote
       .filter((r) => r.id !== user?.id && !members.some((m) => m.id === r.id))
       .map((r) => {
-        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId ?? r.pending?.planId, endDate: r.membership?.endDate ?? (r.pending ? toISODate(addDays(today, r.pending.days)) : undefined), pendingActivation: !!r.pending && !r.membership, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, note: r.note, trialUsed: r.trialUsed, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0, visitsLeft: r.membership?.visitsLeft ?? r.pending?.visitsLeft }, false);
+        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId ?? r.pending?.planId, endDate: r.membership?.endDate ?? (r.pending ? toISODate(addDays(today, r.pending.days)) : undefined), pendingActivation: !!r.pending && !r.membership, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, note: r.note, trialUsed: r.trialUsed, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0, freezesLeft: r.membership?.freezesLeft, freezeMax: r.membership?.freezeMax, visitsLeft: r.membership?.visitsLeft ?? r.pending?.visitsLeft }, false);
         info.params = r.profile?.heightCm ? `${r.profile.heightCm} см • ${r.profile.weightKg} кг` : undefined;
         return info;
       });
@@ -963,6 +972,8 @@ export function useMembers() {
         age: user.profile?.age ?? 0,
         goal: user.profile?.goal ?? 'tone',
         freezeDaysLeft: membership?.freezeDaysLeft ?? 0,
+        freezesLeft: membership?.freezesLeft,
+        freezeMax: membership?.freezeMax,
         visitsLeft: membership?.visitsLeft,
       };
       list.unshift(build(self, true));

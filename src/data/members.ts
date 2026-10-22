@@ -18,6 +18,8 @@ export type Member = {
   goal?: Goal;
   trainerId?: string;
   freezeDaysLeft: number;
+  freezesLeft?: number;
+  freezeMax?: number;
   visitsLeft?: number;
   trialUsed?: boolean;
   pendingActivation?: boolean;

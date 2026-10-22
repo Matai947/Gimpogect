@@ -86,7 +86,8 @@ export type Plan = {
   partner?: boolean; // paid by a partner (1Fit): sold at the register for 0, hidden from clients
   legacy?: boolean; // hidden from sale but still shown on members
   visits?: number; // visits included; unset = unlimited
-  freezeDays?: number; // total freeze days given with the plan
+  freezeDays?: number; // days in one freeze (the price list's «Дней заморозки»)
+  freezeCount?: number; // how many freezes the plan allows (the price list's «Кол-во заморозок»); 1 when unset
 };
 
 export type NewsItem = {
@@ -269,7 +270,7 @@ export const plans: Plan[] = [
   { id: 'i5', name: 'Абонемент безлимитный', months: 1, days: 31, price: 19000, perMonth: 19000, freezeDays: 5, features: ['Безлимит','Срок: 31 дн.','Заморозка: 1 раз, 5 дн.'] },
   { id: 'i6', name: '3 Месяца Безлимитный', months: 3, days: 90, price: 50000, perMonth: 16667, freezeDays: 7, features: ['Безлимит','Срок: 90 дн.','Заморозка: 1 раз, 7 дн.'] },
   { id: 'i7', name: '6 Месяцев Безлимитный', months: 6, days: 180, price: 90000, perMonth: 15000, freezeDays: 10, features: ['Безлимит','Срок: 180 дн.','Заморозка: 1 раз, 10 дн.'] },
-  { id: 'i8', name: '12 Месяцев Безлимитный', months: 12, days: 365, price: 170000, perMonth: 14167, freezeDays: 14, features: ['Безлимит','Срок: 365 дн.','Заморозка: 2 раза по 7 дн.'] },
+  { id: 'i8', name: '12 Месяцев Безлимитный', months: 12, days: 365, price: 170000, perMonth: 14167, freezeDays: 7, freezeCount: 2, features: ['Безлимит','Срок: 365 дн.','Заморозка: 2 раза по 7 дн.'] },
 ];
 
 /** Club news. Empty for now: the home screen hides the block until there is something real to show. */

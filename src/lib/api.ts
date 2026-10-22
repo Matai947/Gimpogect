@@ -7,7 +7,7 @@ import type { Sale } from '@/data/owner';
 // The web build talks to the server it was loaded from; native builds use the public address.
 const BASE = process.env.EXPO_PUBLIC_API_URL ?? (typeof location !== 'undefined' && location.protocol === 'https:' ? location.origin : 'https://sevengym.matai.kz');
 
-export type RemoteMembership = { planId: string; startDate: string; endDate: string; freezeDaysLeft: number; frozenUntil?: string; visitsLeft?: number; dayOnly?: boolean };
+export type RemoteMembership = { planId: string; startDate: string; endDate: string; freezeDaysLeft: number; freezesLeft?: number; freezeMax?: number; frozenUntil?: string; visitsLeft?: number; dayOnly?: boolean };
 export type RemoteProfile = { age?: number; goal?: string; heightCm?: number; weightKg?: number; targetWeightKg?: number; gender?: string; level?: string; daysPerWeek?: number };
 export type RemoteSession = { clubId: string; inTs: number; outTs?: number };
 export type OneFitVisit = { d: string; c: string; ts: number };

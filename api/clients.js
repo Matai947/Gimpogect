@@ -80,6 +80,7 @@ function checkSection(section, d) {
     num(p.days, 1, 800);
     num(p.visits, 0, 1000);
     num(p.freezeDays, 0, 365);
+    num(p.freezeCount, 0, 10);
   };
   // Pictures that appear on public pages must be real https addresses, nothing else (no javascript: or data:).
   const https = (v) => {
@@ -296,6 +297,8 @@ function cleanMembership(m) {
   if (!out.planId || !DAY.test(out.startDate) || !DAY.test(out.endDate)) return null;
   if (m.frozenUntil && DAY.test(String(m.frozenUntil))) out.frozenUntil = String(m.frozenUntil);
   if (m.dayOnly === true) out.dayOnly = true;
+  if (m.freezesLeft != null && Number.isFinite(Number(m.freezesLeft))) out.freezesLeft = Math.max(0, Math.min(10, Math.round(Number(m.freezesLeft))));
+  if (m.freezeMax != null && Number.isFinite(Number(m.freezeMax))) out.freezeMax = Math.max(0, Math.min(365, Math.round(Number(m.freezeMax))));
   if (m.visitsLeft != null && Number.isFinite(Number(m.visitsLeft))) out.visitsLeft = Math.max(0, Math.min(1000, Math.round(Number(m.visitsLeft))));
   return out;
 }
@@ -476,18 +479,23 @@ module.exports = async function handler(req, res) {
       const plusDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
       if (!m || m.endDate < today) return res.status(409).json({ error: 'no active plan' });
       const frozen = !!m.frozenUntil && m.frozenUntil >= today;
+      // Passes issued before the rule carry no count: a year pass (over 300 days) gets 2 freezes, the rest 1; one freeze is the days split evenly.
+      const span = (Date.parse(m.endDate) - Date.parse(m.startDate)) / 86400000;
+      const freezesLeft = m.freezesLeft ?? (span > 300 ? 2 : 1);
+      const freezeMax = m.freezeMax || Math.ceil((m.freezeDaysLeft || 0) / Math.max(1, m.freezesLeft ?? (span > 300 ? 2 : 1)));
       let next;
       if (op === 'freeze') {
         const days = Math.round(Number(body.days));
         if (frozen) return res.status(409).json({ error: 'already frozen' });
-        if (!(days >= 1 && days <= (m.freezeDaysLeft || 0))) return res.status(400).json({ error: 'not enough freeze days' });
-        next = { ...m, endDate: plusDays(m.endDate, days), frozenUntil: plusDays(today, days - 1), freezeDaysLeft: (m.freezeDaysLeft || 0) - days };
+        if (freezesLeft < 1) return res.status(409).json({ error: 'no freezes left' });
+        if (!(days >= 1 && days <= Math.min(freezeMax, m.freezeDaysLeft || 0))) return res.status(400).json({ error: 'not enough freeze days' });
+        next = { ...m, endDate: plusDays(m.endDate, days), frozenUntil: plusDays(today, days - 1), freezeDaysLeft: (m.freezeDaysLeft || 0) - days, freezesLeft: freezesLeft - 1, freezeMax };
       } else {
         if (!frozen) return res.status(409).json({ error: 'not frozen' });
         // the client trains from today on, so today and every day after it come back: freeze-and-unfreeze changes nothing
         const back = Math.max(0, Math.round((Date.parse(m.frozenUntil) - Date.parse(today)) / 86400000) + 1);
         const { frozenUntil: _f, ...rest } = m;
-        next = { ...rest, endDate: plusDays(m.endDate, -back), freezeDaysLeft: (m.freezeDaysLeft || 0) + back };
+        next = { ...rest, endDate: plusDays(m.endDate, -back), freezeDaysLeft: (m.freezeDaysLeft || 0) + back, freezesLeft, freezeMax };
       }
       await write(id, { ...c, membership: next });
       return res.status(200).json({ ok: true, membership: next });

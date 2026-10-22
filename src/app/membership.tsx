@@ -24,12 +24,13 @@ export default function MembershipScreen() {
 
   const freeze = () => {
     if (!membership) return;
-    const options = [7, 14, 30].filter((d) => d <= membership.freezeDaysLeft);
+    const cap = Math.min(membership.freezeMax || membership.freezeDaysLeft, membership.freezeDaysLeft);
+    const options = membership.freezesLeft === 0 ? [] : [3, 5, 7, 10, 14, cap].filter((d, i, a) => d >= 1 && d <= cap && a.indexOf(d) === i).sort((x, y) => x - y);
     if (options.length === 0) {
       Alert.alert(t('freeze_na_title'), t('freeze_na_sub'));
       return;
     }
-    Alert.alert(t('freeze_title'), t('freeze_body', { n: membership.freezeDaysLeft }), [...options.map((d) => ({ text: t('freeze_for', { n: d }), onPress: () => void freezeMembership(d).then((ok) => (ok ? null : Alert.alert(t('freeze_failed')))) })), { text: t('cancel'), style: 'cancel' as const }]);
+    Alert.alert(t('freeze_title'), t('freeze_body_once', { n: cap }), [...options.map((d) => ({ text: t('freeze_for', { n: d }), onPress: () => void freezeMembership(d).then((ok) => (ok ? null : Alert.alert(t('freeze_failed')))) })), { text: t('cancel'), style: 'cancel' as const }]);
   };
 
   return (
@@ -55,7 +56,7 @@ export default function MembershipScreen() {
                     {t('ms_left', { n: info.daysLeft })}
                   </T>
                   <T type="small" color={Colors.textSecondary}>
-                    {t('ms_freeze_left', { n: membership.freezeDaysLeft })}
+                    {membership.freezesLeft === 0 ? t('ms_freeze_used') : t('ms_freeze_rule', { k: membership.freezesLeft ?? 1, n: Math.min(membership.freezeMax || membership.freezeDaysLeft, membership.freezeDaysLeft) })}
                   </T>
                 </Row>
                 {info.visitsLeft !== undefined ? (
