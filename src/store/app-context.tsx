@@ -416,7 +416,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   /* ---------- catalog management (staff) ---------- */
 
+  // Only a real edit on this device sends the catalogue to the server: a fresh device must never push its empty copy over the server's.
+  const catalogDirty = useRef(false);
   const upsertProduct = useCallback((p: Product) => {
+    catalogDirty.current = true;
     setState((s) => {
       const isBase = baseProducts.some((b) => b.id === p.id);
       if (isBase) return { ...s, productOverrides: { ...s.productOverrides, [p.id]: p }, hiddenProducts: s.hiddenProducts.filter((id) => id !== p.id) };
@@ -426,6 +429,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const deleteProduct = useCallback((id: string) => {
+    catalogDirty.current = true;
     setState((s) => {
       const isBase = baseProducts.some((b) => b.id === id);
       if (isBase) return { ...s, hiddenProducts: s.hiddenProducts.includes(id) ? s.hiddenProducts : [...s.hiddenProducts, id] };
@@ -434,6 +438,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const restoreProduct = useCallback((id: string) => {
+    catalogDirty.current = true;
     setState((s) => ({ ...s, hiddenProducts: s.hiddenProducts.filter((h) => h !== id) }));
   }, []);
 
@@ -570,10 +575,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Shop edits (stored in their own fields) travel to the server as the "catalog" section.
   useEffect(() => {
-    if (!state.hydrated || !state.staffCode) return;
+    if (!state.hydrated || !state.staffCode || !catalogDirty.current) return;
     const cur = { custom: state.customProducts, overrides: state.productOverrides, hidden: state.hiddenProducts };
     const known = state.content.catalog ?? { custom: [], overrides: {}, hidden: [] };
     if (JSON.stringify(cur) !== JSON.stringify(known)) saveContent('catalog', cur);
+    else catalogDirty.current = false;
   }, [state.hydrated, state.staffCode, state.customProducts, state.productOverrides, state.hiddenProducts, state.content.catalog, saveContent]);
 
   const trainerLogin = useCallback(async (trainerId: string, pin: string) => {
