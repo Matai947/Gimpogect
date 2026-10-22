@@ -150,8 +150,8 @@ export default function StaffPosScreen() {
     }
     setCancelSure(false);
     setCancelling(true);
-    // the check's rows were written in the same instant as the receipt
-    const mine = rawSales.filter((x) => ['plan', 'shop', 'personal'].includes(x.kind) && Math.abs(x.ts - receipt.ts) < 5000 && x.amount - (x.refunded ?? 0) > 0);
+    // the check's rows were written in the same instant as the receipt, at this desk, by this person: a check on another desk is never touched
+    const mine = rawSales.filter((x) => ['plan', 'shop', 'personal'].includes(x.kind) && Math.abs(x.ts - receipt.ts) < 5000 && x.amount - (x.refunded ?? 0) > 0 && x.clubId === (staff?.clubId ?? 'c1') && x.staff === (staff?.name ?? '') && (x.memberId ?? '') === (receipt.client?.id ?? ''));
     let ok = mine.length > 0;
     for (const s of mine) if (!(await refundRemote(staffCode, s.id, t('refund_r1')))) ok = false;
     await refreshSales();
