@@ -5,7 +5,7 @@ import type { Sale } from '@/data/owner';
 // Client registry API (functions/api/clients.js on Cloudflare Pages). Every call is best effort:
 // the app keeps working offline and just stops syncing.
 // The web build talks to the server it was loaded from; native builds use the public address.
-const BASE = process.env.EXPO_PUBLIC_API_URL ?? (typeof location !== 'undefined' && location.protocol === 'https:' ? location.origin : 'https://sevengim.matai.kz');
+const BASE = process.env.EXPO_PUBLIC_API_URL ?? (typeof location !== 'undefined' && location.protocol === 'https:' ? location.origin : 'https://sevengym.matai.kz');
 
 export type RemoteMembership = { planId: string; startDate: string; endDate: string; freezeDaysLeft: number; frozenUntil?: string; visitsLeft?: number; dayOnly?: boolean };
 export type RemoteProfile = { age?: number; goal?: string; heightCm?: number; weightKg?: number; targetWeightKg?: number; gender?: string; level?: string; daysPerWeek?: number };
