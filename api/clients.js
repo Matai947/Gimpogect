@@ -608,6 +608,10 @@ module.exports = async function handler(req, res) {
       if (/^t\d{1,3}$/.test(String(body.trainerId))) sale.trainerId = body.trainerId;
       if (kind === 'debt') sale.remaining = Math.min(sale.amount, int(body.remaining ?? body.amount, 10000000));
       const items = Array.isArray(body.items) ? body.items.slice(0, 50).map((i) => ({ id: str(i && i.id, 24), qty: int(i && i.qty, 999) })).filter((i) => /^[A-Za-z0-9_-]{1,24}$/.test(i.id) && i.qty >= 1) : [];
+      // the same product twice in one check is one line, so what leaves and what comes back are counted once
+      const merged = Object.values(items.reduce((m, i) => ((m[i.id] = { id: i.id, qty: (m[i.id] ? m[i.id].qty : 0) + i.qty }), m), {}));
+      items.length = 0;
+      items.push(...merged);
       if (items.length) sale.items = items;
       // return=representation: an empty answer means this id was already stored, so the shelf is not charged twice
       const stored = await sb('sales?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=representation' }, body: JSON.stringify({ id, ts, data: sale }) });
