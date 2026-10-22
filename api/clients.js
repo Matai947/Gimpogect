@@ -484,8 +484,8 @@ module.exports = async function handler(req, res) {
         next = { ...m, endDate: plusDays(m.endDate, days), frozenUntil: plusDays(today, days - 1), freezeDaysLeft: (m.freezeDaysLeft || 0) - days };
       } else {
         if (!frozen) return res.status(409).json({ error: 'not frozen' });
-        // today counts as used; the days after it come back
-        const back = Math.max(0, Math.round((Date.parse(m.frozenUntil) - Date.parse(today)) / 86400000));
+        // the client trains from today on, so today and every day after it come back: freeze-and-unfreeze changes nothing
+        const back = Math.max(0, Math.round((Date.parse(m.frozenUntil) - Date.parse(today)) / 86400000) + 1);
         const { frozenUntil: _f, ...rest } = m;
         next = { ...rest, endDate: plusDays(m.endDate, -back), freezeDaysLeft: (m.freezeDaysLeft || 0) + back };
       }
