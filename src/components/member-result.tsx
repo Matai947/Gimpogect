@@ -29,7 +29,14 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   const plans = usePlans();
   // The scanner passes a snapshot; re-read so the card updates right after a plan is issued.
   const member = useMembers().byId(snapshot.id) ?? snapshot;
-  const { staff, staffCode, logCheckin, checkoutMember, grantPlan, editMembership } = useApp();
+  const { staff, staffCode, logCheckin, checkoutMember, grantPlan, editMembership, staffFreeze } = useApp();
+  const [freezing, setFreezing] = useState(false);
+  const [freezeMsg, setFreezeMsg] = useState<{ text: string; bad: boolean } | null>(null);
+  const doFreeze = async (days: number) => {
+    const ok = await staffFreeze(member.id, days);
+    setFreezing(false);
+    setFreezeMsg(ok ? { text: days > 0 ? t('freeze_done', { n: days }) : t('unfreeze_done'), bad: false } : { text: t('freeze_failed'), bad: true });
+  };
   const [editing, setEditing] = useState(false);
   const [endText, setEndText] = useState('');
   const [visitsText, setVisitsText] = useState('');
@@ -296,6 +303,28 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             </>
           )
         ) : null}
+        {/* freeze at the desk: the client asked in person, or forgot to unfreeze */}
+        {!member.isSelf && member.planId && member.active ? (
+          member.frozen ? (
+            <Button title={t('unfreeze')} icon="sunny-outline" variant="secondary" size="sm" onPress={() => void doFreeze(0)} />
+          ) : member.freezeDaysLeft > 0 ? (
+            freezing ? (
+              <Row gap={6} style={{ flexWrap: 'wrap' }}>
+                {[7, 14, 30, member.freezeDaysLeft].filter((d, i, a) => d <= member.freezeDaysLeft && a.indexOf(d) === i).map((d) => (
+                  <Chip key={d} label={t('freeze_for', { n: d })} onPress={() => void doFreeze(d)} />
+                ))}
+                <Chip label={t('cancel')} onPress={() => setFreezing(false)} />
+              </Row>
+            ) : (
+              <Button title={t('freeze')} icon="snow-outline" variant="ghost" size="sm" onPress={() => setFreezing(true)} />
+            )
+          ) : null
+        ) : null}
+        {freezeMsg ? (
+          <T type="small" color={freezeMsg.bad ? Colors.danger : Colors.success} style={{ fontWeight: '700' }}>
+            {freezeMsg.text}
+          </T>
+        ) : null}
         {/* Full client profile for the front desk */}
         <View style={styles.grid}>
           <Fact label={t('fact_since')} value={formatDateLong(member.since)} />
@@ -303,7 +332,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
           <Fact label={t('fact_visits_total')} value={String(member.visitsTotal)} />
           <Fact label={t('fact_age_goal')} value={[member.age ? t('age_n', { n: member.age }) : '', member.goal ? goalTitle(member.goal) : ''].filter(Boolean).join(' • ') || '—'} />
           <Fact label={t('fact_trainer')} value={member.trainerId ? (trainerById(member.trainerId)?.name ?? '—') : t('fact_no_trainer')} />
-          <Fact label={t('fact_freeze')} value={t('days_n', { n: member.freezeDaysLeft })} />
+          <Fact label={t('fact_freeze')} value={member.frozen && member.frozenUntil ? t('frozen_until', { date: formatDateLong(member.frozenUntil) }) : t('days_n', { n: member.freezeDaysLeft })} accent={member.frozen} />
           {member.params ? <Fact label={t('my_params')} value={member.params} /> : null}
           {member.bookingsToday ? <Fact label={t('fact_bookings_today')} value={String(member.bookingsToday)} accent /> : null}
           {member.ordersReady ? <Fact label={t('fact_orders_ready')} value={String(member.ordersReady)} accent /> : null}

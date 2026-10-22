@@ -51,6 +51,11 @@ export const loginClient = async (id: string, password: string) => {
   return { status: r.status, data: r.status === 200 ? (r.data as { token: string; account: RemoteMe }) : null };
 };
 
+/** Freeze for `days` (or unfreeze when days is 0): the client with their token, or the desk with its code. */
+export const freezeRemote = async (id: string, days: number, auth: { token?: string; code?: string }) => {
+  const r = await raw(days > 0 ? 'freeze' : 'unfreeze', { method: 'POST', token: auth.token, code: auth.code, body: { id, days } });
+  return r.status === 200 ? (r.data as { membership: RemoteMembership }).membership : null;
+};
 export const fetchMyMembership = (id: string, token: string) => call<RemoteMe>('me', { query: `&id=${id}`, token });
 
 /** A fresh single-use proof for the client's own QR (valid 90 seconds). */

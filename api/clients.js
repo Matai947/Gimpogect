@@ -463,6 +463,36 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(account(c) ?? { membership: null, name: null, homeClubId: null, profile: null });
     }
 
+    // Freeze: the client on their own phone (token) or the desk (staff code). Days come out of the plan's freeze days and the end date moves.
+    // Unfreezing early gives back the days not used and pulls the end date in again. Days are counted on the clubs' clock (UTC+5).
+    if (req.method === 'POST' && (op === 'freeze' || op === 'unfreeze')) {
+      const id = str(body.id, 20);
+      if (!ID.test(id)) return res.status(400).json({ error: 'bad id' });
+      if (tokenOwner(req) !== id && !authed()) return res.status(401).json({ error: 'auth' });
+      const c = await read(id);
+      const m = c && c.membership;
+      const almaty = (ts) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10);
+      const today = almaty(Date.now());
+      const plusDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+      if (!m || m.endDate < today) return res.status(409).json({ error: 'no active plan' });
+      const frozen = !!m.frozenUntil && m.frozenUntil >= today;
+      let next;
+      if (op === 'freeze') {
+        const days = Math.round(Number(body.days));
+        if (frozen) return res.status(409).json({ error: 'already frozen' });
+        if (!(days >= 1 && days <= (m.freezeDaysLeft || 0))) return res.status(400).json({ error: 'not enough freeze days' });
+        next = { ...m, endDate: plusDays(m.endDate, days), frozenUntil: plusDays(today, days - 1), freezeDaysLeft: (m.freezeDaysLeft || 0) - days };
+      } else {
+        if (!frozen) return res.status(409).json({ error: 'not frozen' });
+        // today counts as used; the days after it come back
+        const back = Math.max(0, Math.round((Date.parse(m.frozenUntil) - Date.parse(today)) / 86400000));
+        const { frozenUntil: _f, ...rest } = m;
+        next = { ...rest, endDate: plusDays(m.endDate, -back), freezeDaysLeft: (m.freezeDaysLeft || 0) + back };
+      }
+      await write(id, { ...c, membership: next });
+      return res.status(200).json({ ok: true, membership: next });
+    }
+
     // Staff mode: the owner's code opens the CRM; an administrator's personal code opens the desk under their own name.
     if (req.method === 'POST' && op === 'staff-login') {
       const code = String(body.code || '');
@@ -521,6 +551,8 @@ module.exports = async function handler(req, res) {
         prev = { ...rest, membership: { planId: p.planId, startDate: day(now), endDate: day(now + (p.days || 31) * 86400000), freezeDaysLeft: p.freezeDays || 0, ...(p.visitsLeft !== undefined ? { visitsLeft: p.visitsLeft } : {}), ...(p.dayOnly ? { dayOnly: true } : {}) } };
       }
 
+      // A frozen pass does not open the door: unfreeze it first (the client in the app, or the desk on the card).
+      if (op === 'checkin' && prev.membership?.frozenUntil && prev.membership.frozenUntil >= day(now)) return res.status(403).json({ error: 'frozen' });
       // A daytime plan is not let in from 17:00 (Almaty time), whatever the front desk's screen says.
       if (op === 'checkin' && prev.membership?.dayOnly && new Date(now + 5 * 3600000).getUTCHours() >= 17) return res.status(403).json({ error: 'day only' });
       // With no visits left the next day's entry is refused here too (coming back the same day, after the last visit, is still fine).

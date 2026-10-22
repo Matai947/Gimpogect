@@ -9,7 +9,7 @@ import { applyContent, promoByCode, promoDiscount, type Content, type ContentSec
 import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { trainerLoginRemote, checkinRemote, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient, serverNow } from '@/lib/api';
+import { trainerLoginRemote, checkinRemote, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -120,8 +120,11 @@ type Actions = {
   trainerLogout: () => void;
   setAutoAdmit: (v: boolean) => void;
   setPlanPrice: (planId: string, price: number, oldPrice?: number) => void;
-  freezeMembership: (days: number) => void;
-  unfreezeMembership: () => void;
+  /** The client freezes or unfreezes their own plan on the server. False = refused or offline. */
+  freezeMembership: (days: number) => Promise<boolean>;
+  unfreezeMembership: () => Promise<boolean>;
+  /** The desk freezes (days > 0) or unfreezes (0) a client's plan. */
+  staffFreeze: (memberId: string, days: number) => Promise<boolean>;
   book: (sessionId: string) => void;
   cancelBooking: (sessionId: string) => void;
   isBooked: (sessionId: string) => boolean;
@@ -630,26 +633,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, sales: [{ ...sale, id: `R${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 5)}`, ts: Date.now(), clubId: s.staff?.clubId ?? 'c1', staff: s.staff?.name ?? '' }, ...s.sales] }));
   }, []);
 
-  const freezeMembership = useCallback((days: number) => {
-    setState((s) => {
-      if (!s.membership || days <= 0 || days > s.membership.freezeDaysLeft) return s;
-      const end = new Date(s.membership.endDate);
-      end.setDate(end.getDate() + days);
-      return {
-        ...s,
-        membership: {
-          ...s.membership,
-          endDate: toISODate(end),
-          frozenUntil: toISODate(addDays(new Date(), days)),
-          freezeDaysLeft: s.membership.freezeDaysLeft - days,
-        },
-      };
-    });
-  }, []);
+  const freezeMembership = useCallback(
+    async (days: number) => {
+      if (!state.user || !state.token) return false;
+      const next = await freezeRemote(state.user.id, days, { token: state.token });
+      if (!next) return false;
+      setState((s) => ({ ...s, membership: next }));
+      return true;
+    },
+    [state.user, state.token],
+  );
 
-  const unfreezeMembership = useCallback(() => {
-    setState((s) => (s.membership ? { ...s, membership: { ...s.membership, frozenUntil: undefined } } : s));
-  }, []);
+  const unfreezeMembership = useCallback(() => freezeMembership(0), [freezeMembership]);
+
+  const staffFreeze = useCallback(
+    async (memberId: string, days: number) => {
+      if (!state.staffCode) return false;
+      const next = await freezeRemote(memberId, days, { code: state.staffCode });
+      if (!next) return false;
+      setState((s) => ({ ...s, remote: s.remote.map((x) => (x.id === memberId ? { ...x, membership: next } : x)), ...(s.user?.id === memberId ? { membership: next } : {}) }));
+      return true;
+    },
+    [state.staffCode],
+  );
 
   const book = useCallback((sessionId: string) => {
     setState((s) => (s.bookings.includes(sessionId) ? s : { ...s, bookings: [...s.bookings, sessionId] }));
@@ -745,6 +751,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setPlanPrice,
       freezeMembership,
       unfreezeMembership,
+      staffFreeze,
       book,
       cancelBooking,
       isBooked: (id: string) => state.bookings.includes(id),
@@ -774,7 +781,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, editMembership, recordSale, refreshSales, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, editMembership, recordSale, refreshSales, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, staffFreeze, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -868,6 +875,7 @@ export type MemberInfo = {
   daysLeft: number;
   active: boolean;
   frozen: boolean;
+  frozenUntil?: string;
   dayOnly: boolean;
   homeClubId: string;
   visitsThisMonth: number;
@@ -905,6 +913,7 @@ export function useMembers() {
         daysLeft,
         active: !!m.endDate && daysLeft > 0,
         frozen: !!m.frozenUntil && m.frozenUntil >= todayIso,
+        frozenUntil: m.frozenUntil,
         dayOnly: !!plan?.dayOnly,
         homeClubId: m.homeClubId,
         visitsThisMonth: m.visitsThisMonth,

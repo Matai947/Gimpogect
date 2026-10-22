@@ -29,7 +29,7 @@ export default function MembershipScreen() {
       Alert.alert(t('freeze_na_title'), t('freeze_na_sub'));
       return;
     }
-    Alert.alert(t('freeze_title'), t('freeze_body', { n: membership.freezeDaysLeft }), [...options.map((d) => ({ text: t('freeze_for', { n: d }), onPress: () => freezeMembership(d) })), { text: t('cancel'), style: 'cancel' as const }]);
+    Alert.alert(t('freeze_title'), t('freeze_body', { n: membership.freezeDaysLeft }), [...options.map((d) => ({ text: t('freeze_for', { n: d }), onPress: () => void freezeMembership(d).then((ok) => (ok ? null : Alert.alert(t('freeze_failed')))) })), { text: t('cancel'), style: 'cancel' as const }]);
   };
 
   return (
@@ -66,7 +66,7 @@ export default function MembershipScreen() {
               </View>
               <Row gap={Spacing.two} style={{ marginTop: Spacing.three }}>
                 {info.frozen ? (
-                  <Button title={t('unfreeze_until', { date: membership.frozenUntil ? formatDateLong(membership.frozenUntil) : '' })} variant="secondary" icon="sunny-outline" onPress={unfreezeMembership} style={{ flex: 1 }} size="sm" />
+                  <Button title={t('unfreeze_until', { date: membership.frozenUntil ? formatDateLong(membership.frozenUntil) : '' })} variant="secondary" icon="sunny-outline" onPress={() => void unfreezeMembership().then((ok) => (ok ? null : Alert.alert(t('freeze_failed'))))} style={{ flex: 1 }} size="sm" />
                 ) : (
                   <Button title={t('freeze')} variant="secondary" icon="snow-outline" onPress={freeze} style={{ flex: 1 }} size="sm" />
                 )}
