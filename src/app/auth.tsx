@@ -70,7 +70,7 @@ export default function AuthScreen() {
             <LangSwitch compact />
           </View>
           <View style={styles.hero}>
-            <Image source={require('../../assets/images/logo-primary.png')} style={styles.logoImg} contentFit="contain" accessibilityLabel="Seven Gym" />
+            <Image source={require('../../assets/images/logo-primary-dark.png')} style={styles.logoImg} contentFit="contain" accessibilityLabel="Seven Gym" />
             <T type="body" color={Colors.textSecondary} style={{ textAlign: 'center', maxWidth: 280 }}>
               {t('auth_tagline')}
             </T>
