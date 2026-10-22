@@ -43,6 +43,7 @@ function ProductEditForm({ id }: { id?: string }) {
   const [optionValues, setOptionValues] = useState(existing?.options?.values.join(', ') ?? '');
   const [badge, setBadge] = useState<(typeof badges)[number]>(existing?.badge ?? 'none');
   const [inStock, setInStock] = useState(existing?.inStock ?? true);
+  const [byWeight, setByWeight] = useState(!!existing?.byWeight);
   const [barcode, setBarcode] = useState(existing?.barcode ?? '');
   const [stockText, setStockText] = useState(existing?.stock === undefined ? '' : String(existing.stock));
   const [scanOpen, setScanOpen] = useState(false);
@@ -103,6 +104,7 @@ function ProductEditForm({ id }: { id?: string }) {
       nutrition: nutritionOpen && (protein || carbs || fat || calories) ? { serving: serving.trim() || '—', protein: Number(protein) || 0, carbs: Number(carbs) || 0, fat: Number(fat) || 0, calories: Number(calories) || 0 } : undefined,
       inStock,
       barcode: cleanBarcode(barcode) || undefined,
+      byWeight: byWeight || undefined,
     };
     upsertProduct(product);
     // the shelf count lives apart from the product: the register changes it with every sale
@@ -192,7 +194,7 @@ function ProductEditForm({ id }: { id?: string }) {
 
           <Row gap={Spacing.two}>
             <View style={{ flex: 1 }}>
-              <Label text={t('p_price')} required />
+              <Label text={byWeight ? t('p_price_100g') : t('p_price')} required />
               <Field value={price} onChange={(v) => setPrice(v.replace(/\D/g, ''))} placeholder="24990" keyboardType="number-pad" />
             </View>
             <View style={{ flex: 1 }}>
@@ -213,7 +215,7 @@ function ProductEditForm({ id }: { id?: string }) {
           ) : null}
           <BarcodeSheet visible={scanOpen} onClose={() => setScanOpen(false)} onCode={setBarcode} accent={StaffAccent} />
 
-          <Label text={t('p_stock')} />
+          <Label text={byWeight ? t('p_stock_g') : t('p_stock')} />
           <Field value={stockText} onChange={(v) => setStockText(v.replace(/\D/g, ''))} placeholder={t('p_stock_ph')} keyboardType="number-pad" />
           <T type="small" color={Colors.textMuted}>
             {t('p_stock_hint')}
@@ -243,6 +245,17 @@ function ProductEditForm({ id }: { id?: string }) {
           </Row>
 
           <Row style={[styles.switchRow, { marginTop: Spacing.three }]}>
+            <View style={{ flex: 1 }}>
+              <T type="body" style={{ fontWeight: '600' }}>
+                {t('p_by_weight')}
+              </T>
+              <T type="small" color={Colors.textMuted}>
+                {t('p_by_weight_hint')}
+              </T>
+            </View>
+            <Switch value={byWeight} onValueChange={setByWeight} trackColor={{ true: StaffAccent, false: Colors.border }} thumbColor="#FFFFFF" />
+          </Row>
+          <Row style={styles.switchRow}>
             <T type="body" style={{ fontWeight: '600', flex: 1 }}>
               {t('toggle_stock')}
             </T>

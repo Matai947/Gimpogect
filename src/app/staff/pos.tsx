@@ -16,7 +16,7 @@ import type { PayMethod } from '@/data/owner';
 import { MEMBER_DISCOUNT } from '@/data/shop';
 import { useApp, useCanManage, useCatalog, useI18n, useMembers, usePlans, useRawSales, type MemberInfo } from '@/store/app-context';
 
-type Line = { key: string; title: string; price: number; qty: number; planId?: string; productId?: string; trainerId?: string };
+type Line = { key: string; title: string; price: number; qty: number; planId?: string; productId?: string; trainerId?: string; grams?: number };
 type Receipt = { id: string; ts: number; lines: Line[]; subtotal: number; discount: number; total: number; debt?: number; method: PayMethod; client?: MemberInfo };
 
 const PLANS_TAB = '__plans';
@@ -29,6 +29,9 @@ export default function StaffPosScreen() {
   const plans = usePlans();
   const { staff, staffCode, recordSale, grantPlan, refreshSales, refreshContent } = useApp();
   const [stockMsg, setStockMsg] = useState('');
+  // a loose product waiting for its weight
+  const [weighing, setWeighing] = useState<{ id: string; name: string; per100: number; left?: number } | null>(null);
+  const [gramsText, setGramsText] = useState('');
   const rawSales = useRawSales();
   const canManage = useCanManage();
   const [cancelSure, setCancelSure] = useState(false);
@@ -85,6 +88,19 @@ export default function StaffPosScreen() {
   const debtTotal = debts.reduce((sum, d) => sum + (d.remaining ?? 0), 0);
   const settleValue = Number(settle.replace(/\D/g, '')) || 0;
 
+  /** A weighed product: grams typed at the desk, the line priced by the gram (rounded to the tenge), one line per weighing. */
+  const addWeighed = (grams: number) => {
+    if (!weighing || grams < 1) return;
+    const inCheck = lines.filter((x) => x.productId === weighing.id).reduce((n, x) => n + (x.grams ?? 0), 0);
+    if (weighing.left !== undefined && inCheck + grams > weighing.left) return setStockMsg(t('pos_stock_cap_g', { n: weighing.left - inCheck }));
+    setStockMsg('');
+    setLines((ls) => [...ls, { key: `w:${weighing.id}:${newTs()}`, title: `${weighing.name} ${grams} г`, price: Math.round((weighing.per100 * grams) / 100), qty: 1, productId: weighing.id, grams }]);
+    setWeighing(null);
+    setGramsText('');
+  };
+  const pick = (p: { id: string; name: string; price: number; byWeight?: boolean; stock?: number }) =>
+    p.byWeight ? (setWeighing({ id: p.id, name: p.name, per100: p.price, left: p.stock }), setGramsText('')) : add({ key: `p:${p.id}`, title: p.name, price: p.price, productId: p.id });
+
   const add = (l: Omit<Line, 'qty'>) => {
     setError(null);
     setStockMsg('');
@@ -103,9 +119,10 @@ export default function StaffPosScreen() {
     if (!p) return setCodeMsg(t('bc_unknown', { code: c }));
     if (!p.inStock || p.stock === 0) return setCodeMsg(t('bc_out', { name: p.name }));
     setCodeMsg('');
-    add({ key: `p:${p.id}`, title: p.name, price: p.price, productId: p.id });
+    pick(p);
   };
-  const bump = (key: string, d: number) => setLines((ls) => ls.map((x) => (x.key === key ? { ...x, qty: x.qty + d } : x)).filter((x) => x.qty > 0));
+  const bump = (key: string, d: number) =>
+    key.startsWith('w:') ? setLines((ls) => (d < 0 ? ls.filter((x) => x.key !== key) : ls)) : setLines((ls) => ls.map((x) => (x.key === key ? { ...x, qty: x.qty + d } : x)).filter((x) => x.qty > 0));
 
   const pay = () => {
     if (lines.length === 0 || cashShort) return;
@@ -125,7 +142,7 @@ export default function StaffPosScreen() {
     });
     const goodLines = lines.filter((l) => !l.planId && !l.trainerId);
     if (goodLines.length) {
-      recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: usePromo ? Math.round(goodLines.reduce((sum, l) => sum + l.price * l.qty, 0) * share) : goods - memberDisc, method, items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.qty })) });
+      recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: usePromo ? Math.round(goodLines.reduce((sum, l) => sum + l.price * l.qty, 0) * share) : goods - memberDisc, method, items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.grams ?? l.qty })) });
       // the shelf counts come back from the server once the sale has reached it
       setTimeout(() => void refreshContent(), 2500);
     }
@@ -341,6 +358,28 @@ export default function StaffPosScreen() {
             {codeMsg}
           </T>
         ) : null}
+        {weighing ? (
+          <View style={styles.weigh}>
+            <T type="small" style={{ fontWeight: '700' }}>
+              {t('pos_weigh_title', { name: weighing.name, p: formatPrice(weighing.per100) })}
+            </T>
+            <Row gap={Spacing.two} style={{ alignItems: 'center' }}>
+              <TextInput value={gramsText} onChangeText={(v) => setGramsText(v.replace(/\D/g, '').slice(0, 6))} onSubmitEditing={() => addWeighed(Number(gramsText))} placeholder={t('pos_weigh_ph')} placeholderTextColor={Colors.textMuted} keyboardType="number-pad" autoFocus style={[styles.searchInput, { height: 44, flex: 1 }]} />
+              <T type="small" color={Colors.textSecondary}>
+                {gramsText ? formatPrice(Math.round((weighing.per100 * Number(gramsText)) / 100)) : ''}
+              </T>
+            </Row>
+            <Row gap={6} style={{ flexWrap: 'wrap' }}>
+              {[30, 50, 100, 250, 500, 1000].map((g) => (
+                <Chip key={g} label={`${g} г`} onPress={() => addWeighed(g)} />
+              ))}
+            </Row>
+            <Row gap={Spacing.two}>
+              <Button title={t('pos_weigh_add')} size="sm" onPress={() => addWeighed(Number(gramsText))} disabled={!Number(gramsText)} style={{ flex: 1, backgroundColor: StaffAccent }} />
+              <Button title={t('cancel')} size="sm" variant="secondary" onPress={() => setWeighing(null)} />
+            </Row>
+          </View>
+        ) : null}
         {stockMsg ? (
           <T type="small" color={Colors.warning} style={{ fontWeight: '700' }}>
             {stockMsg}
@@ -409,15 +448,16 @@ export default function StaffPosScreen() {
                   </Pressable>
                 ))
             : shown.map((p) => (
-                <Pressable key={p.id} onPress={() => add({ key: `p:${p.id}`, title: p.name, price: p.price, productId: p.id })} style={styles.item}>
+                <Pressable key={p.id} onPress={() => pick(p)} style={styles.item}>
                   <T type="small" color={p.stock !== undefined && p.stock <= 3 ? Colors.warning : Colors.textMuted} numberOfLines={1}>
-                    {p.stock !== undefined ? t('stock_short', { n: p.stock }) : td(p.category)}
+                    {p.stock !== undefined ? (p.byWeight ? t('stock_g', { n: p.stock }) : t('stock_short', { n: p.stock })) : td(p.category)}
                   </T>
                   <T type="small" style={{ fontWeight: '600', marginTop: 2 }} numberOfLines={2}>
                     {p.name}
                   </T>
                   <T type="subheading" style={{ marginTop: 'auto' }}>
                     {formatPrice(p.price)}
+                    {p.byWeight ? <T type="small" color={Colors.textMuted}>{` ${t('per_100g')}`}</T> : null}
                   </T>
                 </Pressable>
               ))}
@@ -548,6 +588,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   body: { padding: Spacing.three, gap: Spacing.two, paddingBottom: 320 },
   search: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: Spacing.three, height: 46 },
+  weigh: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.md, backgroundColor: 'rgba(217,100,58,0.08)', borderWidth: 1, borderColor: 'rgba(217,100,58,0.35)' },
   searchInput: { flex: 1, color: Colors.text, fontSize: 15 },
   cashInput: { flex: 1, height: 52, backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md, paddingHorizontal: 14, color: Colors.text, fontSize: 26, fontWeight: '800', borderWidth: 1, borderColor: Colors.border },
   cashBox: { gap: 8, padding: 10, borderRadius: Radius.md, backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border },

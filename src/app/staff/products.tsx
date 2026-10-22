@@ -77,7 +77,7 @@ export default function StaffProductsScreen() {
                 </T>
                 <Row gap={8}>
                   <T type="label" color={StaffAccent} style={{ fontSize: 14 }}>
-                    {priceLabel(p.price)}
+                    {priceLabel(p.price)}{p.byWeight && p.price ? ` ${t('per_100g')}` : ''}
                   </T>
                   {p.oldPrice ? (
                     <T type="small" color={Colors.textMuted} style={{ textDecorationLine: 'line-through' }}>
@@ -97,7 +97,7 @@ export default function StaffProductsScreen() {
                 <View style={{ alignItems: 'center', gap: 2 }}>
                   <Switch value={p.inStock} disabled={!canManage} onValueChange={(v) => upsertProduct({ ...p, inStock: v })} trackColor={{ true: StaffAccent, false: Colors.border }} thumbColor="#FFFFFF" />
                   <T type="small" color={p.stock === 0 ? Colors.danger : Colors.textMuted} style={{ fontSize: 10 }}>
-                    {p.stock !== undefined ? t('stock_n', { n: p.stock }) : p.inStock ? t('in_stock') : t('out_of_stock')}
+                    {p.stock !== undefined ? (p.byWeight ? t('stock_g', { n: p.stock }) : t('stock_n', { n: p.stock })) : p.inStock ? t('in_stock') : t('out_of_stock')}
                   </T>
                 </View>
               )}

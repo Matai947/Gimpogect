@@ -97,7 +97,7 @@ export default function ProductScreen() {
         <Card style={{ marginTop: Spacing.three, gap: 6 }}>
           <Row gap={8} style={{ alignItems: 'flex-end' }}>
             <T type="display" style={{ fontSize: 30, lineHeight: 34 }}>
-              {priceLabel(product.price)}
+              {priceLabel(product.price)}{product.byWeight && product.price ? ` ${t('per_100g')}` : ''}
             </T>
             {product.oldPrice ? (
               <T type="body" color={Colors.textMuted} style={{ textDecorationLine: 'line-through', marginBottom: 4 }}>
@@ -196,7 +196,7 @@ export default function ProductScreen() {
             <Ionicons name="add" size={18} color={Colors.text} />
           </Pressable>
         </View>
-        <Button title={!product.price ? t('price_tba') : product.inStock ? t('add_cart', { p: formatPrice(product.price * qty) }) : t('out_of_stock')} icon="cart-outline" onPress={add} disabled={!product.inStock || !product.price} style={{ flex: 1 }} />
+        <Button title={product.byWeight ? t('by_weight_at_desk') : !product.price ? t('price_tba') : product.inStock ? t('add_cart', { p: formatPrice(product.price * qty) }) : t('out_of_stock')} icon="cart-outline" onPress={add} disabled={!product.inStock || !product.price || !!product.byWeight || product.stock === 0} style={{ flex: 1 }} />
       </View>
     </Screen>
   );

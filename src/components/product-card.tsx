@@ -45,7 +45,7 @@ export function ProductCard({ product: p, width, onAdd }: { product: Product; wi
         <Row style={{ justifyContent: 'space-between', marginTop: 'auto' }}>
           <View>
             <T type="label" color={Colors.accent} style={{ fontSize: 14 }}>
-              {priceLabel(p.price)}
+              {priceLabel(p.price)}{p.byWeight && p.price ? ` ${t('per_100g')}` : ''}
             </T>
             {p.oldPrice ? (
               <T type="small" color={Colors.textMuted} style={{ textDecorationLine: 'line-through', fontSize: 11 }}>
@@ -53,7 +53,7 @@ export function ProductCard({ product: p, width, onAdd }: { product: Product; wi
               </T>
             ) : null}
           </View>
-          <Pressable onPress={onAdd} disabled={!p.inStock || p.stock === 0} hitSlop={6} style={[styles.addBtn, (!p.inStock || p.stock === 0) && { opacity: 0.4 }]}>
+          <Pressable onPress={onAdd} disabled={!p.inStock || p.stock === 0 || !!p.byWeight} hitSlop={6} style={[styles.addBtn, (!p.inStock || p.stock === 0 || !!p.byWeight) && { opacity: 0.4 }]}>
             <Ionicons name={p.options ? 'chevron-forward' : 'add'} size={18} color={Colors.onAccent} />
           </Pressable>
         </Row>
