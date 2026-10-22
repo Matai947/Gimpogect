@@ -18,8 +18,13 @@ import { useApp, useCatalog, useI18n } from '@/store/app-context';
 const badges: (NonNullable<Product['badge']> | 'none')[] = ['none', 'Хит', 'Новинка', 'Скидка'];
 const optionLabels: NonNullable<Product['options']>['label'][] = ['Вкус', 'Размер', 'Цвет'];
 
+/** The screen stays mounted between products (it is a tab route), so the form is rebuilt for every product: otherwise it keeps the first one's name and price. */
 export default function ProductEditScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
+  return <ProductEditForm key={id ?? 'new'} id={id} />;
+}
+
+function ProductEditForm({ id }: { id?: string }) {
   const { t, td } = useI18n();
   const { byId, isCustom, all } = useCatalog();
   const { upsertProduct, deleteProduct, staffCode, content, saveContent } = useApp();
