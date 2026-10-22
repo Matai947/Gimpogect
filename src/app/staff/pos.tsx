@@ -10,11 +10,11 @@ import { StaffHeader } from '@/components/staff-header';
 import { Avatar, Badge, Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice, planLength, toISODate, trainers } from '@/data/mock';
-import { settleRemote } from '@/lib/api';
+import { refundRemote, settleRemote } from '@/lib/api';
 import { promoByCode, promoDiscount } from '@/data/content';
 import type { PayMethod } from '@/data/owner';
 import { MEMBER_DISCOUNT } from '@/data/shop';
-import { useApp, useCatalog, useI18n, useMembers, usePlans, useRawSales, type MemberInfo } from '@/store/app-context';
+import { useApp, useCanManage, useCatalog, useI18n, useMembers, usePlans, useRawSales, type MemberInfo } from '@/store/app-context';
 
 type Line = { key: string; title: string; price: number; qty: number; planId?: string; productId?: string; trainerId?: string };
 type Receipt = { id: string; ts: number; lines: Line[]; subtotal: number; discount: number; total: number; debt?: number; method: PayMethod; client?: MemberInfo };
@@ -29,6 +29,10 @@ export default function StaffPosScreen() {
   const plans = usePlans();
   const { staff, staffCode, recordSale, grantPlan, refreshSales } = useApp();
   const rawSales = useRawSales();
+  const canManage = useCanManage();
+  const [cancelSure, setCancelSure] = useState(false);
+  const [cancelMsg, setCancelMsg] = useState<{ text: string; bad: boolean } | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   const { products } = useCatalog();
   const { list: members } = useMembers();
 
@@ -136,7 +140,29 @@ export default function StaffPosScreen() {
     setError(null);
   };
 
+  /** A check rung up by mistake: the manager returns every line of it (reason: cashier's mistake); the register and the reports follow. */
+  const cancelReceipt = async () => {
+    if (!receipt) return;
+    if (!cancelSure) {
+      setCancelSure(true);
+      setTimeout(() => setCancelSure(false), 5000);
+      return;
+    }
+    setCancelSure(false);
+    setCancelling(true);
+    // the check's rows were written in the same instant as the receipt
+    const mine = rawSales.filter((x) => ['plan', 'shop', 'personal'].includes(x.kind) && Math.abs(x.ts - receipt.ts) < 5000 && x.amount - (x.refunded ?? 0) > 0);
+    let ok = mine.length > 0;
+    for (const s of mine) if (!(await refundRemote(staffCode, s.id, t('refund_r1')))) ok = false;
+    await refreshSales();
+    setCancelling(false);
+    const hadPlan = receipt.lines.some((l) => l.planId);
+    setCancelMsg(ok ? { text: t('pos_cancel_done') + (hadPlan ? ' ' + t('pos_cancel_plan_note') : ''), bad: false } : { text: t('pos_cancel_fail'), bad: true });
+  };
+
   const reset = () => {
+    setCancelMsg(null);
+    setCancelSure(false);
     setReceipt(null);
     setLines([]);
     setClient(null);
@@ -237,6 +263,17 @@ export default function StaffPosScreen() {
             <Button title={t('receipt_send')} icon="paper-plane-outline" variant="secondary" onPress={sendReceipt} style={{ flex: 1 }} />
             {Platform.OS === 'web' ? <Button title={t('receipt_print')} icon="print-outline" variant="secondary" onPress={() => window.print()} /> : null}
           </Row>
+          {cancelMsg ? (
+            <T type="small" color={cancelMsg.bad ? Colors.danger : Colors.success} style={{ fontWeight: '700' }}>
+              {cancelMsg.text}
+            </T>
+          ) : canManage ? (
+            <Button title={cancelSure ? t('pos_cancel_sure') : t('pos_cancel')} icon="arrow-undo-outline" variant="danger" onPress={() => void cancelReceipt()} disabled={cancelling} />
+          ) : (
+            <T type="small" color={Colors.textMuted} style={{ textAlign: 'center' }}>
+              {t('pos_cancel_manager')}
+            </T>
+          )}
           <Button title={t('pos_new')} icon="add" onPress={reset} style={{ backgroundColor: StaffAccent }} />
         </ScrollView>
       </View>
