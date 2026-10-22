@@ -35,6 +35,7 @@ export type Content = {
   classes?: ClassTemplate[];
   promos?: Promo[];
   photos?: Record<string, string[]>; // club id -> photo addresses
+  stock?: Record<string, number>; // product id -> units on the shelf; absent = not counted
   onefit?: Record<string, string>; // club id -> the text in that club's 1Fit QR (the stand guests scan with the 1Fit app)
 };
 

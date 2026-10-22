@@ -27,7 +27,8 @@ const newTs = () => Date.now();
 export default function StaffPosScreen() {
   const { t, td } = useI18n();
   const plans = usePlans();
-  const { staff, staffCode, recordSale, grantPlan, refreshSales } = useApp();
+  const { staff, staffCode, recordSale, grantPlan, refreshSales, refreshContent } = useApp();
+  const [stockMsg, setStockMsg] = useState('');
   const rawSales = useRawSales();
   const canManage = useCanManage();
   const [cancelSure, setCancelSure] = useState(false);
@@ -60,7 +61,7 @@ export default function StaffPosScreen() {
   }, [members, query]);
 
   const categories = useMemo(() => Array.from(new Set(products.filter((p) => p.inStock).map((p) => p.category))), [products]);
-  const shown = useMemo(() => products.filter((p) => p.inStock && (cat === 'all' || p.category === cat)), [products, cat]);
+  const shown = useMemo(() => products.filter((p) => p.inStock && p.stock !== 0 && (cat === 'all' || p.category === cat)), [products, cat]);
 
   const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
   // Member discount applies to goods only; plans are already priced for members.
@@ -86,6 +87,11 @@ export default function StaffPosScreen() {
 
   const add = (l: Omit<Line, 'qty'>) => {
     setError(null);
+    setStockMsg('');
+    // a counted product: never more in the check than on the shelf
+    const left = l.productId ? products.find((p) => p.id === l.productId)?.stock : undefined;
+    const have = lines.find((x) => x.key === l.key)?.qty ?? 0;
+    if (left !== undefined && have + 1 > left) return setStockMsg(t('pos_stock_cap', { n: left }));
     setLines((ls) => (ls.some((x) => x.key === l.key) ? ls.map((x) => (x.key === l.key ? { ...x, qty: x.qty + 1 } : x)) : [...ls, { ...l, qty: 1 }]));
   };
   /** A scanned or typed barcode puts its product into the check. */
@@ -95,7 +101,7 @@ export default function StaffPosScreen() {
     if (!c) return;
     const p = products.find((x) => x.barcode === c);
     if (!p) return setCodeMsg(t('bc_unknown', { code: c }));
-    if (!p.inStock) return setCodeMsg(t('bc_out', { name: p.name }));
+    if (!p.inStock || p.stock === 0) return setCodeMsg(t('bc_out', { name: p.name }));
     setCodeMsg('');
     add({ key: `p:${p.id}`, title: p.name, price: p.price, productId: p.id });
   };
@@ -119,7 +125,9 @@ export default function StaffPosScreen() {
     });
     const goodLines = lines.filter((l) => !l.planId && !l.trainerId);
     if (goodLines.length) {
-      recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: usePromo ? Math.round(goodLines.reduce((sum, l) => sum + l.price * l.qty, 0) * share) : goods - memberDisc, method });
+      recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: usePromo ? Math.round(goodLines.reduce((sum, l) => sum + l.price * l.qty, 0) * share) : goods - memberDisc, method, items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.qty })) });
+      // the shelf counts come back from the server once the sale has reached it
+      setTimeout(() => void refreshContent(), 2500);
     }
     if (debtAmt > 0) recordSale({ memberId: client!.id, name: client!.name, title: t('pos_debt_title'), kind: 'debt', amount: debtAmt, remaining: debtAmt, method });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -155,6 +163,7 @@ export default function StaffPosScreen() {
     let ok = mine.length > 0;
     for (const s of mine) if (!(await refundRemote(staffCode, s.id, t('refund_r1')))) ok = false;
     await refreshSales();
+    await refreshContent();
     setCancelling(false);
     const hadPlan = receipt.lines.some((l) => l.planId);
     setCancelMsg(ok ? { text: t('pos_cancel_done') + (hadPlan ? ' ' + t('pos_cancel_plan_note') : ''), bad: false } : { text: t('pos_cancel_fail'), bad: true });
@@ -332,6 +341,11 @@ export default function StaffPosScreen() {
             {codeMsg}
           </T>
         ) : null}
+        {stockMsg ? (
+          <T type="small" color={Colors.warning} style={{ fontWeight: '700' }}>
+            {stockMsg}
+          </T>
+        ) : null}
         <BarcodeSheet visible={scanOpen} onClose={() => setScanOpen(false)} onCode={addByCode} accent={StaffAccent} />
 
         {/* catalogue */}
@@ -396,8 +410,8 @@ export default function StaffPosScreen() {
                 ))
             : shown.map((p) => (
                 <Pressable key={p.id} onPress={() => add({ key: `p:${p.id}`, title: p.name, price: p.price, productId: p.id })} style={styles.item}>
-                  <T type="small" color={Colors.textMuted} numberOfLines={1}>
-                    {td(p.category)}
+                  <T type="small" color={p.stock !== undefined && p.stock <= 3 ? Colors.warning : Colors.textMuted} numberOfLines={1}>
+                    {p.stock !== undefined ? t('stock_short', { n: p.stock }) : td(p.category)}
                   </T>
                   <T type="small" style={{ fontWeight: '600', marginTop: 2 }} numberOfLines={2}>
                     {p.name}

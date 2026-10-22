@@ -41,7 +41,7 @@ async function pageAll(query, cap = 30000) {
 
 // Editable content (prices, plans, trainers, rules, schedule, promotions, photos), one settings row per section.
 // Everyone reads it; only the administrators write it. Text that ends up on public pages may not carry markup.
-const CONTENT_SECTIONS = ['catalog', 'plans', 'trainers', 'rules', 'classes', 'promos', 'photos', 'onefit'];
+const CONTENT_SECTIONS = ['catalog', 'plans', 'trainers', 'rules', 'classes', 'promos', 'photos', 'onefit', 'stock'];
 const SAFE_URL = /^https:\/\/[\w.\-\/%?=&:~+@]+$/;
 function cleanDeep(v, depth = 0) {
   if (depth > 7) throw new Error('deep');
@@ -88,6 +88,10 @@ function checkSection(section, d) {
   };
   // Every section is an object (or a list for promotions); a bare number or string would break the app that reads it.
   if (!d || typeof d !== 'object') throw new Error('shape');
+  // Stock: product id -> units on the shelf. Only the products listed here are counted.
+  if (section === 'stock') Object.entries(d).forEach(([k, v]) => {
+    if (!/^[A-Za-z0-9_-]{1,24}$/.test(k) || !Number.isInteger(v) || v < 0 || v > 100000) throw new Error('stock');
+  });
   if (section === 'rules') Object.values(d).forEach((lines) => {
     if (!Array.isArray(lines) || lines.some((l) => typeof l !== 'string')) throw new Error('shape');
   });
@@ -122,6 +126,21 @@ function checkSection(section, d) {
   }
 }
 let contentCache = { at: 0, data: {} };
+/** Moves counted products on or off the shelf; products nobody counts are left alone. */
+async function adjustStock(items, sign) {
+  const row = (await sb('settings?key=eq.content:stock&select=data'))[0];
+  const stock = row && row.data && row.data.v && typeof row.data.v === 'object' ? { ...row.data.v } : {};
+  let touched = false;
+  for (const { id, qty } of items) {
+    if (!(id in stock)) continue;
+    stock[id] = Math.max(0, Math.min(100000, (Number(stock[id]) || 0) + sign * qty));
+    touched = true;
+  }
+  if (!touched) return;
+  await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'content:stock', data: { v: stock, at: Date.now(), by: 'register' } }) });
+  contentCache = { at: 0, data: {} };
+}
+
 async function getContent() {
   if (Date.now() - contentCache.at < 15000) return contentCache.data;
   const data = {};
@@ -573,7 +592,11 @@ module.exports = async function handler(req, res) {
       const sale = { id, ts, kind, title: str(body.title, 120), name: str(body.name, 60), memberId: str(body.memberId, 20), amount: int(body.amount, 10000000), clubId: body.clubId, method: METHODS.includes(body.method) ? body.method : 'cash', staff: str(body.staff, 40) };
       if (/^t\d{1,3}$/.test(String(body.trainerId))) sale.trainerId = body.trainerId;
       if (kind === 'debt') sale.remaining = Math.min(sale.amount, int(body.remaining ?? body.amount, 10000000));
-      await sb('sales?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ id, ts, data: sale }) });
+      const items = Array.isArray(body.items) ? body.items.slice(0, 50).map((i) => ({ id: str(i && i.id, 24), qty: int(i && i.qty, 999) })).filter((i) => /^[A-Za-z0-9_-]{1,24}$/.test(i.id) && i.qty >= 1) : [];
+      if (items.length) sale.items = items;
+      // return=representation: an empty answer means this id was already stored, so the shelf is not charged twice
+      const stored = await sb('sales?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=representation' }, body: JSON.stringify({ id, ts, data: sale }) });
+      if (kind === 'shop' && items.length && Array.isArray(stored) && stored.length) await adjustStock(items, -1);
       return res.status(200).json({ ok: true });
     }
 
@@ -618,6 +641,7 @@ module.exports = async function handler(req, res) {
       const ref = { id: 'F' + now.toString(36) + Math.random().toString(36).slice(2, 5), ts: now, kind: 'refund', title: 'Возврат: ' + sale.title, name: sale.name, memberId: sale.memberId, amount, clubId: sale.clubId, method: sale.method, staff: staffName(''), reason, refundOf: saleId, ...(sale.trainerId ? { trainerId: sale.trainerId } : {}) };
       await sb('sales', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: ref.id, ts: now, data: ref }) });
       await sb(`sales?id=eq.${encodeURIComponent(saleId)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...sale, refunded: (sale.refunded || 0) + amount } }) });
+      if (sale.kind === 'shop' && Array.isArray(sale.items) && amount === sale.amount) await adjustStock(sale.items, 1);
       return res.status(200).json({ ok: true });
     }
 

@@ -22,7 +22,7 @@ export default function ProductEditScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { t, td } = useI18n();
   const { byId, isCustom, all } = useCatalog();
-  const { upsertProduct, deleteProduct, staffCode } = useApp();
+  const { upsertProduct, deleteProduct, staffCode, content, saveContent } = useApp();
   const existing = id ? byId(id) : undefined;
 
   const [name, setName] = useState(existing?.name ?? '');
@@ -39,6 +39,7 @@ export default function ProductEditScreen() {
   const [badge, setBadge] = useState<(typeof badges)[number]>(existing?.badge ?? 'none');
   const [inStock, setInStock] = useState(existing?.inStock ?? true);
   const [barcode, setBarcode] = useState(existing?.barcode ?? '');
+  const [stockText, setStockText] = useState(existing?.stock === undefined ? '' : String(existing.stock));
   const [scanOpen, setScanOpen] = useState(false);
   const barcodeOwner = barcode ? all.find((p) => p.barcode === barcode && p.id !== existing?.id) : undefined;
   const [nutritionOpen, setNutritionOpen] = useState(!!existing?.nutrition);
@@ -99,6 +100,11 @@ export default function ProductEditScreen() {
       barcode: cleanBarcode(barcode) || undefined,
     };
     upsertProduct(product);
+    // the shelf count lives apart from the product: the register changes it with every sale
+    const stock = { ...(content.stock ?? {}) };
+    if (stockText.trim() === '') delete stock[product.id];
+    else stock[product.id] = Math.min(100000, parseInt(stockText.replace(/\D/g, ''), 10) || 0);
+    if (JSON.stringify(stock) !== JSON.stringify(content.stock ?? {})) saveContent('stock', stock);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     Alert.alert(t('product_saved'), product.name, [{ text: t('ok'), onPress: () => router.back() }]);
   };
@@ -201,6 +207,12 @@ export default function ProductEditScreen() {
             </T>
           ) : null}
           <BarcodeSheet visible={scanOpen} onClose={() => setScanOpen(false)} onCode={setBarcode} accent={StaffAccent} />
+
+          <Label text={t('p_stock')} />
+          <Field value={stockText} onChange={(v) => setStockText(v.replace(/\D/g, ''))} placeholder={t('p_stock_ph')} keyboardType="number-pad" />
+          <T type="small" color={Colors.textMuted}>
+            {t('p_stock_hint')}
+          </T>
 
           <Label text={t('p_unit')} />
           <Field value={unit} onChange={setUnit} placeholder={t('p_unit_ph')} />

@@ -17,6 +17,7 @@ export type Product = {
   nutrition?: { serving: string; protein: number; carbs: number; fat: number; calories: number };
   inStock: boolean;
   barcode?: string; // EAN/UPC printed on the package, read by the register's scanner
+  stock?: number; // units on the shelf when the manager counts this product (from the server, not stored with the product)
 };
 
 export const shopCategories: { key: 'Все' | ShopCategory; icon: string }[] = [

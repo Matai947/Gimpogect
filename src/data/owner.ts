@@ -17,6 +17,7 @@ export type Sale = {
   remaining?: number; // debt: still owed
   refunded?: number; // sale: already returned
   reason?: string; // refund: why the money went back
+  items?: { id: string; qty: number }[]; // shop: what was sold, so the shelf count follows
   refundOf?: string; // refund / debt payment: the row it belongs to
   synced?: boolean; // reached the server
 };

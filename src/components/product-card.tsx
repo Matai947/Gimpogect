@@ -21,7 +21,7 @@ export function ProductCard({ product: p, width, onAdd }: { product: Product; wi
             <Badge label={td(p.badge)} color={badgeColor} />
           </View>
         ) : null}
-        {!p.inStock ? (
+        {!p.inStock || p.stock === 0 ? (
           <View style={styles.soldOut}>
             <T type="small" style={{ fontWeight: '700' }}>
               {t('out_of_stock')}
@@ -53,7 +53,7 @@ export function ProductCard({ product: p, width, onAdd }: { product: Product; wi
               </T>
             ) : null}
           </View>
-          <Pressable onPress={onAdd} disabled={!p.inStock} hitSlop={6} style={[styles.addBtn, !p.inStock && { opacity: 0.4 }]}>
+          <Pressable onPress={onAdd} disabled={!p.inStock || p.stock === 0} hitSlop={6} style={[styles.addBtn, (!p.inStock || p.stock === 0) && { opacity: 0.4 }]}>
             <Ionicons name={p.options ? 'chevron-forward' : 'add'} size={18} color={Colors.onAccent} />
           </Pressable>
         </Row>

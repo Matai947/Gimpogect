@@ -112,6 +112,8 @@ type Actions = {
   editMembership: (memberId: string, fields: { planId?: string; endDate: string; visitsLeft?: number }) => Promise<boolean>;
   recordSale: (sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff' | 'synced'>) => void;
   refreshSales: () => Promise<void>;
+  /** Re-reads the content (prices, stock counts) from the server. */
+  refreshContent: () => Promise<void>;
   saveClubConfig: (list: ClubConfig[]) => Promise<boolean>;
   saveContent: (section: ContentSection, data: unknown) => void;
   trainerLogin: (trainerId: string, pin: string) => Promise<'ok' | 'wrong' | 'locked' | 'nopin' | 'offline'>;
@@ -533,6 +535,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   /** Reloads the shared books right now (after a refund or a debt payment). */
+  const refreshContent = useCallback(async () => {
+    const c = await fetchContent(state.staffCode);
+    if (!c) return;
+    applyContent(c);
+    setState((s) => ({ ...s, content: c, ...(c.catalog ? { customProducts: c.catalog.custom, productOverrides: c.catalog.overrides, hiddenProducts: c.catalog.hidden } : {}) }));
+  }, [state.staffCode]);
+
   const refreshSales = useCallback(async () => {
     if (!state.staffCode) return;
     const books = await fetchSales(state.staffCode);
@@ -727,6 +736,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       editMembership,
       recordSale,
       refreshSales,
+      refreshContent,
       saveClubConfig,
       saveContent,
       trainerLogin,
@@ -764,7 +774,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, editMembership, recordSale, refreshSales, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, editMembership, recordSale, refreshSales, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -1026,11 +1036,14 @@ export function useCoachContext() {
 
 /** Shop catalog as members see it, with staff edits applied. */
 export function useCatalog() {
-  const { customProducts, productOverrides, hiddenProducts } = useApp();
+  const { customProducts, productOverrides, hiddenProducts, content } = useApp();
+  const stock = content.stock;
   return useMemo(() => {
     const c = catalogOf({ customProducts, productOverrides, hiddenProducts });
-    return { products: c.visible, all: c.all, hidden: hiddenProducts, byId: c.byId, isCustom: (id: string) => customProducts.some((p) => p.id === id) };
-  }, [customProducts, productOverrides, hiddenProducts]);
+    const withStock = (p: Product): Product => (stock && p.id in stock ? { ...p, stock: stock[p.id] } : p);
+    const all = c.all.map(withStock);
+    return { products: c.visible.map(withStock), all, hidden: hiddenProducts, byId: (id: string) => all.find((p) => p.id === id), isCustom: (id: string) => customProducts.some((p) => p.id === id) };
+  }, [customProducts, productOverrides, hiddenProducts, stock]);
 }
 
 /** Cart totals with member / promo discount. */

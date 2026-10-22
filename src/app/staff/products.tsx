@@ -96,8 +96,8 @@ export default function StaffProductsScreen() {
               ) : (
                 <View style={{ alignItems: 'center', gap: 2 }}>
                   <Switch value={p.inStock} disabled={!canManage} onValueChange={(v) => upsertProduct({ ...p, inStock: v })} trackColor={{ true: StaffAccent, false: Colors.border }} thumbColor="#FFFFFF" />
-                  <T type="small" color={Colors.textMuted} style={{ fontSize: 10 }}>
-                    {p.inStock ? t('in_stock') : t('out_of_stock')}
+                  <T type="small" color={p.stock === 0 ? Colors.danger : Colors.textMuted} style={{ fontSize: 10 }}>
+                    {p.stock !== undefined ? t('stock_n', { n: p.stock }) : p.inStock ? t('in_stock') : t('out_of_stock')}
                   </T>
                 </View>
               )}
