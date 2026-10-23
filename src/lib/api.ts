@@ -21,6 +21,12 @@ type Init = { method?: 'POST'; body?: unknown; code?: string; token?: string; tr
 let skew = 0;
 export const serverNow = () => Date.now() + skew;
 
+/** Called when the server refuses the client's sign-in token: the app then signs the client out and asks to sign in again. */
+let tokenRefused: (() => void) | null = null;
+export const onTokenRefused = (f: (() => void) | null) => {
+  tokenRefused = f;
+};
+
 async function raw(op: string, init?: Init): Promise<{ status: number; data: unknown }> {
   try {
     const res = await fetch(`${BASE}/api/clients?op=${op}${init?.query ?? ''}`, {
@@ -30,6 +36,7 @@ async function raw(op: string, init?: Init): Promise<{ status: number; data: unk
     });
     const at = Date.parse(res.headers.get('date') ?? '');
     if (at) skew = at - Date.now();
+    if (res.status === 401 && init?.token) tokenRefused?.();
     return { status: res.status, data: await res.json().catch(() => null) };
   } catch {
     return { status: 0, data: null };

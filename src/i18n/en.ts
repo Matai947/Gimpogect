@@ -56,6 +56,7 @@ export const en: Record<TKey, string> = {
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
   trainer_quals: 'Qualifications',
+  session_expired: 'We updated the app. Sign in again with your number and password; your plan and QR are kept.',
   adm_plan_freeze_times: 'How many times',
   ms_freeze_rule: 'Freeze: {k} time(s), up to {n} days',
   ms_freeze_used: 'The freeze is used up',

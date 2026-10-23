@@ -9,7 +9,7 @@ import { applyContent, promoByCode, promoDiscount, type Content, type ContentSec
 import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { trainerLoginRemote, checkinRemote, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote } from '@/lib/api';
+import { trainerLoginRemote, checkinRemote, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -91,6 +91,7 @@ type State = {
   hiddenProducts: string[]; // base products removed by staff
   memberGrants: Record<string, { planId: string; endDate: string }>; // plans issued by staff to mock members
   hydrated: boolean;
+  sessionExpired?: boolean; // the server refused the saved sign-in: the sign-in screen says why
 };
 
 /** Catalog = base products with staff edits, plus staff-created ones. */
@@ -301,8 +302,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (live && books) setState((s) => ({ ...s, serverSales: books }));
       }
       if (uid && token) {
-        const m = (await fetchMyMembership(uid, token))?.membership;
-        if (live && m && planById(m.planId)) setState((s) => (!s.membership || m.endDate > s.membership.endDate ? { ...s, membership: m } : m.endDate === s.membership.endDate && m.visitsLeft !== s.membership.visitsLeft ? { ...s, membership: { ...s.membership, visitsLeft: m.visitsLeft } } : s));
+        const me = await fetchMyMembership(uid, token);
+        const m = me?.membership;
+        if (live && me && (!m || planById(m.planId))) setState((s) => (JSON.stringify(s.membership ?? null) === JSON.stringify(m ?? null) ? s : { ...s, membership: m ?? null }));
       }
     };
     tick();
@@ -326,6 +328,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...s,
       user,
       token,
+      sessionExpired: false,
       // A new client has no plan: the administrator issues it at the front desk after payment, and only then the QR appears.
       membership: s.membership,
       visits: s.visits,
@@ -350,11 +353,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...s,
       user: { id, name: me.name ?? 'Гость', phone, homeClubId: me.homeClubId ?? 'c1', profile: full },
       token,
+      sessionExpired: false,
       membership: me.membership ?? s.membership,
       visits: s.visits,
       weightLog: full?.weightKg && !s.weightLog.length ? [{ date: toISODate(new Date()), kg: full.weightKg }] : s.weightLog,
     }));
     return 'ok';
+  }, []);
+
+  // A sign-in the server no longer accepts (made on the old server, or expired): sign the client out, keep staff mode and the language.
+  useEffect(() => {
+    onTokenRefused(() =>
+      setState((s) => (s.user ? { ...initialState, lang: s.lang, hydrated: true, staff: s.staff, owner: s.owner, staffCode: s.staffCode, sessionExpired: true } : s)),
+    );
+    return () => onTokenRefused(null);
   }, []);
 
   const logout = useCallback(() => {

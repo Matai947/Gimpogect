@@ -18,7 +18,7 @@ function formatPhone(digits: string) {
 }
 
 export default function AuthScreen() {
-  const { restore, login } = useApp();
+  const { restore, login, sessionExpired } = useApp();
   const { t } = useI18n();
   const [step, setStep] = useState<'phone' | 'password' | 'name'>('phone');
   const [digits, setDigits] = useState('');
@@ -77,6 +77,11 @@ export default function AuthScreen() {
           </View>
 
           <View style={styles.sheet}>
+            {sessionExpired ? (
+              <T type="small" color={Colors.warning} style={{ fontWeight: '700', marginBottom: Spacing.two }}>
+                {t('session_expired')}
+              </T>
+            ) : null}
             {step === 'phone' && (
               <>
                 <T type="heading">{t('auth_phone_title')}</T>
