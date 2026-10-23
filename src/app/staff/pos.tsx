@@ -29,6 +29,8 @@ export default function StaffPosScreen() {
   const plans = usePlans();
   const { staff, staffCode, recordSale, grantPlan, refreshSales, refreshContent } = useApp();
   const [stockMsg, setStockMsg] = useState('');
+  // the check panel stays a slim bar until the cashier opens it, so the catalogue stays in view on a phone
+  const [cartOpen, setCartOpen] = useState(false);
   // a loose product waiting for its weight
   const [weighing, setWeighing] = useState<{ id: string; name: string; per100: number; left?: number } | null>(null);
   const [gramsText, setGramsText] = useState('');
@@ -187,6 +189,7 @@ export default function StaffPosScreen() {
   };
 
   const reset = () => {
+    setCartOpen(false);
     setCancelMsg(null);
     setCancelSure(false);
     setReceipt(null);
@@ -351,7 +354,7 @@ export default function StaffPosScreen() {
         <Row gap={Spacing.two} style={styles.customRow}>
           <Ionicons name="barcode-outline" size={18} color={StaffAccent} />
           <TextInput value={code} onChangeText={setCode} onSubmitEditing={() => addByCode(code)} placeholder={t('bc_pos_ph')} placeholderTextColor={Colors.textMuted} returnKeyType="done" style={[styles.searchInput, { height: 40 }]} />
-          <Button title={t('bc_scan')} icon="scan-outline" size="sm" onPress={() => setScanOpen(true)} style={{ backgroundColor: StaffAccent }} />
+          <Button title="" icon="scan-outline" size="sm" onPress={() => setScanOpen(true)} style={{ backgroundColor: StaffAccent, paddingHorizontal: 14 }} />
         </Row>
         {codeMsg ? (
           <T type="small" color={Colors.danger}>
@@ -464,14 +467,29 @@ export default function StaffPosScreen() {
         </View>
       </ScrollView>
 
-      {/* cart */}
+      {/* cart: shown once something is in the check, so the catalogue keeps the whole screen until then */}
+      {lines.length === 0 ? null : (
       <View style={styles.cart}>
-        {lines.length === 0 ? (
-          <T type="small" color={Colors.textMuted} style={{ textAlign: 'center', paddingVertical: 6 }}>
-            {t('pos_cart_empty')}
-          </T>
+        {!cartOpen ? (
+          <Pressable onPress={() => setCartOpen(true)} style={styles.cartBar}>
+            <View style={{ flex: 1 }}>
+              <T type="small" color={Colors.textSecondary}>
+                {t('pos_cart_n', { n: lines.reduce((n, l) => n + (l.grams ? 1 : l.qty), 0) })}
+              </T>
+              <T type="subheading">{formatPrice(total)}</T>
+            </View>
+            <View style={[styles.cartGo, { backgroundColor: StaffAccent }]}>
+              <T type="label" color={Colors.onAccent} style={{ fontSize: 14 }}>
+                {t('pos_to_pay')}
+              </T>
+              <Ionicons name="chevron-up" size={18} color={Colors.onAccent} />
+            </View>
+          </Pressable>
         ) : (
           <>
+            <Pressable onPress={() => setCartOpen(false)} hitSlop={8} style={{ alignSelf: 'center', paddingBottom: 2 }}>
+              <Ionicons name="chevron-down" size={22} color={Colors.textMuted} />
+            </Pressable>
             <ScrollView style={{ maxHeight: 150 }} showsVerticalScrollIndicator={false}>
               {lines.map((l) => (
                 <Row key={l.key} gap={Spacing.two} style={{ paddingVertical: 4 }}>
@@ -566,6 +584,7 @@ export default function StaffPosScreen() {
           </>
         )}
       </View>
+      )}
     </View>
   );
 }
@@ -586,11 +605,13 @@ function Sum({ label, value, big }: { label: string; value: string; big?: boolea
 const styles = StyleSheet.create({
   debtBox: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.md, borderWidth: 1, borderColor: 'rgba(214,59,71,0.4)', backgroundColor: 'rgba(214,59,71,0.06)' },
   root: { flex: 1, backgroundColor: Colors.background },
-  body: { padding: Spacing.three, gap: Spacing.two, paddingBottom: 320 },
+  body: { padding: Spacing.three, gap: Spacing.two, paddingBottom: 360 },
   search: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: Spacing.three, height: 46 },
   weigh: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.md, backgroundColor: 'rgba(217,100,58,0.08)', borderWidth: 1, borderColor: 'rgba(217,100,58,0.35)' },
   searchInput: { flex: 1, color: Colors.text, fontSize: 15 },
-  cashInput: { flex: 1, height: 52, backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md, paddingHorizontal: 14, color: Colors.text, fontSize: 26, fontWeight: '800', borderWidth: 1, borderColor: Colors.border },
+  cartBar: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  cartGo: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 48, paddingHorizontal: 18, borderRadius: Radius.pill },
+  cashInput: { flex: 1, minWidth: 0, height: 52, backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md, paddingHorizontal: 14, color: Colors.text, fontSize: 26, fontWeight: '800', borderWidth: 1, borderColor: Colors.border },
   cashBox: { gap: 8, padding: 10, borderRadius: Radius.md, backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border },
   changeRow: { justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.sm },
   customRow: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: 10, paddingVertical: 6 },

@@ -155,10 +155,10 @@ export function CashDrawerCard() {
               </Row>
             </View>
           ) : (
-            <Row gap={Spacing.two}>
-              <Button title={t('cash_in_btn')} variant="secondary" onPress={() => setMode('in')} style={{ flex: 1 }} />
-              <Button title={t('cash_take_btn')} variant="secondary" onPress={() => setMode('out')} style={{ flex: 1 }} />
-              <Button title={t('cash_close_btn')} variant="danger" onPress={() => setMode('close')} style={{ flex: 1 }} />
+            <Row gap={Spacing.two} style={{ flexWrap: 'wrap' }}>
+              <Button title={t('cash_in_short')} size="sm" variant="secondary" onPress={() => setMode('in')} style={{ flexGrow: 1, flexBasis: 90, paddingHorizontal: 6 }} />
+              <Button title={t('cash_take_short')} size="sm" variant="secondary" onPress={() => setMode('out')} style={{ flexGrow: 1, flexBasis: 90, paddingHorizontal: 6 }} />
+              <Button title={t('cash_close_short')} size="sm" variant="danger" onPress={() => setMode('close')} style={{ flexGrow: 1, flexBasis: 90, paddingHorizontal: 6 }} />
             </Row>
           )}
         </>
