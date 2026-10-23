@@ -102,7 +102,14 @@ export function OneFitEntry() {
       </T>
       <Button title={t('onefit_qr_scan')} icon="scan-outline" size="sm" onPress={() => setScanning(true)} style={{ backgroundColor: StaffAccent }} />
     </View>
-  ) : null;
+  ) : (
+    <View style={[styles.qrBox, { justifyContent: 'center' }]}>
+      <Ionicons name="qr-code-outline" size={40} color={Colors.textMuted} />
+      <T type="small" color={Colors.textSecondary} style={{ textAlign: 'center', maxWidth: 200 }}>
+        {t('onefit_qr_ask_manager')}
+      </T>
+    </View>
+  );
 
   return (
     <Card style={{ gap: Spacing.two }}>

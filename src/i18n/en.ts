@@ -56,6 +56,7 @@ export const en: Record<TKey, string> = {
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
   trainer_quals: 'Qualifications',
+  onefit_qr_ask_manager: 'No 1Fit QR for this club yet. Ask the manager to scan the 1Fit stand.',
   cl_title: 'Cancellations and refunds ({n})',
   cl_today: 'Today',
   cl_none: 'No cancellations in this period',
