@@ -709,8 +709,11 @@ module.exports = async function handler(req, res) {
       }
       const now = Date.now();
       const ref = { id: 'F' + now.toString(36) + Math.random().toString(36).slice(2, 5), ts: now, kind: 'refund', title: 'Возврат: ' + sale.title, name: sale.name, memberId: sale.memberId, amount, clubId: sale.clubId, method: sale.method, staff: staffName(''), reason, refundOf: saleId, ...(sale.trainerId ? { trainerId: sale.trainerId } : {}) };
+      // The sale is marked first, and only while it still reads what we read: of two cancellations racing for the same check exactly one goes through.
+      const was = sale.refunded ? `eq.${sale.refunded}` : 'is.null';
+      const marked = await sb(`sales?id=eq.${encodeURIComponent(saleId)}&${encodeURIComponent('data->>refunded')}=${was}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { ...sale, refunded: (sale.refunded || 0) + amount } }) });
+      if (!Array.isArray(marked) || marked.length !== 1) return res.status(409).json({ error: 'already changed' });
       await sb('sales', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: ref.id, ts: now, data: ref }) });
-      await sb(`sales?id=eq.${encodeURIComponent(saleId)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...sale, refunded: (sale.refunded || 0) + amount } }) });
       // a full refund puts back exactly what the sale took off the shelf
       if (sale.kind === 'shop' && Array.isArray(sale.items) && amount === sale.amount) await adjustStock(sale.items.filter((i) => (i.taken ?? 0) > 0), 1);
       return res.status(200).json({ ok: true });
