@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 
 import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile, type Goal } from '@/data/fitness';
 import { members, mockOrders, type Member } from '@/data/members';
-import { mockSales, saleValue, type Sale } from '@/data/owner';
+import { mockSales, saleValue, type PayMethod, type Sale } from '@/data/owner';
 import { applyContent, promoByCode, promoDiscount, type Content, type ContentSection } from '@/data/content';
 import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
@@ -110,7 +110,7 @@ type Actions = {
   logout: () => void;
   updateUser: (patch: Partial<User>) => void;
   completeOnboarding: (profile: FitnessProfile) => void;
-  grantPlan: (memberId: string, planId: string, amount?: number) => void;
+  grantPlan: (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[]) => void;
   /** The desk corrects a client's current plan: when it ends and how many visits are left. No sale is recorded. */
   editMembership: (memberId: string, fields: { planId?: string; endDate: string; visitsLeft?: number }) => Promise<boolean>;
   recordSale: (sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff' | 'synced'>) => void;
@@ -525,7 +525,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const grantPlan = useCallback(
-    (memberId: string, planId: string, amount?: number) => {
+    (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[]) => {
       const plan = planById(planId);
       if (!plan) return;
       // Clients that exist on the server get the new plan there too, so their own phone picks it up.
@@ -536,7 +536,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         grantRemote(state.staffCode, { id: memberId, name: isSelf ? state.user!.name : remote!.name, phone: isSelf ? state.user!.phone : remote!.phone, membership: next });
       }
       setState((s) => {
-        const sold = (name: string): Sale[] => ((amount ?? s.planPrices[planId]?.price ?? plan.price) > 0 ? [{ id: `S${Date.now()}${Math.random().toString(36).slice(2, 5)}`, ts: Date.now(), memberId, name, title: plan.name, kind: 'plan', amount: amount ?? s.planPrices[planId]?.price ?? plan.price, clubId: s.staff?.clubId ?? 'c1', method: 'desk', staff: s.staff?.name ?? '' }, ...s.sales] : s.sales);
+        const price = amount ?? s.planPrices[planId]?.price ?? plan.price;
+        // one row per way it was paid: a mixed payment (cash + Kaspi) is two rows, so the drawer counts only the cash
+        const parts = (pays ?? [{ method: 'desk' as PayMethod, amount: price }]).filter((p) => p.amount > 0);
+        const sold = (name: string): Sale[] => [...parts.map((p): Sale => ({ id: `S${Date.now()}${Math.random().toString(36).slice(2, 5)}`, ts: Date.now(), memberId, name, title: plan.name, kind: 'plan', amount: p.amount, clubId: s.staff?.clubId ?? 'c1', method: p.method, staff: s.staff?.name ?? '' })), ...s.sales];
         if (s.user?.id === memberId) return { ...s, sales: sold(s.user.name), trialUsed: s.trialUsed || (!!plan.trial && !plan.staffOnly), membership: extendMembership(s.membership, planId) };
         const r = s.remote.find((x) => x.id === memberId);
         if (r) {

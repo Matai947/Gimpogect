@@ -13,7 +13,7 @@ const ALMATY = 5 * 3600000;
 const dayOf = (ts: number) => new Date(ts + ALMATY).toISOString().slice(0, 10);
 const hm = (ts: number) => new Date(ts + ALMATY).toISOString().slice(11, 16);
 
-type Check = { key: string; ts: number; staff: string; memberId?: string; name: string; method: PayMethod; rows: Sale[]; total: number; debt: number; refunded: number };
+type Check = { key: string; ts: number; staff: string; memberId?: string; name: string; method: PayMethod; rows: Sale[]; total: number; debt: number; refunded: number; byMethod: Partial<Record<PayMethod, number>> };
 
 /** Today's checks at this desk, newest first: sent again to the client, or cancelled by the manager. */
 export function ReceiptsToday({ accent }: { accent: string }) {
@@ -38,13 +38,14 @@ export function ReceiptsToday({ accent }: { accent: string }) {
     for (const x of rows) {
       const last = out[out.length - 1];
       if (last && x.ts - last.rows[last.rows.length - 1].ts < 5000 && last.staff === x.staff && (last.memberId ?? '') === (x.memberId ?? '')) last.rows.push(x);
-      else out.push({ key: x.id, ts: x.ts, staff: x.staff, memberId: x.memberId, name: x.name, method: x.method, rows: [x], total: 0, debt: 0, refunded: 0 });
+      else out.push({ key: x.id, ts: x.ts, staff: x.staff, memberId: x.memberId, name: x.name, method: x.method, rows: [x], total: 0, debt: 0, refunded: 0, byMethod: {} });
     }
     for (const c of out) {
       for (const r of c.rows) {
         if (r.kind === 'debt') c.debt += r.amount;
         else {
           c.total += r.amount;
+          c.byMethod[r.method] = (c.byMethod[r.method] ?? 0) + r.amount;
           c.refunded += Math.max(r.refunded ?? 0, refundedOf.get(r.id) ?? 0);
         }
       }
@@ -54,11 +55,15 @@ export function ReceiptsToday({ accent }: { accent: string }) {
 
   const methodLabel: Record<PayMethod, string> = { kaspi: t('pay_kaspi'), card: t('pay_card'), cash: t('pay_cash'), transfer: t('pay_transfer'), split: t('pay_split'), desk: t('pay_desk') };
   const paidRows = (c: Check) => c.rows.filter((r) => r.kind !== 'debt');
+  const payOf = (c: Check) => {
+    const m = Object.entries(c.byMethod) as [PayMethod, number][];
+    return m.length > 1 ? m.map(([k, v]) => `${methodLabel[k] ?? k} ${formatPrice(v)}`).join(' + ') : (methodLabel[c.method] ?? c.method);
+  };
 
   const send = (c: Check) => {
     const text = [
       t('receipt_text_head', { n: c.key.slice(-6).toUpperCase() }),
-      `${today.split('-').reverse().join('.')} ${hm(c.ts)} • ${methodLabel[c.method] ?? c.method}`,
+      `${today.split('-').reverse().join('.')} ${hm(c.ts)} • ${payOf(c)}`,
       ...paidRows(c).map((r) => `${td(r.title)} — ${formatPrice(r.amount)}`),
       `${t('pos_total')}: ${formatPrice(c.total)}`,
       ...(c.debt ? [`${t('pos_debt_title')}: ${formatPrice(c.debt)}`] : []),
@@ -118,7 +123,7 @@ export function ReceiptsToday({ accent }: { accent: string }) {
                       {hm(c.ts)} • {c.name}
                     </T>
                     <T type="small" color={Colors.textMuted} numberOfLines={1}>
-                      {methodLabel[c.method] ?? c.method} • {c.staff}
+                      {payOf(c)} • {c.staff}
                     </T>
                   </View>
                   <T type="body" style={{ fontWeight: '800', textDecorationLine: cancelled ? 'line-through' : 'none' }}>

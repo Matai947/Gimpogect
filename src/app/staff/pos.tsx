@@ -19,7 +19,7 @@ import { MEMBER_DISCOUNT } from '@/data/shop';
 import { useApp, useCanManage, useCatalog, useI18n, useMembers, usePlans, useRawSales, type MemberInfo } from '@/store/app-context';
 
 type Line = { key: string; title: string; price: number; qty: number; planId?: string; productId?: string; trainerId?: string; grams?: number };
-type Receipt = { id: string; ts: number; lines: Line[]; subtotal: number; discount: number; total: number; debt?: number; method: PayMethod; client?: MemberInfo };
+type Receipt = { id: string; ts: number; lines: Line[]; subtotal: number; discount: number; total: number; debt?: number; method: PayMethod; client?: MemberInfo; mixCash?: number; mixOther?: PayMethod };
 
 const PLANS_TAB = '__plans';
 const TRAINERS_TAB = '__trainers';
@@ -49,6 +49,8 @@ export default function StaffPosScreen() {
   const [cat, setCat] = useState<string>('all');
   const [lines, setLines] = useState<Line[]>([]);
   const [method, setMethod] = useState<PayMethod>('cash');
+  const [mix, setMix] = useState(false);
+  const [mixOther, setMixOther] = useState<PayMethod>('kaspi');
   const [custom, setCustom] = useState('');
   const [cash, setCash] = useState('');
   const [receipt, setReceipt] = useState<Receipt | null>(null);
@@ -87,7 +89,10 @@ export default function StaffPosScreen() {
   // Part payment: the client pays some now and the rest stays a debt on their card.
   const partialMode = partial && !!client && lines.length > 0;
   const debtAmt = partialMode ? Math.max(0, total - received) : 0;
-  const cashShort = !partialMode && method === 'cash' && lines.length > 0 && received < total;
+  const cashShort = !partialMode && !mix && method === 'cash' && lines.length > 0 && received < total;
+  // Mixed: the cash typed stays in the drawer, the rest goes by Kaspi or card; both parts must be above zero.
+  const mixCash = Math.min(received, total);
+  const mixBad = mix && lines.length > 0 && (mixCash < 1 || mixCash >= total);
   const debts = client ? rawSales.filter((x) => x.kind === 'debt' && x.memberId === client.id && (x.remaining ?? 0) > 0).sort((a, b) => a.ts - b.ts) : [];
   const debtTotal = debts.reduce((sum, d) => sum + (d.remaining ?? 0), 0);
   const settleValue = Number(settle.replace(/\D/g, '')) || 0;
@@ -129,7 +134,15 @@ export default function StaffPosScreen() {
     key.startsWith('w:') ? setLines((ls) => (d < 0 ? ls.filter((x) => x.key !== key) : ls)) : setLines((ls) => ls.map((x) => (x.key === key ? { ...x, qty: x.qty + d } : x)).filter((x) => x.qty > 0));
 
   const pay = () => {
-    if (lines.length === 0 || cashShort) return;
+    if (lines.length === 0 || cashShort || mixBad) return;
+    // Cash is laid on the check's rows in order until it runs out; the rest of each row is the other method.
+    let cashLeft = mix ? mixCash : 0;
+    const parts = (amount: number): { method: PayMethod; amount: number }[] => {
+      if (!mix) return [{ method, amount }];
+      const c = Math.min(cashLeft, amount);
+      cashLeft -= c;
+      return [{ method: 'cash' as PayMethod, amount: c }, { method: mixOther, amount: amount - c }].filter((p) => p.amount > 0);
+    };
     const planLines = lines.filter((l) => l.planId);
     const trainerLines = lines.filter((l) => l.trainerId);
     if ((planLines.length || trainerLines.length || debtAmt > 0) && !client) {
@@ -138,22 +151,26 @@ export default function StaffPosScreen() {
     }
     // Plans go through grantPlan so the client gets access and the owner sees the sale; goods are one receipt.
     planLines.forEach((l) => {
-      for (let i = 0; i < l.qty; i++) grantPlan(client!.id, l.planId!, usePromo ? Math.round(l.price * share) : undefined);
+      for (let i = 0; i < l.qty; i++) {
+        const amount = usePromo ? Math.round(l.price * share) : l.price;
+        grantPlan(client!.id, l.planId!, amount, parts(amount));
+      }
     });
     // Personal training: one sale per package, tied to the trainer for the owner's reports.
     trainerLines.forEach((l) => {
-      for (let i = 0; i < l.qty; i++) recordSale({ memberId: client!.id, name: client!.name, title: l.title, kind: 'personal', amount: usePromo ? Math.round(l.price * share) : l.price, method, trainerId: l.trainerId });
+      for (let i = 0; i < l.qty; i++) parts(usePromo ? Math.round(l.price * share) : l.price).forEach((p) => recordSale({ memberId: client!.id, name: client!.name, title: l.title, kind: 'personal', amount: p.amount, method: p.method, trainerId: l.trainerId }));
     });
     const goodLines = lines.filter((l) => !l.planId && !l.trainerId);
     if (goodLines.length) {
-      recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: usePromo ? Math.round(goodLines.reduce((sum, l) => sum + l.price * l.qty, 0) * share) : goods - memberDisc, method, items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.grams ?? l.qty })) });
+      // the shelf is taken once: the goods travel on the first row only
+      parts(usePromo ? Math.round(goodLines.reduce((sum, l) => sum + l.price * l.qty, 0) * share) : goods - memberDisc).forEach((p, i) => recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: p.amount, method: p.method, ...(i === 0 ? { items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.grams ?? l.qty })) } : {}) }));
       // the shelf counts come back from the server once the sale has reached it
       setTimeout(() => void refreshContent(), 2500);
     }
     if (debtAmt > 0) recordSale({ memberId: client!.id, name: client!.name, title: t('pos_debt_title'), kind: 'debt', amount: debtAmt, remaining: debtAmt, method });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     const ts = newTs();
-    setReceipt({ id: ts.toString(36).toUpperCase(), ts, lines, subtotal, discount, total, debt: debtAmt || undefined, method, client: client ?? undefined });
+    setReceipt({ id: ts.toString(36).toUpperCase(), ts, lines, subtotal, discount, total, debt: debtAmt || undefined, method, client: client ?? undefined, ...(mix ? { mixCash, mixOther } : {}) });
   };
 
   /** The client brings money for an old debt: oldest debts first. */
@@ -201,6 +218,7 @@ export default function StaffPosScreen() {
     setCash('');
     setError(null);
     setPartial(false);
+    setMix(false);
     setPromoCode('');
   };
 
@@ -231,6 +249,7 @@ export default function StaffPosScreen() {
   const needsClient = !client && lines.some((l) => l.planId || l.trainerId);
 
   const methodLabel: Record<PayMethod, string> = { kaspi: t('pay_kaspi'), card: t('pay_card'), cash: t('pay_cash'), transfer: t('pay_transfer'), split: t('pay_split'), desk: t('pay_desk') };
+  const payLabel = (r: Receipt) => (r.mixCash ? `${methodLabel.cash} ${formatPrice(r.mixCash)} + ${methodLabel[r.mixOther ?? 'kaspi']} ${formatPrice(r.total - r.mixCash)}` : methodLabel[r.method]);
 
   /** The receipt as plain text: to the client's WhatsApp when the card has a phone, else the phone's share sheet. */
   const sendReceipt = () => {
@@ -238,7 +257,7 @@ export default function StaffPosScreen() {
     const when = new Date(receipt.ts).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     const text = [
       t('receipt_text_head', { n: receipt.id }),
-      `${when} • ${methodLabel[receipt.method]}`,
+      `${when} • ${payLabel(receipt)}`,
       ...receipt.lines.map((l) => `${l.title}${l.qty > 1 ? ` x${l.qty}` : ''} — ${formatPrice(l.price * l.qty)}`),
       ...(receipt.discount ? [`${t('pos_discount')}: −${formatPrice(receipt.discount)}`] : []),
       `${t('pos_total')}: ${formatPrice(receipt.total)}`,
@@ -260,7 +279,7 @@ export default function StaffPosScreen() {
               <Badge label={t('pos_paid')} color={Colors.success} />
             </Row>
             <T type="small" color={Colors.textSecondary}>
-              {new Date(receipt.ts).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} • {methodLabel[receipt.method]} • {t('pos_cashier', { name: staff?.name ?? '' })}
+              {new Date(receipt.ts).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} • {payLabel(receipt)} • {t('pos_cashier', { name: staff?.name ?? '' })}
             </T>
             {receipt.client ? (
               <Row gap={Spacing.two} style={{ marginTop: 4 }}>
@@ -283,7 +302,13 @@ export default function StaffPosScreen() {
             {receipt.discount ? <Sum label={t('pos_discount')} value={`−${formatPrice(receipt.discount)}`} /> : null}
             <Sum label={t('pos_total')} value={formatPrice(receipt.total)} big />
             {receipt.debt ? <Sum label={t('pos_debt_title')} value={formatPrice(receipt.debt)} /> : null}
-            {receipt.method === 'cash' && received >= receipt.total ? (
+            {receipt.mixCash ? (
+              <>
+                <Sum label={methodLabel.cash} value={formatPrice(receipt.mixCash)} />
+                <Sum label={methodLabel[receipt.mixOther ?? 'kaspi']} value={formatPrice(receipt.total - receipt.mixCash)} />
+              </>
+            ) : null}
+            {!receipt.mixCash && receipt.method === 'cash' && received >= receipt.total ? (
               <>
                 <Sum label={t('pos_received')} value={formatPrice(received)} />
                 <Sum label={t('pos_change')} value={formatPrice(received - receipt.total)} />
@@ -525,11 +550,60 @@ export default function StaffPosScreen() {
             </Row>
             <Row gap={6} style={{ flexWrap: 'wrap' }}>
               {(['cash', 'kaspi', 'card'] as PayMethod[]).map((m) => (
-                <Chip key={m} label={methodLabel[m]} active={method === m} onPress={() => setMethod(m)} />
+                <Chip
+                  key={m}
+                  label={methodLabel[m]}
+                  active={!mix && method === m}
+                  onPress={() => {
+                    setMix(false);
+                    setMethod(m);
+                  }}
+                />
               ))}
-              {client ? <Chip label={t('pos_partial')} icon="time-outline" active={partial} onPress={() => setPartial((v) => !v)} /> : null}
+              <Chip
+                label={t('pos_mixed')}
+                icon="git-merge-outline"
+                active={mix}
+                onPress={() => {
+                  setMix(true);
+                  setPartial(false);
+                  setCash('');
+                }}
+              />
+              {client && !mix ? <Chip label={t('pos_partial')} icon="time-outline" active={partial} onPress={() => setPartial((v) => !v)} /> : null}
             </Row>
-            {method === 'cash' || partialMode ? (
+            {mix ? (
+              <View style={styles.cashBox}>
+                <T type="label" color={Colors.textSecondary}>
+                  {t('pos_mix_cash')}
+                </T>
+                <Row gap={Spacing.two}>
+                  <TextInput value={cash} onChangeText={setCash} placeholder="0" placeholderTextColor={Colors.textMuted} keyboardType="number-pad" style={styles.cashInput} />
+                  <T type="heading" color={Colors.textMuted}>
+                    ₸
+                  </T>
+                </Row>
+                <T type="label" color={Colors.textSecondary}>
+                  {t('pos_mix_rest')}
+                </T>
+                <Row gap={6} style={{ flexWrap: 'wrap' }}>
+                  {(['kaspi', 'card'] as PayMethod[]).map((m) => (
+                    <Chip key={m} label={methodLabel[m]} active={mixOther === m} onPress={() => setMixOther(m)} />
+                  ))}
+                </Row>
+                <Row style={[styles.changeRow, { backgroundColor: mixBad ? 'rgba(214,59,71,0.1)' : 'rgba(31,138,76,0.12)' }]}>
+                  <T type="subheading" color={mixBad ? Colors.danger : Colors.success} style={{ flex: 1 }}>
+                    {mixBad ? t('pos_mix_bad') : methodLabel[mixOther]}
+                  </T>
+                  {!mixBad ? (
+                    <T type="display" color={Colors.success} style={{ fontSize: 28, lineHeight: 34 }}>
+                      {formatPrice(total - mixCash)}
+                    </T>
+                  ) : null}
+                </Row>
+              </View>
+            ) : null}
+            {!mix && (method === 'cash' || partialMode) ? (
               <View style={styles.cashBox}>
                 <T type="label" color={Colors.textSecondary}>
                   {partialMode ? t('pos_paid_now') : t('pos_given')}
@@ -580,7 +654,7 @@ export default function StaffPosScreen() {
                 {error}
               </T>
             ) : null}
-            <Button title={t('pos_pay', { sum: formatPrice(partialMode && debtAmt > 0 ? received : total) })} icon="checkmark-circle-outline" size="lg" onPress={pay} disabled={cashShort || needsClient} style={{ backgroundColor: StaffAccent }} />
+            <Button title={t('pos_pay', { sum: formatPrice(partialMode && debtAmt > 0 ? received : total) })} icon="checkmark-circle-outline" size="lg" onPress={pay} disabled={cashShort || mixBad || needsClient} style={{ backgroundColor: StaffAccent }} />
           </>
         )}
       </View>
