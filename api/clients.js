@@ -690,7 +690,7 @@ module.exports = async function handler(req, res) {
 
     // Only the owner returns money.
     if (req.method === 'POST' && op === 'refund') {
-      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      if (!authed()) return res.status(403).json({ error: 'staff only' });
       const saleId = str(body.saleId, 24);
       const reason = str(body.reason, 80);
       if (reason.length < 3 || /[<>]/.test(reason)) return res.status(400).json({ error: 'reason required' });
@@ -700,6 +700,13 @@ module.exports = async function handler(req, res) {
       const left = sale.amount - (sale.refunded || 0);
       const amount = body.amount == null ? left : int(body.amount, 10000000);
       if (amount < 1 || amount > left) return res.status(400).json({ error: 'bad amount' });
+      // An administrator cancels a mistake: only a sale rung up today (clubs' clock), only the whole of what is left.
+      // Partial refunds and older sales stay with the manager and the owner. Every cancellation carries who did it.
+      if (!manages()) {
+        const almaty = (ts) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10);
+        if (almaty(sale.ts) !== almaty(Date.now())) return res.status(403).json({ error: 'only today' });
+        if (amount !== left) return res.status(403).json({ error: 'whole check only' });
+      }
       const now = Date.now();
       const ref = { id: 'F' + now.toString(36) + Math.random().toString(36).slice(2, 5), ts: now, kind: 'refund', title: 'Возврат: ' + sale.title, name: sale.name, memberId: sale.memberId, amount, clubId: sale.clubId, method: sale.method, staff: staffName(''), reason, refundOf: saleId, ...(sale.trainerId ? { trainerId: sale.trainerId } : {}) };
       await sb('sales', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: ref.id, ts: now, data: ref }) });

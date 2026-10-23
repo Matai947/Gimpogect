@@ -5,6 +5,7 @@ import { Linking, Platform, Pressable, ScrollView, Share, StyleSheet, TextInput,
 
 import { BarcodeSheet, cleanBarcode } from '@/components/barcode-sheet';
 import { CashDrawerCard } from '@/components/cash-drawer';
+import { CancellationsLog } from '@/components/cancellations-log';
 import { ReceiptsToday } from '@/components/receipts-today';
 import { StaffAccent } from '@/components/member-result';
 import { StaffHeader } from '@/components/staff-header';
@@ -297,12 +298,8 @@ export default function StaffPosScreen() {
             <T type="small" color={cancelMsg.bad ? Colors.danger : Colors.success} style={{ fontWeight: '700' }}>
               {cancelMsg.text}
             </T>
-          ) : canManage ? (
-            <Button title={cancelSure ? t('pos_cancel_sure') : t('pos_cancel')} icon="arrow-undo-outline" variant="danger" onPress={() => void cancelReceipt()} disabled={cancelling} />
           ) : (
-            <T type="small" color={Colors.textMuted} style={{ textAlign: 'center' }}>
-              {t('pos_cancel_manager')}
-            </T>
+            <Button title={cancelSure ? t('pos_cancel_sure') : t('pos_cancel')} icon="arrow-undo-outline" variant="danger" onPress={() => void cancelReceipt()} disabled={cancelling} />
           )}
           <Button title={t('pos_new')} icon="add" onPress={reset} style={{ backgroundColor: StaffAccent }} />
         </ScrollView>
@@ -316,6 +313,7 @@ export default function StaffPosScreen() {
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <CashDrawerCard />
         <ReceiptsToday accent={StaffAccent} />
+        {canManage ? <CancellationsLog accent={StaffAccent} /> : null}
 
         {/* client */}
         <T type="label" color={Colors.textSecondary}>

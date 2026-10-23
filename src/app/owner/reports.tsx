@@ -360,8 +360,9 @@ export default function OwnerReports() {
                   <T type="small" style={{ fontWeight: '700' }} numberOfLines={1}>
                     {r.name}
                   </T>
-                  <T type="small" color={Colors.textMuted} numberOfLines={1}>
-                    {r.title} • {date(r.ts)}
+                  <T type="small" color={Colors.textMuted} numberOfLines={2}>
+                    {r.title} • {date(r.ts)} • {t('cl_by', { name: r.staff || '—' })}
+                    {r.reason ? ` • ${r.reason}` : ''}
                   </T>
                 </View>
                 <T type="small" style={{ fontWeight: '700' }}>

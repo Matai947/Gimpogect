@@ -7,7 +7,7 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice } from '@/data/mock';
 import type { PayMethod, Sale } from '@/data/owner';
 import { refundRemote } from '@/lib/api';
-import { useApp, useCanManage, useI18n, useMembers, useNow, useRawSales } from '@/store/app-context';
+import { useApp, useI18n, useMembers, useNow, useRawSales } from '@/store/app-context';
 
 const ALMATY = 5 * 3600000;
 const dayOf = (ts: number) => new Date(ts + ALMATY).toISOString().slice(0, 10);
@@ -19,7 +19,6 @@ type Check = { key: string; ts: number; staff: string; memberId?: string; name: 
 export function ReceiptsToday({ accent }: { accent: string }) {
   const { t, td } = useI18n();
   const { staff, staffCode, refreshSales, refreshContent } = useApp();
-  const canManage = useCanManage();
   const sales = useRawSales();
   const { byId } = useMembers();
   const now = useNow();
@@ -157,7 +156,7 @@ export function ReceiptsToday({ accent }: { accent: string }) {
                 ) : null}
                 <Row gap={Spacing.two}>
                   <Button title={t('receipt_send')} icon="paper-plane-outline" size="sm" variant="secondary" onPress={() => send(c)} style={{ flex: 1, paddingHorizontal: 8 }} />
-                  {canManage && !cancelled ? (
+                  {!cancelled ? (
                     <Button title={sure === c.key ? t('rt_cancel_sure') : t('pos_cancel')} icon="arrow-undo-outline" size="sm" variant="danger" onPress={() => void cancel(c)} disabled={busy === c.key} style={{ flex: 1, paddingHorizontal: 8 }} />
                   ) : null}
                 </Row>
