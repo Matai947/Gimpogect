@@ -55,7 +55,7 @@ export default function QrScreen() {
 
       <View style={styles.qrCard}>
         {membership.active && !membership.frozen && !dayClosed ? (
-          <QRCode value={payload} size={240} quietZone={8} ecl="M" backgroundColor="#FFFFFF" color="#000000" />
+          <QRCode value={payload} size={250} quietZone={24} ecl="M" backgroundColor="#FFFFFF" color="#000000" />
         ) : (
           <View style={{ width: 230, height: 230, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <Ionicons name="lock-closed" size={48} color="#5B6673" />
