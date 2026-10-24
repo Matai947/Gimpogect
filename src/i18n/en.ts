@@ -56,6 +56,8 @@ export const en: Record<TKey, string> = {
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
   trainer_quals: 'Qualifications',
+  order_cancel: 'Cancel order',
+  order_cancel_sure: 'Tap again to cancel',
   cm_short: 'To other club',
   cm_send: 'Send',
   cm_carrier: 'Who carries the cash',

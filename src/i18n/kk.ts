@@ -56,6 +56,8 @@ export const kk: Record<TKey, string> = {
   auth_terms: 'Жалғастыра отырып, мүшелік шарттарымен және құпиялылық саясатымен келісесіз',
   rules_title: 'Клуб ережесі',
   trainer_quals: 'Біліктілігі',
+  order_cancel: 'Тапсырысты болдырмау',
+  order_cancel_sure: 'Болдырмау үшін тағы басыңыз',
   cm_short: 'Залға аудару',
   cm_send: 'Жіберу',
   cm_carrier: 'Ақшаны кім апарады',

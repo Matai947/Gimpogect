@@ -155,6 +155,8 @@ type Actions = {
   checkoutMember: (memberId: string) => void;
   toggleAttendance: (sessionId: string, memberId: string) => void;
   setOrderStatus: (orderId: string, status: OrderStatus) => void;
+  /** The client changed their mind: an order not yet handed over is removed. */
+  cancelOrder: (orderId: string) => void;
   upsertProduct: (p: Product) => void;
   deleteProduct: (id: string) => void;
   restoreProduct: (id: string) => void;
@@ -472,6 +474,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       orders: s.orders.map((o) => (o.id === orderId ? { ...o, status } : o)),
       orderStatusOverrides: { ...s.orderStatusOverrides, [orderId]: status },
     }));
+  }, []);
+
+  const cancelOrder = useCallback((orderId: string) => {
+    setState((s) => ({ ...s, orders: s.orders.filter((o) => o.id !== orderId || (s.orderStatusOverrides[o.id] ?? o.status) === 'Выдан') }));
   }, []);
 
   /* ---------- AI coach ---------- */
@@ -809,11 +815,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       checkoutMember,
       toggleAttendance,
       setOrderStatus,
+      cancelOrder,
       upsertProduct,
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, moveClient, editMembership, recordSale, refreshSales, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, staffFreeze, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, moveClient, editMembership, recordSale, refreshSales, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, staffFreeze, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, cancelOrder, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

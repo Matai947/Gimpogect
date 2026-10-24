@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { ProductPhoto } from '@/components/product-photo';
-import { Badge, Card, Divider, EmptyState, Row, Screen, T } from '@/components/ui';
+import { Badge, Button, Card, Divider, EmptyState, Row, Screen, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { clubById, formatDateHuman, formatPrice } from '@/data/mock';
 import { useApp, useCatalog, useI18n } from '@/store/app-context';
@@ -13,7 +14,8 @@ const statusColor = { Готовится: Colors.warning, 'Готов к выд�
 const statusKey = { Готовится: 'st_preparing', 'Готов к выдаче': 'st_ready', Выдан: 'st_done' } as const;
 
 export default function OrdersScreen() {
-  const { orders: rawOrders, orderStatusOverrides } = useApp();
+  const { orders: rawOrders, orderStatusOverrides, cancelOrder } = useApp();
+  const [sure, setSure] = useState<string | null>(null);
   const orders = rawOrders.map((o) => ({ ...o, status: orderStatusOverrides[o.id] ?? o.status }));
   const { t } = useI18n();
   const { byId: productById } = useCatalog();
@@ -78,6 +80,13 @@ export default function OrdersScreen() {
                 <T type="small" color={Colors.textMuted}>
                   {t('order_qr_hint')}
                 </T>
+                <Button
+                  title={sure === o.id ? t('order_cancel_sure') : t('order_cancel')}
+                  icon="close-circle-outline"
+                  variant={sure === o.id ? 'danger' : 'ghost'}
+                  size="sm"
+                  onPress={() => (sure === o.id ? (cancelOrder(o.id), setSure(null)) : setSure(o.id))}
+                />
               </View>
             ) : (
               <Row gap={6}>
