@@ -5,8 +5,8 @@ const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', 
 const IMG = (id, w = 1000) => `https://images.unsplash.com/photo-${id}?w=${w}&q=80`;
 
 const clubs = [
-  { id: 'c1', name: 'Seven Gym Akkent', city: 'city_alm', addr: 'ул. Ш. Болтекулы, 1, 3 этаж', h: '07:00–23:00', area: 0, machines: 0, rating: '', phone: '+7 705 555 39 32', img: '1671970922029-0430d2ae122c', am: ['am_gym'] },
-  { id: 'c2', name: 'Seven Gym Premier', city: 'city_alm', addr: 'ул. Жуалы, 155, 2 этаж', h: '07:00–23:00', area: 0, machines: 0, rating: '', phone: '+7 705 555 39 32', img: '1758448756350-3d0eec02ba37', am: ['am_gym'] },
+  { id: 'c1', name: 'Seven Gym Akkent', city: 'city_alm', addr: 'ул. Ш. Болтекулы, 1, 3 этаж', h: '07:00–23:00', area: 0, machines: 0, rating: '', phone: '+7 700 700 70 39', img: '1671970922029-0430d2ae122c', am: ['am_gym'] },
+  { id: 'c2', name: 'Seven Gym Premier', city: 'city_alm', addr: 'ул. Жуалы, 155, 2 этаж', h: '07:00–23:00', area: 0, machines: 0, rating: '', phone: '+7 700 700 70 39', img: '1758448756350-3d0eec02ba37', am: ['am_gym'] },
 ];
 
 const plans = [
@@ -295,7 +295,7 @@ fetch(API + '?op=clubs')
     const known = clubs.slice();
     // Everything below goes into innerHTML: escape the text, keep only phone characters, accept only c<number> ids.
     const tel = (v) => String(v ?? '').replace(/[^\d+()\-\s]/g, '');
-    clubs.splice(0, clubs.length, ...live.filter((c) => /^c\d{1,3}$/.test(c.id)).map((c) => ({ id: c.id, name: esc(c.name), city: 'city_alm', cityText: c.city && c.city !== 'Алматы' ? esc(c.city) : '', addr: esc(c.address), h: esc(c.hours), area: 0, machines: 0, rating: '', phone: tel(c.phone) || '+7 705 555 39 32', img: (known.find((k) => k.id === c.id) || known[0]).img, am: ['am_gym'] })));
+    clubs.splice(0, clubs.length, ...live.filter((c) => /^c\d{1,3}$/.test(c.id)).map((c) => ({ id: c.id, name: esc(c.name), city: 'city_alm', cityText: c.city && c.city !== 'Алматы' ? esc(c.city) : '', addr: esc(c.address), h: esc(c.hours), area: 0, machines: 0, rating: '', phone: tel(c.phone) || '+7 700 700 70 39', img: (known.find((k) => k.id === c.id) || known[0]).img, am: ['am_gym'] })));
     render();
   })
   .catch(() => {});

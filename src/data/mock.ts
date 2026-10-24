@@ -111,7 +111,7 @@ const defaultClubs: Club[] = [
     rating: 4.8,
     reviews: 1240,
     distanceKm: 1.2,
-    phone: '+7 705 555 39 32',
+    phone: '+7 700 700 70 39',
     photos: [
       'https://images.unsplash.com/photo-1671970922029-0430d2ae122c?w=1200&q=80',
       'https://images.unsplash.com/photo-1597076537061-a6b58163aa45?w=1200&q=80',
@@ -136,7 +136,7 @@ const defaultClubs: Club[] = [
     rating: 4.9,
     reviews: 860,
     distanceKm: 4.7,
-    phone: '+7 705 555 39 32',
+    phone: '+7 700 700 70 39',
     photos: [
       'https://images.unsplash.com/photo-1559369064-c4d65141e408?w=1200&q=80',
       'https://images.unsplash.com/photo-1758448756350-3d0eec02ba37?w=1200&q=80',
