@@ -10,8 +10,8 @@ import { Colors, Spacing } from '@/constants/theme';
 import { clubById, formatDateHuman, formatPrice } from '@/data/mock';
 import { useApp, useCatalog, useI18n } from '@/store/app-context';
 
-const statusColor = { Готовится: Colors.warning, 'Готов к выдаче': Colors.success, Выдан: Colors.textSecondary } as const;
-const statusKey = { Готовится: 'st_preparing', 'Готов к выдаче': 'st_ready', Выдан: 'st_done' } as const;
+const statusColor = { Готовится: Colors.warning, 'Готов к выдаче': Colors.success, Выдан: Colors.textSecondary, Отменён: Colors.danger } as const;
+const statusKey = { Готовится: 'st_preparing', 'Готов к выдаче': 'st_ready', Выдан: 'st_done', Отменён: 'st_cancelled' } as const;
 
 export default function OrdersScreen() {
   const { orders: rawOrders, orderStatusOverrides, cancelOrder } = useApp();
@@ -72,7 +72,12 @@ export default function OrdersScreen() {
                 {formatPrice(o.total)}
               </T>
             </Row>
-            {o.status !== 'Выдан' ? (
+            {o.status === 'Отменён' ? (
+              <T type="small" color={Colors.danger}>
+                {t('order_cancelled_note')}
+                {o.cancelReason ? `: ${o.cancelReason}` : ''}
+              </T>
+            ) : o.status !== 'Выдан' ? (
               <View style={{ alignItems: 'center', gap: 6, paddingVertical: Spacing.two }}>
                 <View style={{ backgroundColor: '#FFFFFF', padding: 10, borderRadius: 12 }}>
                   <QRCode value={JSON.stringify({ v: 1, t: 'order', id: o.id })} size={120} backgroundColor="#FFFFFF" color="#0B0F14" />

@@ -9,7 +9,7 @@ import { Card, ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { mockOrders } from '@/data/members';
 import { clubById, occupancyLabel, sessionsForDate, toISODate, trainerById } from '@/data/mock';
-import { SESSION_MS, useApp, useI18n, useNow, usePresence } from '@/store/app-context';
+import { SESSION_MS, useApp, useI18n, useNow, usePresence, orderClosed } from '@/store/app-context';
 
 export default function StaffTodayScreen() {
   const { staff, staffLog, orders, orderStatusOverrides, checkoutMember } = useApp();
@@ -24,7 +24,7 @@ export default function StaffTodayScreen() {
   const okCount = todayLog.filter((e) => e.ok).length;
   const deniedCount = todayLog.length - okCount;
   const sessions = useMemo(() => sessionsForDate(todayIso).filter((s) => s.clubId === clubId), [todayIso, clubId]);
-  const pendingOrders = [...orders, ...mockOrders].filter((o) => o.clubId === clubId && (orderStatusOverrides[o.id] ?? o.status) !== 'Выдан').length;
+  const pendingOrders = [...orders, ...mockOrders].filter((o) => o.clubId === clubId && !orderClosed(orderStatusOverrides[o.id] ?? o.status)).length;
   const occ = occupancyLabel(club.occupancy);
 
   return (

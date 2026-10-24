@@ -4,7 +4,7 @@ import { Platform, type ColorValue } from 'react-native';
 
 import { StaffAccent } from '@/components/member-result';
 import { Colors } from '@/constants/theme';
-import { useApp, useI18n } from '@/store/app-context';
+import { useApp, useI18n, orderClosed } from '@/store/app-context';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 type IconProps = { color: ColorValue; focused: boolean };
@@ -18,7 +18,7 @@ export default function StaffLayout() {
   const { t } = useI18n();
   if (!hydrated) return null;
   if (!staff) return <Redirect href="/staff-login" />;
-  const pending = orders.filter((o) => (orderStatusOverrides[o.id] ?? o.status) !== 'Выдан').length;
+  const pending = orders.filter((o) => !orderClosed(orderStatusOverrides[o.id] ?? o.status)).length;
 
   return (
     <Tabs

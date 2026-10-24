@@ -36,7 +36,9 @@ export type Visit = { date: string; clubId: string };
 
 export type CartItem = { key: string; productId: string; option?: string; qty: number };
 
-export type OrderStatus = 'Готовится' | 'Готов к выдаче' | 'Выдан';
+export type OrderStatus = 'Готовится' | 'Готов к выдаче' | 'Выдан' | 'Отменён';
+/** Handed over or cancelled: nothing left to do at the desk. */
+export const orderClosed = (s: OrderStatus) => s === 'Выдан' || s === 'Отменён';
 
 export type Order = {
   id: string;
@@ -48,6 +50,7 @@ export type Order = {
   clubId: string;
   status: OrderStatus;
   memberId?: string;
+  cancelReason?: string;
 };
 
 export type StaffSession = { name: string; clubId: string; since: string; role?: 'admin' | 'manager' };
@@ -154,7 +157,7 @@ type Actions = {
   logCheckin: (entry: Omit<CheckinEntry, 'ts'>, served?: { visitsLeft?: number; membership?: RemoteMembership | null }) => void;
   checkoutMember: (memberId: string) => void;
   toggleAttendance: (sessionId: string, memberId: string) => void;
-  setOrderStatus: (orderId: string, status: OrderStatus) => void;
+  setOrderStatus: (orderId: string, status: OrderStatus, reason?: string) => void;
   /** The client changed their mind: an order not yet handed over is removed. */
   cancelOrder: (orderId: string) => void;
   upsertProduct: (p: Product) => void;
@@ -468,16 +471,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, hiddenProducts: s.hiddenProducts.filter((h) => h !== id) }));
   }, []);
 
-  const setOrderStatus = useCallback((orderId: string, status: OrderStatus) => {
+  const setOrderStatus = useCallback((orderId: string, status: OrderStatus, reason?: string) => {
     setState((s) => ({
       ...s,
-      orders: s.orders.map((o) => (o.id === orderId ? { ...o, status } : o)),
+      orders: s.orders.map((o) => (o.id === orderId ? { ...o, status, cancelReason: status === 'Отменён' ? reason : undefined } : o)),
       orderStatusOverrides: { ...s.orderStatusOverrides, [orderId]: status },
     }));
   }, []);
 
   const cancelOrder = useCallback((orderId: string) => {
-    setState((s) => ({ ...s, orders: s.orders.filter((o) => o.id !== orderId || (s.orderStatusOverrides[o.id] ?? o.status) === 'Выдан') }));
+    setState((s) => ({ ...s, orders: s.orders.filter((o) => o.id !== orderId || orderClosed(s.orderStatusOverrides[o.id] ?? o.status)) }));
   }, []);
 
   /* ---------- AI coach ---------- */

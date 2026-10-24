@@ -11,10 +11,10 @@ import { Badge, Button, Chip, ChipRow, Divider, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { mockOrders } from '@/data/members';
 import { clubById, formatDateHuman, formatPrice } from '@/data/mock';
-import { useApp, useCatalog, useI18n, useMembers, type Order, type OrderStatus } from '@/store/app-context';
+import { orderClosed, useApp, useCatalog, useI18n, useMembers, type Order, type OrderStatus } from '@/store/app-context';
 
-const statusColor: Record<OrderStatus, string> = { Готовится: Colors.warning, 'Готов к выдаче': Colors.success, Выдан: Colors.textSecondary };
-const statusKey = { Готовится: 'st_preparing', 'Готов к выдаче': 'st_ready', Выдан: 'st_done' } as const;
+const statusColor: Record<OrderStatus, string> = { Готовится: Colors.warning, 'Готов к выдаче': Colors.success, Выдан: Colors.textSecondary, Отменён: Colors.danger };
+const statusKey = { Готовится: 'st_preparing', 'Готов к выдаче': 'st_ready', Выдан: 'st_done', Отменён: 'st_cancelled' } as const;
 
 export default function StaffOrdersScreen() {
   const { staff, orders, orderStatusOverrides, setOrderStatus } = useApp();
@@ -23,6 +23,7 @@ export default function StaffOrdersScreen() {
   const { byId: productById } = useCatalog();
   const { focus } = useLocalSearchParams<{ focus?: string }>();
   const [filter, setFilter] = useState<'pending' | 'all'>('pending');
+  const [cancelling, setCancelling] = useState<string | null>(null);
   const clubId = staff?.clubId ?? 'c1';
 
   const all: Order[] = useMemo(() => {
@@ -30,7 +31,7 @@ export default function StaffOrdersScreen() {
     return merged.map((o) => ({ ...o, status: orderStatusOverrides[o.id] ?? o.status })).sort((a, b) => (a.id === focus ? -1 : b.id === focus ? 1 : b.date.localeCompare(a.date)));
   }, [orders, orderStatusOverrides, focus]);
 
-  const list = all.filter((o) => (filter === 'all' ? true : o.status !== 'Выдан')).filter((o) => o.clubId === clubId || o.id === focus);
+  const list = all.filter((o) => (filter === 'all' ? true : !orderClosed(o.status))).filter((o) => o.clubId === clubId || o.id === focus);
 
   const advance = (o: Order) => {
     if (o.status === 'Готовится') {
@@ -107,8 +108,15 @@ export default function StaffOrdersScreen() {
                 <T type="label" color={StaffAccent}>
                   {formatPrice(o.total)}
                 </T>
-                {o.status !== 'Выдан' ? (
-                  <Button title={o.status === 'Готовится' ? t('mark_ready') : t('mark_done')} size="sm" icon={o.status === 'Готовится' ? 'checkmark' : 'hand-left-outline'} onPress={() => advance(o)} style={{ backgroundColor: o.status === 'Готовится' ? Colors.surfaceAlt : StaffAccent }} />
+                {o.status === 'Отменён' ? (
+                  <T type="small" color={Colors.danger} style={{ flexShrink: 1, textAlign: 'right' }}>
+                    {o.cancelReason ?? t('st_cancelled')}
+                  </T>
+                ) : o.status !== 'Выдан' ? (
+                  <Row gap={Spacing.two}>
+                    <Button title="" icon="close" size="sm" variant="danger" onPress={() => setCancelling((v) => (v === o.id ? null : o.id))} style={{ paddingHorizontal: 12 }} />
+                    <Button title={o.status === 'Готовится' ? t('mark_ready') : t('mark_done')} size="sm" icon={o.status === 'Готовится' ? 'checkmark' : 'hand-left-outline'} onPress={() => advance(o)} style={{ backgroundColor: o.status === 'Готовится' ? Colors.surfaceAlt : StaffAccent }} />
+                  </Row>
                 ) : (
                   <Pressable onPress={() => setOrderStatus(o.id, 'Готов к выдаче')} hitSlop={8}>
                     <T type="small" color={Colors.textMuted}>
@@ -117,6 +125,26 @@ export default function StaffOrdersScreen() {
                   </Pressable>
                 )}
               </Row>
+              {cancelling === o.id ? (
+                <View style={{ gap: 6 }}>
+                  <T type="small" color={Colors.textSecondary}>
+                    {t('order_cancel_why')}
+                  </T>
+                  <Row gap={6} style={{ flexWrap: 'wrap' }}>
+                    {[t('order_r_changed'), t('order_r_out')].map((r) => (
+                      <Chip
+                        key={r}
+                        label={r}
+                        icon="close-circle-outline"
+                        onPress={() => {
+                          setOrderStatus(o.id, 'Отменён', r);
+                          setCancelling(null);
+                        }}
+                      />
+                    ))}
+                  </Row>
+                </View>
+              ) : null}
             </View>
           );
         })}
