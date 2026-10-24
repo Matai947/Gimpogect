@@ -7,8 +7,8 @@ import { Avatar, Badge, Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
 import { resetPasswordRemote } from '@/lib/api';
-import { DAY_ONLY_UNTIL, clubById, clubHour, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
-import { useApp, useI18n, useMembers, usePlans, usePresence, type MemberInfo } from '@/store/app-context';
+import { DAY_ONLY_UNTIL, clubs, clubById, clubHour, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
+import { useApp, useCanManage, useI18n, useMembers, usePlans, usePresence, type MemberInfo } from '@/store/app-context';
 
 export const hm = (ts: number) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
@@ -29,7 +29,9 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   const plans = usePlans();
   // The scanner passes a snapshot; re-read so the card updates right after a plan is issued.
   const member = useMembers().byId(snapshot.id) ?? snapshot;
-  const { staff, staffCode, logCheckin, checkoutMember, grantPlan, editMembership, staffFreeze } = useApp();
+  const { staff, staffCode, logCheckin, checkoutMember, grantPlan, editMembership, staffFreeze, moveClient } = useApp();
+  const canManage = useCanManage();
+  const [moveMsg, setMoveMsg] = useState('');
   const [freezing, setFreezing] = useState(false);
   const [freezeMsg, setFreezeMsg] = useState<{ text: string; bad: boolean } | null>(null);
   const doFreeze = async (days: number) => {
@@ -236,6 +238,25 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
               <Button title={t('reset_pass')} variant="ghost" size="sm" icon="key-outline" onPress={() => void resetPassword()} />
             )}
             {!decision.ok ? <Button title={t('sell_plan')} variant="secondary" icon="card-outline" onPress={() => setPicking((v) => !v)} /> : null}
+            {canManage && !member.isSelf && clubs.length > 1 ? (
+              <View style={{ gap: 6 }}>
+                <T type="small" color={Colors.textSecondary}>
+                  {t('mv_home', { club: clubById(member.homeClubId || 'c1')?.name ?? '' })} • {t('mv_title')}:
+                </T>
+                <Row gap={6} style={{ flexWrap: 'wrap' }}>
+                  {clubs
+                    .filter((c) => c.id !== (member.homeClubId || 'c1'))
+                    .map((c) => (
+                      <Chip key={c.id} label={c.name} icon="swap-horizontal-outline" onPress={() => void moveClient(member.id, c.id).then((ok) => setMoveMsg(ok ? t('mv_done', { club: c.name }) : t('cash_fail')))} />
+                    ))}
+                </Row>
+                {moveMsg ? (
+                  <T type="small" color={Colors.success} style={{ fontWeight: '700' }}>
+                    {moveMsg}
+                  </T>
+                ) : null}
+              </View>
+            ) : null}
           </View>
         )}
         {/* the desk corrects the current plan: imported passes come without dates and counts */}

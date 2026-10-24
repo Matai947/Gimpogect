@@ -12,8 +12,9 @@ import { StaffAccent } from '@/components/member-result';
 import { Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { shopCategories, type Product, type ShopCategory } from '@/data/shop';
-import { uploadPhoto } from '@/lib/api';
-import { useApp, useCatalog, useI18n } from '@/store/app-context';
+import { clubs } from '@/data/mock';
+import { stockMove, stockSet, uploadPhoto } from '@/lib/api';
+import { clubStock, useApp, useCatalog, useI18n } from '@/store/app-context';
 
 const badges: (NonNullable<Product['badge']> | 'none')[] = ['none', 'Хит', 'Новинка', 'Скидка'];
 const optionLabels: NonNullable<Product['options']>['label'][] = ['Вкус', 'Размер', 'Цвет'];
@@ -27,7 +28,12 @@ export default function ProductEditScreen() {
 function ProductEditForm({ id }: { id?: string }) {
   const { t, td } = useI18n();
   const { byId, isCustom, all } = useCatalog();
-  const { upsertProduct, deleteProduct, staffCode, content, saveContent } = useApp();
+  const { upsertProduct, deleteProduct, staffCode, content, staff, refreshContent } = useApp();
+  const clubId = staff?.clubId ?? 'c1';
+  const [moveTo, setMoveTo] = useState(clubs.find((c) => c.id !== clubId)?.id ?? '');
+  const [moveQty, setMoveQty] = useState('');
+  const [moveMsg, setMoveMsg] = useState<{ text: string; bad: boolean } | null>(null);
+  const [moving, setMoving] = useState(false);
   const existing = id ? byId(id) : undefined;
 
   const [name, setName] = useState(existing?.name ?? '');
@@ -108,10 +114,8 @@ function ProductEditForm({ id }: { id?: string }) {
     };
     upsertProduct(product);
     // the shelf count lives apart from the product: the register changes it with every sale
-    const stock = { ...(content.stock ?? {}) };
-    if (stockText.trim() === '') delete stock[product.id];
-    else stock[product.id] = Math.min(100000, parseInt(stockText.replace(/\D/g, ''), 10) || 0);
-    if (JSON.stringify(stock) !== JSON.stringify(content.stock ?? {})) saveContent('stock', stock);
+    const n = stockText.trim() === '' ? null : Math.min(100000, parseInt(stockText.replace(/\D/g, ''), 10) || 0);
+    if (n !== (existing?.stock ?? null) && staffCode) void stockSet(staffCode, { clubId, id: product.id, n }).then(() => refreshContent());
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     Alert.alert(t('product_saved'), product.name, [{ text: t('ok'), onPress: () => router.back() }]);
   };
@@ -220,6 +224,47 @@ function ProductEditForm({ id }: { id?: string }) {
           <T type="small" color={Colors.textMuted}>
             {t('p_stock_hint')}
           </T>
+          {existing ? (
+            <T type="small" color={Colors.textSecondary}>
+              {clubs.map((c) => `${c.name}: ${clubStock(content.stock, c.id)?.[existing.id] ?? '—'}`).join('   •   ')}
+            </T>
+          ) : null}
+          {existing?.stock ? (
+            <View style={styles.moveBox}>
+              <Label text={t('sm_title')} />
+              <Row gap={6} style={{ flexWrap: 'wrap' }}>
+                {clubs.filter((c) => c.id !== clubId).map((c) => (
+                  <Chip key={c.id} label={c.name} active={moveTo === c.id} onPress={() => setMoveTo(c.id)} />
+                ))}
+              </Row>
+              <Row gap={Spacing.two}>
+                <View style={{ flex: 1 }}>
+                  <Field value={moveQty} onChange={(v) => setMoveQty(v.replace(/\D/g, ''))} placeholder={byWeight ? t('sm_qty_g') : t('sm_qty')} keyboardType="number-pad" />
+                </View>
+                <Button
+                  title={t('sm_go')}
+                  icon="swap-horizontal-outline"
+                  disabled={moving || !moveTo || !Number(moveQty)}
+                  onPress={async () => {
+                    setMoving(true);
+                    const r = await stockMove(staffCode, { id: existing.id, qty: Number(moveQty), from: clubId, to: moveTo, staff: staff?.name ?? '' });
+                    setMoving(false);
+                    if (r === 'ok') {
+                      await refreshContent();
+                      setStockText(String((existing.stock ?? 0) - Number(moveQty)));
+                      setMoveMsg({ text: t('sm_done', { n: moveQty, club: clubs.find((c) => c.id === moveTo)?.name ?? '' }), bad: false });
+                      setMoveQty('');
+                    } else setMoveMsg({ text: r === 'short' ? t('sm_short') : t('cash_fail'), bad: true });
+                  }}
+                />
+              </Row>
+              {moveMsg ? (
+                <T type="small" color={moveMsg.bad ? Colors.danger : Colors.success} style={{ fontWeight: '700' }}>
+                  {moveMsg.text}
+                </T>
+              ) : null}
+            </View>
+          ) : null}
 
           <Label text={t('p_unit')} />
           <Field value={unit} onChange={setUnit} placeholder={t('p_unit_ph')} />
@@ -318,6 +363,7 @@ function Field({ value, onChange, placeholder, keyboardType, multiline, style, a
 }
 
 const styles = StyleSheet.create({
+  moveBox: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, marginTop: Spacing.two },
   root: { flex: 1, backgroundColor: Colors.background },
   top: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderBottomWidth: 1, borderBottomColor: Colors.border },
   iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center' },

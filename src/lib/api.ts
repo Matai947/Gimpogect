@@ -111,9 +111,11 @@ export const startShift = (code: string, b: { staff: string; clubId: string }) =
 export const endShift = (code: string, id: string) => call<{ ok: true; end: number }>('shift-end', { method: 'POST', code, body: { id } });
 export const fetchShifts = async (code: string, days = 30) => (await call<{ shifts: Shift[] }>('shifts', { code, query: `&days=${days}` }))?.shifts ?? null;
 
-export type Withdrawal = { ts: number; amount: number; reason: string; note: string; staff: string; responsible: string; confirmed: boolean; confirmedBy?: string; clubId?: string };
+export type Withdrawal = { ts: number; amount: number; reason: string; note: string; staff: string; responsible: string; confirmed: boolean; confirmedBy?: string; clubId?: string; move?: string; toClubId?: string };
+/** Cash taken from one club's drawer to another's: pending until the receiving desk accepts it. */
+export type CashMove = { id: string; ts: number; from: string; to: string; amount: number; responsible: string; note: string; staff: string; status: 'pending' | 'accepted'; acceptedBy?: string; acceptedAt?: number };
 /** The cash drawer of a club: opened with a count, money taken out, closed with a count. */
-export type CashDrawer = { id: string; clubId: string; staff: string; open: number; openCash: number; outs: Withdrawal[]; ins?: { ts: number; amount: number; note: string; staff: string }[]; added?: number; close: number | null; counted?: number; expected: number; cashIn: number; refunds: number; taken?: number };
+export type CashDrawer = { id: string; clubId: string; staff: string; open: number; openCash: number; outs: Withdrawal[]; ins?: { ts: number; amount: number; note: string; staff: string; move?: string; fromClubId?: string }[]; added?: number; close: number | null; counted?: number; expected: number; cashIn: number; refunds: number; taken?: number };
 export const fetchCash = async (code: string, clubId: string) => (await call<{ drawer: CashDrawer | null }>('cash', { code, query: `&clubId=${clubId}` }))?.drawer;
 export const cashOpen = async (code: string, b: { clubId: string; staff: string; amount: number }) => (await call<{ drawer: CashDrawer }>('cash-open', { method: 'POST', code, body: b }))?.drawer ?? null;
 /** null = refused (no connection, more than in the drawer) and `wrongCode` when the owner's code did not match. */
@@ -124,6 +126,16 @@ export const cashOut = async (code: string, b: { id: string; amount: number; rea
 export const cashIn = async (code: string, b: { id: string; amount: number; note: string; staff: string }) => (await call<{ drawer: CashDrawer }>('cash-in', { method: 'POST', code, body: b }))?.drawer ?? null;
 export const fetchWithdrawals = async (code: string, days = 30) => (await call<{ withdrawals: Withdrawal[] }>('withdrawals', { code, query: `&days=${days}` }))?.withdrawals ?? null;
 export const cashClose = async (code: string, b: { id: string; counted: number; staff: string }) => (await call<{ drawer: CashDrawer }>('cash-close', { method: 'POST', code, body: b }))?.drawer ?? null;
+export const cashMove = async (code: string, b: { id: string; to: string; amount: number; responsible: string; note: string; staff: string }) => (await call<{ drawer: CashDrawer }>('cash-move', { method: 'POST', code, body: b }))?.drawer ?? null;
+export const cashAccept = async (code: string, b: { id: string; move: string; staff: string }) => (await call<{ drawer: CashDrawer }>('cash-accept', { method: 'POST', code, body: b }))?.drawer ?? null;
+export const fetchCashMoves = async (code: string, days = 30) => (await call<{ moves: CashMove[] }>('cash-moves', { code, query: `&days=${days}` }))?.moves ?? null;
+export const stockSet = (code: string, b: { clubId: string; id: string; n: number | null }) => call<{ ok: true }>('stock-set', { method: 'POST', code, body: b });
+/** 'short' = the sending club has fewer than that on its shelf. */
+export const stockMove = async (code: string, b: { id: string; qty: number; from: string; to: string; staff: string }) => {
+  const r = await raw('stock-move', { method: 'POST', code, body: b });
+  return r.status === 200 ? 'ok' : r.status === 400 ? 'short' : 'fail';
+};
+export const clientMove = (code: string, id: string, clubId: string) => call<{ ok: true }>('client-move', { method: 'POST', code, body: { id, clubId } });
 export const fetchCashes = async (code: string, days = 30) => (await call<{ cashes: CashDrawer[] }>('cashes', { code, query: `&days=${days}` }))?.cashes ?? null;
 
 /** Editable content (prices, plans, trainers, rules, schedule, promotions, photos), as the administrators set it. */

@@ -89,9 +89,12 @@ function checkSection(section, d) {
   };
   // Every section is an object (or a list for promotions); a bare number or string would break the app that reads it.
   if (!d || typeof d !== 'object') throw new Error('shape');
-  // Stock: product id -> units on the shelf. Only the products listed here are counted.
-  if (section === 'stock') Object.entries(d).forEach(([k, v]) => {
-    if (!/^[A-Za-z0-9_-]{1,24}$/.test(k) || !Number.isInteger(v) || v < 0 || v > 100000) throw new Error('stock');
+  // Stock: club id -> product id -> units on that club's shelf. Only the products listed are counted.
+  if (section === 'stock') Object.entries(d).forEach(([club, shelf]) => {
+    if (!/^c\d{1,3}$/.test(club) || !shelf || typeof shelf !== 'object') throw new Error('stock');
+    Object.entries(shelf).forEach(([k, v]) => {
+      if (!/^[A-Za-z0-9_-]{1,24}$/.test(k) || !Number.isInteger(v) || v < 0 || v > 100000) throw new Error('stock');
+    });
   });
   if (section === 'rules') Object.values(d).forEach((lines) => {
     if (!Array.isArray(lines) || lines.some((l) => typeof l !== 'string')) throw new Error('shape');
@@ -127,34 +130,45 @@ function checkSection(section, d) {
   }
 }
 let contentCache = { at: 0, data: {} };
-/** Moves counted products on or off the shelf; products nobody counts are left alone.
-    The write is conditional on the row's version (data->>at) and retried, so two registers selling at once never lose each other's units.
-    Answers what really left the shelf per item (never more than was there), so a refund puts back exactly that. */
-async function adjustStock(items, sign) {
+// The first counts were kept for one shelf (product -> units); they belong to the first club.
+const normStock = (v) => (!v || typeof v !== 'object' ? {} : Object.values(v).some((x) => typeof x === 'number') ? { c1: v } : v);
+/** Changes the stock row with `change(all)` (club -> product -> units), which answers the result or null to leave it.
+    The write is conditional on the row's version (data->>at) and retried, so two registers at once never lose each other's units. */
+async function editStock(change, by) {
   for (let attempt = 0; attempt < 6; attempt++) {
     const row = (await sb('settings?key=eq.content:stock&select=data'))[0];
     if (!row) {
-      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ key: 'content:stock', data: { v: {}, at: Date.now(), by: 'register' } }) });
+      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ key: 'content:stock', data: { v: {}, at: Date.now(), by } }) });
       continue;
     }
-    const stock = row.data && row.data.v && typeof row.data.v === 'object' ? { ...row.data.v } : {};
-    const moved = [];
-    for (const { id, qty, taken } of items) {
-      if (!(id in stock)) continue;
-      const have = Number(stock[id]) || 0;
-      const n = sign < 0 ? Math.min(qty, have) : Math.min(taken ?? qty, 100000 - have);
-      stock[id] = have + sign * n;
-      moved.push({ id, qty, taken: n });
-    }
-    if (!moved.length) return [];
-    const at = Date.now();
-    const done = await sb(`settings?key=eq.content:stock&${enc('data->>at')}=eq.${row.data.at ?? ''}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { v: stock, at, by: 'register' } }) });
+    const all = JSON.parse(JSON.stringify(normStock(row.data && row.data.v)));
+    const out = change(all);
+    if (!out) return null;
+    const done = await sb(`settings?key=eq.content:stock&${enc('data->>at')}=eq.${row.data.at ?? ''}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { v: all, at: Date.now(), by } }) });
     if (Array.isArray(done) && done.length === 1) {
       contentCache = { at: 0, data: {} };
-      return moved;
+      return out;
     }
   }
-  return [];
+  return null;
+}
+/** Moves counted products on or off a club's shelf; products that club does not count are left alone.
+    Answers what really left the shelf per item (never more than was there), so a refund puts back exactly that. */
+async function adjustStock(items, sign, clubId) {
+  return (
+    (await editStock((all) => {
+      const stock = (all[clubId] = all[clubId] || {});
+      const moved = [];
+      for (const { id, qty, taken } of items) {
+        if (!(id in stock)) continue;
+        const have = Number(stock[id]) || 0;
+        const n = sign < 0 ? Math.min(qty, have) : Math.min(taken ?? qty, 100000 - have);
+        stock[id] = have + sign * n;
+        moved.push({ id, qty, taken: n });
+      }
+      return moved.length ? moved : null;
+    }, 'register')) || []
+  );
 }
 
 async function getContent() {
@@ -162,6 +176,7 @@ async function getContent() {
   const data = {};
   try {
     (await sb('settings?key=like.content:*&select=key,data')).forEach((r) => (data[r.key.slice(8)] = r.data.v));
+    if (data.stock) data.stock = normStock(data.stock);
   } catch {
     // table not created yet: no custom content
   }
@@ -657,7 +672,7 @@ module.exports = async function handler(req, res) {
       const stored = await sb('sales?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=representation' }, body: JSON.stringify({ id, ts, data: sale }) });
       // a zero-amount "sale" cannot write stock off: units leave the shelf only with money (a write-off is the manager's count on the product card)
       if (kind === 'shop' && items.length && sale.amount >= 1 && Array.isArray(stored) && stored.length) {
-        const moved = await adjustStock(items, -1);
+        const moved = await adjustStock(items, -1, sale.clubId);
         if (moved.length) await sb(`sales?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...sale, items: items.map((i) => ({ ...i, taken: (moved.find((m) => m.id === i.id) || {}).taken ?? 0 })) } }) });
       }
       return res.status(200).json({ ok: true });
@@ -715,7 +730,7 @@ module.exports = async function handler(req, res) {
       if (!Array.isArray(marked) || marked.length !== 1) return res.status(409).json({ error: 'already changed' });
       await sb('sales', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: ref.id, ts: now, data: ref }) });
       // a full refund puts back exactly what the sale took off the shelf
-      if (sale.kind === 'shop' && Array.isArray(sale.items) && amount === sale.amount) await adjustStock(sale.items.filter((i) => (i.taken ?? 0) > 0), 1);
+      if (sale.kind === 'shop' && Array.isArray(sale.items) && amount === sale.amount) await adjustStock(sale.items.filter((i) => (i.taken ?? 0) > 0), 1, sale.clubId);
       return res.status(200).json({ ok: true });
     }
 
@@ -819,6 +834,93 @@ module.exports = async function handler(req, res) {
     const cashRows = async (days) => (await pageAll(`settings?select=data&key=like.cash:*&${enc('data->>open')}=gte.${Date.now() - days * 86400000}&order=key.desc`)).map((r) => r.data);
     const cashPut = (d) => sb(`settings?key=eq.cash:${d.id}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: d }) });
     const cashGet = async (id) => (/^\d{13}[a-z0-9]{3}$/.test(id) ? (await sb(`settings?key=eq.cash:${id}&select=data`))[0]?.data : undefined);
+
+    /* ---- moving between clubs: cash, goods and clients ---- */
+    const clubIdOk = (v) => typeof v === 'string' && /^c\d{1,3}$/.test(v);
+    // The manager counts a product on one club's shelf (empty = stop counting it there).
+    if (req.method === 'POST' && op === 'stock-set') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const id = str(body.id, 24);
+      const n = body.n == null || body.n === '' ? null : int(body.n, 100000);
+      if (!/^[A-Za-z0-9_-]{1,24}$/.test(id) || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
+      const ok = await editStock((all) => {
+        const shelf = (all[body.clubId] = all[body.clubId] || {});
+        if (n == null) delete shelf[id];
+        else shelf[id] = n;
+        return true;
+      }, 'staff ' + staffName(''));
+      return ok ? res.status(200).json({ ok: true, stock: (await getContent()).stock || {} }) : res.status(409).json({ error: 'busy' });
+    }
+    // Goods driven from one club to another: off one shelf and onto the other in one write, never more than is there.
+    if (req.method === 'POST' && op === 'stock-move') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const id = str(body.id, 24);
+      const qty = int(body.qty, 100000);
+      const { from, to } = body;
+      if (!/^[A-Za-z0-9_-]{1,24}$/.test(id) || qty < 1 || from === to || !(await validClub(from)) || !(await validClub(to))) return res.status(400).json({ error: 'bad data' });
+      let short = false;
+      const ok = await editStock((all) => {
+        const a = (all[from] = all[from] || {});
+        const b = (all[to] = all[to] || {});
+        if (!(id in a) || a[id] < qty || (b[id] || 0) + qty > 100000) return ((short = true), null);
+        a[id] -= qty;
+        b[id] = (b[id] || 0) + qty;
+        return true;
+      }, 'staff ' + staffName(''));
+      if (!ok) return res.status(short ? 400 : 409).json({ error: short ? 'not enough' : 'busy' });
+      const now = Date.now();
+      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: `smove:${now}${Math.random().toString(36).slice(2, 5)}`, data: { ts: now, id, qty, from, to, staff: staffName(body.staff) } }) });
+      return res.status(200).json({ ok: true, stock: (await getContent()).stock || {} });
+    }
+    // A client changes their home club: from then on they are in that club's list.
+    if (req.method === 'POST' && op === 'client-move') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const id = str(body.id, 20);
+      if (!/^[A-Za-z0-9_-]{2,20}$/.test(id) || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
+      const c = await read(id);
+      if (!c) return res.status(404).json({ error: 'no client' });
+      const from = c.homeClubId || 'c1';
+      await write(id, { ...c, homeClubId: body.clubId, moves: [...(c.moves || []).slice(-19), { ts: Date.now(), from, to: body.clubId, staff: staffName('') }] });
+      return res.status(200).json({ ok: true });
+    }
+    // Cash taken to another club: out of this drawer now, waiting until the other desk counts it in and accepts it.
+    if (req.method === 'POST' && op === 'cash-move') {
+      const d = await cashGet(str(body.id, 20));
+      const amount = int(body.amount, 100000000);
+      const responsible = str(body.responsible, 40);
+      const note = str(body.note, 80);
+      if (!d || d.close || amount < 1 || !clubIdOk(body.to) || body.to === d.clubId || !(await validClub(body.to)) || responsible.length < 2 || [responsible, note].some((v) => /[<>]/.test(v))) return res.status(400).json({ error: 'bad data' });
+      if (amount > (await cashSummary(d)).expected) return res.status(400).json({ error: 'more than in the drawer' });
+      if (d.outs.length >= 200) return res.status(400).json({ error: 'too many' });
+      const now = Date.now();
+      const id = String(now) + Math.random().toString(36).slice(2, 5).padEnd(3, '0');
+      const staff = staffName(body.staff);
+      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: 'cmove:' + id, data: { id, ts: now, from: d.clubId, to: body.to, amount, responsible, note, staff, status: 'pending' } }) });
+      d.outs.push({ ts: now, amount, reason: 'Перемещение', note, staff, responsible, confirmed: false, move: id, toClubId: body.to });
+      await cashPut(d);
+      return res.status(200).json({ ok: true, drawer: { ...d, ...(await cashSummary(d)) } });
+    }
+    // The receiving desk counts the money in: it goes into that club's open drawer; a move is accepted once.
+    if (req.method === 'POST' && op === 'cash-accept') {
+      const d = await cashGet(str(body.id, 20));
+      const moveId = str(body.move, 20);
+      const m = /^\d{13}[a-z0-9]{3}$/.test(moveId) ? (await sb(`settings?key=eq.cmove:${moveId}&select=data`))[0]?.data : undefined;
+      if (!d || d.close || !m || m.to !== d.clubId) return res.status(400).json({ error: 'bad data' });
+      const staff = staffName(body.staff);
+      const now = Date.now();
+      const taken = await sb(`settings?key=eq.cmove:${moveId}&${enc('data->>status')}=eq.pending`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { ...m, status: 'accepted', acceptedBy: staff, acceptedAt: now } }) });
+      if (!Array.isArray(taken) || taken.length !== 1) return res.status(409).json({ error: 'already accepted' });
+      d.ins = d.ins || [];
+      d.ins.push({ ts: now, amount: m.amount, note: `Перемещение • ${m.responsible}`, staff, move: moveId, fromClubId: m.from });
+      await cashPut(d);
+      return res.status(200).json({ ok: true, drawer: { ...d, ...(await cashSummary(d)) } });
+    }
+    // Moves of the last days: the desk sees what is on its way to it, the manager sees them all.
+    if (req.method === 'GET' && op === 'cash-moves') {
+      const days = Math.max(1, Math.min(400, Number(req.query.days) || 30));
+      const rows = await pageAll(`settings?select=data&key=like.cmove:*&${enc('data->>ts')}=gte.${Date.now() - days * 86400000}&order=key.desc`);
+      return res.status(200).json({ moves: rows.map((r) => r.data) });
+    }
 
     if (req.method === 'GET' && op === 'cash') {
       const clubId = str(req.query.clubId, 6);

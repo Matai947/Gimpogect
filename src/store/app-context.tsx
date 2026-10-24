@@ -9,7 +9,7 @@ import { applyContent, promoByCode, promoDiscount, type Content, type ContentSec
 import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { trainerLoginRemote, checkinRemote, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused } from '@/lib/api';
+import { trainerLoginRemote, checkinRemote, clientMove, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -110,6 +110,8 @@ type Actions = {
   logout: () => void;
   updateUser: (patch: Partial<User>) => void;
   completeOnboarding: (profile: FitnessProfile) => void;
+  /** Manager: the client's home club changes; they move to that club's list. */
+  moveClient: (memberId: string, clubId: string) => Promise<boolean>;
   grantPlan: (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[]) => void;
   /** The desk corrects a client's current plan: when it ends and how many visits are left. No sale is recorded. */
   editMembership: (memberId: string, fields: { planId?: string; endDate: string; visitsLeft?: number }) => Promise<boolean>;
@@ -524,6 +526,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [state.user, state.remote, state.membership, state.staffCode],
   );
 
+  const moveClient = useCallback(
+    async (memberId: string, clubId: string) => {
+      if (!state.staffCode || !(await clientMove(state.staffCode, memberId, clubId))) return false;
+      setState((s) => ({ ...s, remote: s.remote.map((x) => (x.id === memberId ? { ...x, homeClubId: clubId } : x)) }));
+      return true;
+    },
+    [state.staffCode],
+  );
+
   const grantPlan = useCallback(
     (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[]) => {
       const plan = planById(planId);
@@ -759,6 +770,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateUser,
       completeOnboarding,
       grantPlan,
+      moveClient,
       editMembership,
       recordSale,
       refreshSales,
@@ -801,7 +813,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, editMembership, recordSale, refreshSales, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, staffFreeze, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, moveClient, editMembership, recordSale, refreshSales, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, staffFreeze, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -1069,10 +1081,17 @@ export function useCoachContext() {
   }, [user, weightLog, visits, bookings]);
 }
 
+/** One club's shelf; the first counts were one shelf (product -> units) and belong to the first club. */
+export function clubStock(stock: Content['stock'] | Record<string, number> | undefined, clubId: string): Record<string, number> | undefined {
+  if (!stock) return undefined;
+  if (Object.values(stock).some((v) => typeof v === 'number')) return clubId === 'c1' ? (stock as Record<string, number>) : undefined;
+  return (stock as Record<string, Record<string, number>>)[clubId];
+}
+
 /** Shop catalog as members see it, with staff edits applied. */
 export function useCatalog() {
-  const { customProducts, productOverrides, hiddenProducts, content } = useApp();
-  const stock = content.stock;
+  const { customProducts, productOverrides, hiddenProducts, content, staff } = useApp();
+  const stock = clubStock(content.stock, staff?.clubId ?? 'c1');
   return useMemo(() => {
     const c = catalogOf({ customProducts, productOverrides, hiddenProducts });
     const withStock = (p: Product): Product => (stock && p.id in stock ? { ...p, stock: stock[p.id] } : p);

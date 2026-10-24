@@ -7,8 +7,8 @@ import { LeadsCard } from '@/components/leads-card';
 import { StaffHeader } from '@/components/staff-header';
 import { Avatar, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { addDays, toISODate } from '@/data/mock';
-import { useI18n, useMembers } from '@/store/app-context';
+import { addDays, clubs, toISODate } from '@/data/mock';
+import { useApp, useCanManage, useI18n, useMembers } from '@/store/app-context';
 
 type Filter = 'all' | 'new' | 'active' | 'expiring' | 'expired' | 'frozen';
 
@@ -18,12 +18,18 @@ export default function StaffMembersScreen() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [openId, setOpenId] = useState<string | null>(null);
+  const { staff } = useApp();
+  const canManage = useCanManage();
+  // an administrator sees the clients of the club they work at; the manager and the owner can open any club or all of them
+  const [club, setClub] = useState<string>(staff?.clubId ?? 'c1');
+  const shownClub = canManage ? club : (staff?.clubId ?? 'c1');
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const newSince = toISODate(addDays(new Date(), -3));
     const isNew = (m: { since: string }) => m.since >= newSince;
     return list
+      .filter((m) => shownClub === 'all' || (m.homeClubId || 'c1') === shownClub)
       .filter((m) => {
         if (filter === 'new') return isNew(m);
         if (filter === 'active') return m.active && !m.frozen;
@@ -34,7 +40,7 @@ export default function StaffMembersScreen() {
       })
       .filter((m) => (q ? m.name.toLowerCase().includes(q) || m.phone.replace(/\s/g, '').includes(q.replace(/\s/g, '')) || m.id.includes(q) : true))
       .sort((a, b) => Number(isNew(b)) - Number(isNew(a)) || a.name.localeCompare(b.name, 'ru'));
-  }, [list, query, filter]);
+  }, [list, query, filter, shownClub]);
 
   const filters: { key: Filter; label: string }[] = [
     { key: 'all', label: t('all') },
@@ -57,6 +63,14 @@ export default function StaffMembersScreen() {
           </Pressable>
         ) : null}
       </View>
+      {canManage ? (
+        <ChipRow>
+          {clubs.map((c) => (
+            <Chip key={c.id} label={c.name} active={club === c.id} onPress={() => setClub(c.id)} />
+          ))}
+          <Chip label={t('all_clubs')} active={club === 'all'} onPress={() => setClub('all')} />
+        </ChipRow>
+      ) : null}
       <ChipRow>
         {filters.map((f) => (
           <Chip key={f.key} label={f.label} active={filter === f.key} onPress={() => setFilter(f.key)} />
