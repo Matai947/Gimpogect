@@ -29,7 +29,8 @@ export default function StaffMembersScreen() {
     const newSince = toISODate(addDays(new Date(), -3));
     const isNew = (m: { since: string }) => m.since >= newSince;
     return list
-      .filter((m) => shownClub === 'all' || (m.homeClubId || 'c1') === shownClub)
+      // a search looks in every club: a client who picked the other club at sign-up is still found at this desk
+      .filter((m) => q || shownClub === 'all' || (m.homeClubId || 'c1') === shownClub)
       .filter((m) => {
         if (filter === 'new') return isNew(m);
         if (filter === 'active') return m.active && !m.frozen;
@@ -96,6 +97,11 @@ export default function StaffMembersScreen() {
                   {m.since >= toISODate(addDays(new Date(), -3)) && !m.isSelf ? (
                     <T type="small" color={Colors.success} style={{ fontWeight: '700' }}>
                       • {t('new_badge')}
+                    </T>
+                  ) : null}
+                  {(m.homeClubId || 'c1') !== (staff?.clubId ?? 'c1') ? (
+                    <T type="small" color={Colors.textMuted}>
+                      • {clubs.find((c) => c.id === (m.homeClubId || 'c1'))?.name.replace('Seven Gym ', '')}
                     </T>
                   ) : null}
                   {m.isSelf ? (
