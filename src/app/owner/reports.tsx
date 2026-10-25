@@ -1,3 +1,4 @@
+import { groupTotals } from '@/data/owner';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -68,9 +69,10 @@ export default function OwnerReports() {
   /** One line per day with any money movement: income, cash and non-cash, refunds, withdrawals, and the drawer count. */
   const dayRows = useMemo(() => {
     const dayOf = (ts: number) => new Date(ts + ALMATY).toISOString().slice(0, 10);
-    const map = new Map<string, { income: number; cash: number; nonCash: number; refunds: number; taken: number; diff: number | null }>();
-    const at = (d: string) => map.get(d) ?? (map.set(d, { income: 0, cash: 0, nonCash: 0, refunds: 0, taken: 0, diff: null }), map.get(d)!);
+    const map = new Map<string, { income: number; cash: number; nonCash: number; refunds: number; taken: number; diff: number | null; rows: typeof sales }>();
+    const at = (d: string) => map.get(d) ?? (map.set(d, { income: 0, cash: 0, nonCash: 0, refunds: 0, taken: 0, diff: null, rows: [] }), map.get(d)!);
     sales.filter((x) => x.ts >= from && inClub(x.clubId)).forEach((x) => {
+      at(dayOf(x.ts)).rows.push(x);
       const r = at(dayOf(x.ts));
       const v = x.kind === 'refund' || x.kind === 'debt' ? -x.amount : x.amount;
       if (x.kind === 'refund') r.refunds += x.amount;
@@ -83,7 +85,8 @@ export default function OwnerReports() {
       const r = at(dayOf(c.close!));
       r.diff = (r.diff ?? 0) + (c.counted ?? 0) - c.expected;
     });
-    return [...map.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([d, r]) => ({ d, ...r }));
+    const byId = (id: string) => sales.find((x) => x.id === id);
+    return [...map.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([d, r]) => ({ d, ...r, groups: groupTotals(r.rows, byId) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sales, wdRows, cashRows, from, club]);
 
@@ -140,6 +143,25 @@ export default function OwnerReports() {
         {/* the day: what the owner asks the cashier about */}
         <View style={styles.card}>
           <T type="subheading">{t('rep_days')}</T>
+          {dayRows.length ? (
+            <Row gap={Spacing.two}>
+              {(['bar', 'plans'] as const).map((g) => {
+                const cash = dayRows.reduce((n, r) => n + r.groups[g].cash, 0);
+                const nonCash = dayRows.reduce((n, r) => n + r.groups[g].nonCash, 0);
+                return (
+                  <View key={g} style={[styles.groupBox, { borderColor: g === 'bar' ? Colors.warning : OwnerAccent }]}>
+                    <T type="small" color={Colors.textSecondary}>
+                      {t(g === 'bar' ? 'grp_bar' : 'grp_plans')}
+                    </T>
+                    <T type="subheading">{formatPrice(cash + nonCash)}</T>
+                    <T type="small" color={Colors.textMuted}>
+                      {t('rep_day_cash')} {formatPrice(cash)} • {t('rep_day_noncash')} {formatPrice(nonCash)}
+                    </T>
+                  </View>
+                );
+              })}
+            </Row>
+          ) : null}
           {dayRows.length === 0 ? (
             <T type="small" color={Colors.textMuted}>
               {t('rep_days_none')}
@@ -160,6 +182,13 @@ export default function OwnerReports() {
                   {r.refunds ? ` • ${t('rep_refunds')}: ${formatPrice(r.refunds)}` : ''}
                   {r.taken ? ` • ${t('cash_taken')}: ${formatPrice(r.taken)}` : ''}
                 </T>
+                {(['bar', 'plans'] as const).map((g) =>
+                  r.groups[g].cash || r.groups[g].nonCash ? (
+                    <T key={g} type="small" color={Colors.textSecondary}>
+                      {t(g === 'bar' ? 'grp_bar' : 'grp_plans')}: <T type="small" style={{ fontWeight: '700' }}>{formatPrice(r.groups[g].cash + r.groups[g].nonCash)}</T> ({t('rep_day_cash')} {formatPrice(r.groups[g].cash)} • {t('rep_day_noncash')} {formatPrice(r.groups[g].nonCash)})
+                    </T>
+                  ) : null,
+                )}
                 {r.diff !== null ? (
                   <T type="small" color={r.diff === 0 ? Colors.success : Colors.danger}>
                     {t('rep_day_count')}: {r.diff === 0 ? t('cash_diff_ok') : r.diff < 0 ? t('cash_diff_short', { sum: formatPrice(-r.diff) }) : t('cash_diff_over', { sum: formatPrice(r.diff) })}
@@ -424,6 +453,7 @@ function Columns({ values, labels, small }: { values: number[]; labels: string[]
 }
 
 const styles = StyleSheet.create({
+  groupBox: { flex: 1, gap: 2, padding: Spacing.two, borderRadius: Radius.md, borderWidth: 1.5 },
   root: { flex: 1, backgroundColor: Colors.background },
   body: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },
   card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },

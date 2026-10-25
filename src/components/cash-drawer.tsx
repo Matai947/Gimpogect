@@ -5,6 +5,7 @@ import { clockTime } from '@/components/shift-bar';
 import { Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubs, formatPrice } from '@/data/mock';
+import { groupTotals } from '@/data/owner';
 import { cashAccept, cashClose, cashIn, cashMove, cashOpen, cashOut, fetchCash, fetchCashMoves, type CashDrawer, type CashMove } from '@/lib/api';
 import { useApp, useCanManage, useI18n, useNow, useRawSales } from '@/store/app-context';
 
@@ -125,6 +126,10 @@ export function CashDrawerCard() {
             <Line label={t('cash_start')} value={formatPrice(drawer.openCash)} />
             {drawer.added ? <Line label={t('cash_added')} value={`+${formatPrice(drawer.added)}`} /> : null}
             <Line label={t('cash_in')} value={`+${formatPrice(drawer.cashIn)}`} />
+            {(() => {
+              const g = groupTotals(sales.filter((x) => x.clubId === clubId && x.ts >= drawer.open), (id) => sales.find((x) => x.id === id));
+              return (['bar', 'plans'] as const).map((k) => <Line key={k} label={`   ${t(k === 'bar' ? 'grp_bar' : 'grp_plans')}`} value={`${t('rep_day_cash')} ${formatPrice(g[k].cash)} • ${t('rep_day_noncash')} ${formatPrice(g[k].nonCash)}`} />);
+            })()}
             {drawer.refunds ? <Line label={t('cash_refunds')} value={`−${formatPrice(drawer.refunds)}`} /> : null}
             {drawer.taken ? <Line label={t('cash_taken')} value={`−${formatPrice(drawer.taken)}`} /> : null}
           </View>
