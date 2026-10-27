@@ -6,6 +6,7 @@ import { Linking, TextInput, StyleSheet, View } from 'react-native';
 import { Avatar, Badge, Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
+import type { PayMethod } from '@/data/owner';
 import { resetPasswordRemote } from '@/lib/api';
 import { DAY_ONLY_UNTIL, clubs, clubById, clubHour, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
 import { useApp, useCanManage, useI18n, useMembers, usePlans, usePresence, type MemberInfo } from '@/store/app-context';
@@ -52,10 +53,14 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   const [granted, setGranted] = useState<string | null>(null);
 
   const [choice, setChoice] = useState<string | null>(null);
+  // a paid plan sold from the card says how it was paid, so its cash reaches the drawer
+  const [payBy, setPayBy] = useState<PayMethod | null>(null);
   const chosen = plans.find((p) => p.id === choice);
 
   const grant = (planId: string) => {
-    grantPlan(member.id, planId);
+    const price = plans.find((p) => p.id === planId)?.price ?? 0;
+    grantPlan(member.id, planId, price, payBy && price > 0 ? [{ method: payBy, amount: price }] : undefined);
+    setPayBy(null);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setPicking(false);
     setChoice(null);
@@ -369,8 +374,16 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
                 <Chip key={p.id} label={p.id === 'guest' ? t('guest_pass') : p.trial ? t('trial_grant') : `${td(p.name)} · ${formatPrice(p.price)}`} active={choice === p.id} onPress={() => setChoice(p.id)} />
               ))}
             </Row>
+            {chosen && chosen.price > 0 ? (
+              <Row gap={6} style={{ flexWrap: 'wrap' }}>
+                {(['cash', 'kaspi', 'card'] as PayMethod[]).map((m) => (
+                  <Chip key={m} label={t(m === 'cash' ? 'pay_cash' : m === 'kaspi' ? 'pay_kaspi' : 'pay_card')} active={payBy === m} onPress={() => setPayBy(m)} />
+                ))}
+              </Row>
+            ) : null}
             {chosen ? (
               <Button
+                disabled={chosen.price > 0 && !payBy}
                 title={chosen.price > 0 ? t('grant_confirm', { price: formatPrice(chosen.price), name: td(chosen.name) }) : t('grant_confirm_free', { name: td(chosen.name) })}
                 icon="checkmark-circle-outline"
                 onPress={() => grant(chosen.id)}
