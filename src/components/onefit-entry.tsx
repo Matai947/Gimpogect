@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useState } from 'react';
-import { Modal, Platform, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Modal, Platform, Pressable, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
@@ -10,7 +10,7 @@ import { WebQrScanner } from '@/components/web-qr-scanner';
 import { Button, Card, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { onefitRemote } from '@/lib/api';
-import { useApp, useCanManage, useI18n } from '@/store/app-context';
+import { useApp, useCanManage, useI18n, useMembers } from '@/store/app-context';
 
 /** Front desk: let in a 1Fit member without an account. Only a name (and a phone, if they give it) is needed. */
 export function OneFitEntry() {
@@ -37,6 +37,14 @@ export function OneFitEntry() {
   const [failed, setFailed] = useState(false);
 
   const phoneDigits = phone.replace(/\D/g, '');
+  const { list: members } = useMembers();
+  // as the number (or the name) is typed, the clients already in the base show up: one tap fills the form
+  const matches = useMemo(() => {
+    const d = phoneDigits.replace(/^8/, '7');
+    const q = name.trim().toLowerCase();
+    if (d.length < 3 && q.length < 2) return [];
+    return members.filter((m) => (d.length >= 3 ? m.phone.replace(/\D/g, '').includes(d) : m.name.toLowerCase().includes(q))).slice(0, 5);
+  }, [members, phoneDigits, name]);
   const ready = name.trim().length >= 2 || phoneDigits.length >= 10;
 
   const submit = async () => {
@@ -66,6 +74,26 @@ export function OneFitEntry() {
     <View style={{ flex: 1, gap: Spacing.two }}>
       <TextInput value={name} onChangeText={setName} placeholder={t('onefit_name')} placeholderTextColor={Colors.textMuted} autoCapitalize="words" style={styles.input} />
       <TextInput value={phone} onChangeText={setPhone} placeholder="+7 7__ ___ __ __" placeholderTextColor={Colors.textMuted} keyboardType="phone-pad" style={styles.input} />
+      {matches.map((m) => (
+        <Pressable
+          key={m.id}
+          onPress={() => {
+            setName(m.name);
+            setPhone(m.phone);
+          }}
+          style={styles.match}>
+          <Ionicons name="person-circle-outline" size={22} color={StaffAccent} />
+          <View style={{ flex: 1 }}>
+            <T type="small" style={{ fontWeight: '700' }} numberOfLines={1}>
+              {m.name}
+            </T>
+            <T type="small" color={Colors.textSecondary} numberOfLines={1}>
+              {m.phone || '—'}
+              {m.planName ? ` • ${m.planName}${m.active ? '' : ` (${t('member_expired')})`}` : ''}
+            </T>
+          </View>
+        </Pressable>
+      ))}
       {failed ? (
         <T type="small" color={Colors.danger}>
           {t('onefit_failed')}
@@ -159,6 +187,7 @@ export function OneFitEntry() {
 }
 
 const styles = StyleSheet.create({
+  match: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: 8, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface },
   input: { height: 48, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surfaceAlt, paddingHorizontal: Spacing.three, fontSize: 16, color: Colors.text },
   qrBox: { alignItems: 'center', gap: 6, padding: Spacing.two, borderRadius: Radius.md, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: Colors.border, minWidth: 200 },
   scanRoot: { flex: 1, backgroundColor: '#000000' },
