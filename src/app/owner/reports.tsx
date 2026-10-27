@@ -321,7 +321,7 @@ export default function OwnerReports() {
               <Row key={i} style={styles.line}>
                 <View style={{ flex: 1 }}>
                   <T type="small" style={{ fontWeight: '700' }} numberOfLines={1}>
-                    {w.reason}
+                    {w.move ? t('cm_to', { club: clubs.find((c) => c.id === w.toClubId)?.name.replace('Seven Gym ', '') ?? '' }) : w.reason}
                     {w.note ? ` • ${w.note}` : ''}
                   </T>
                   <T type="small" color={Colors.textMuted} numberOfLines={1}>
@@ -333,7 +333,7 @@ export default function OwnerReports() {
                     {formatPrice(w.amount)}
                   </T>
                   <T type="small" color={w.confirmed ? Colors.success : Colors.textMuted}>
-                    {w.confirmed ? t('wd_confirmed_by', { name: w.confirmedBy === 'owner' ? t('role_owner') : w.confirmedBy ?? '' }) : t('wd_unconfirmed')}
+                    {w.move ? (w.confirmed ? t('cm_accepted_by', { name: w.confirmedBy ?? '' }) : t('cm_in_way')) : w.confirmed ? t('wd_confirmed_by', { name: w.confirmedBy === 'owner' ? t('role_owner') : w.confirmedBy ?? '' }) : t('wd_unconfirmed')}
                   </T>
                 </View>
               </Row>

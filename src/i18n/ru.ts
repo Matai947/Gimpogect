@@ -57,6 +57,7 @@ export const ru = {
   auth_terms: 'Продолжая, вы соглашаетесь с условиями членства и политикой конфиденциальности',
   rules_title: 'Правила клуба',
   trainer_quals: 'Квалификация',
+  cm_accepted_by: 'принял(а): {name}',
   grp_bar: 'Бар',
   grp_plans: 'Абонементы',
   rt_title_day: 'Чеки за {day} ({n})',

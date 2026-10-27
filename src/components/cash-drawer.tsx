@@ -141,7 +141,7 @@ export function CashDrawerCard() {
                   {o.note ? ` • ${o.note}` : ''}
                 </T>
                 <T type="small" color={Colors.textMuted} numberOfLines={1}>
-                  {o.staff} → {o.responsible} • {o.move ? t('cm_in_way') : o.confirmed ? t('wd_confirmed_by', { name: o.confirmedBy === 'owner' ? t('role_owner') : o.confirmedBy ?? '' }) : t('wd_unconfirmed')}
+                  {o.staff} → {o.responsible} • {o.move && !o.confirmed ? t('cm_in_way') : o.move ? t('cm_accepted_by', { name: o.confirmedBy ?? '' }) : o.confirmed ? t('wd_confirmed_by', { name: o.confirmedBy === 'owner' ? t('role_owner') : o.confirmedBy ?? '' }) : t('wd_unconfirmed')}
                 </T>
               </View>
               <T type="small" style={{ fontWeight: '700' }}>

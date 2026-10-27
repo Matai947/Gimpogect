@@ -895,7 +895,7 @@ module.exports = async function handler(req, res) {
       const now = Date.now();
       const id = String(now) + Math.random().toString(36).slice(2, 5).padEnd(3, '0');
       const staff = staffName(body.staff);
-      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: 'cmove:' + id, data: { id, ts: now, from: d.clubId, to: body.to, amount, responsible, note, staff, status: 'pending' } }) });
+      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: 'cmove:' + id, data: { id, ts: now, from: d.clubId, fromDrawer: d.id, to: body.to, amount, responsible, note, staff, status: 'pending' } }) });
       d.outs.push({ ts: now, amount, reason: 'Перемещение', note, staff, responsible, confirmed: false, move: id, toClubId: body.to });
       await cashPut(d);
       return res.status(200).json({ ok: true, drawer: { ...d, ...(await cashSummary(d)) } });
@@ -913,6 +913,12 @@ module.exports = async function handler(req, res) {
       d.ins = d.ins || [];
       d.ins.push({ ts: now, amount: m.amount, note: `Перемещение • ${m.responsible}`, staff, move: moveId, fromClubId: m.from });
       await cashPut(d);
+      const src = m.fromDrawer ? await cashGet(m.fromDrawer) : undefined;
+      const out = src && src.outs.find((o) => o.move === moveId);
+      if (out) {
+        Object.assign(out, { confirmed: true, confirmedBy: staff });
+        await cashPut(src);
+      }
       return res.status(200).json({ ok: true, drawer: { ...d, ...(await cashSummary(d)) } });
     }
     // Moves of the last days: the desk sees what is on its way to it, the manager sees them all.
