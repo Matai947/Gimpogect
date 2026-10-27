@@ -177,6 +177,8 @@ export const clearTrainerPin = (code: string, trainerId: string) => call<{ ok: t
 export const fetchTrainerPins = async (code: string) => (await call<{ set: string[] }>('trainer-pins', { code }))?.set ?? null;
 
 export const grantRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('grant', { method: 'POST', code, body: c });
+/** Manager or owner swaps a plan added by mistake; the server keeps who, when and why. */
+export const planFixRemote = (code: string, id: string, membership: RemoteMembership, reason: string) => call<{ ok: true }>('plan-fix', { method: 'POST', code, body: { id, membership, reason } });
 
 /** Records an entry. With the client's QR proof the server checks it first (automatic entry); without it the desk admits by hand. */
 export const checkinRemote = (code: string, id: string, clubId: string, qr?: string) => call<{ ok: true; visitsLeft?: number; membership?: RemoteMembership | null }>('checkin', { method: 'POST', code, body: { id, clubId, ...(qr ? { qr } : {}) } });

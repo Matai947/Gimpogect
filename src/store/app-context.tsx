@@ -9,7 +9,7 @@ import { applyContent, promoByCode, promoDiscount, type Content, type ContentSec
 import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { trainerLoginRemote, checkinRemote, clientMove, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused } from '@/lib/api';
+import { trainerLoginRemote, checkinRemote, clientMove, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, planFixRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -118,6 +118,8 @@ type Actions = {
   grantPlan: (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[]) => void;
   /** The desk corrects a client's current plan: when it ends and how many visits are left. No sale is recorded. */
   editMembership: (memberId: string, fields: { planId?: string; endDate: string; visitsLeft?: number }) => Promise<boolean>;
+  /** Manager or owner: a plan added by mistake becomes the right one (same start date, what was used stays used). No sale is recorded. */
+  changePlan: (memberId: string, planId: string, fields: { endDate: string; visitsLeft?: number }, reason: string) => Promise<boolean>;
   recordSale: (sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff' | 'synced'>) => void;
   refreshSales: () => Promise<void>;
   /** Re-reads the content (prices, stock counts) from the server. */
@@ -220,6 +222,39 @@ function extendMembership(cur: Membership | null, planId: string): Membership {
   const freezesLeft = (stillActive ? (cur!.freezesLeft ?? 0) : 0) + count;
   const visitsLeft = plan.visits ? (stillActive && cur!.visitsLeft !== undefined ? cur!.visitsLeft : 0) + plan.visits : undefined;
   return { planId, startDate: stillActive ? cur!.startDate : today, endDate: toISODate(end), freezeDaysLeft: (stillActive ? cur!.freezeDaysLeft : 0) + freezeDays, freezesLeft, freezeMax: perFreeze || (stillActive ? cur!.freezeMax : 0) || 0, ...(visitsLeft !== undefined ? { visitsLeft } : {}), ...(plan.dayOnly ? { dayOnly: true } : {}) };
+}
+
+/**
+ * A plan added by mistake becomes the right one as if it had been sold on the same day: same start, the right length,
+ * and what the client already used (visits, freeze days and freezes) stays used.
+ */
+export function replacePlan(cur: Membership, planId: string): Membership {
+  const plan = planById(planId)!;
+  const old = planById(cur.planId);
+  const oldCount = old?.freezeDays ? (old.freezeCount ?? 1) : 0;
+  const perFreeze = plan.trial ? 0 : (plan.freezeDays ?? 0);
+  const count = perFreeze ? (plan.freezeCount ?? 1) : 0;
+  const usedFreezes = Math.max(0, oldCount - (cur.freezesLeft ?? oldCount));
+  // days already spent frozen pushed the end date out; they stay spent and keep pushing it.
+  // Only a pass that was really frozen has spent any: many imported passes carry 0 freeze days without ever freezing.
+  const pool = (old?.freezeDays ?? 0) * oldCount;
+  const usedFreezeDays = usedFreezes > 0 ? Math.min(pool, Math.max(0, pool - cur.freezeDaysLeft)) : 0;
+  const usedVisits = old?.visits && cur.visitsLeft !== undefined ? Math.max(0, old.visits - cur.visitsLeft) : 0;
+  const end = new Date(cur.startDate);
+  if (plan.days) end.setDate(end.getDate() + plan.days);
+  else end.setMonth(end.getMonth() + plan.months);
+  end.setDate(end.getDate() + usedFreezeDays);
+  return {
+    planId,
+    startDate: cur.startDate,
+    endDate: toISODate(end),
+    freezeDaysLeft: Math.max(0, perFreeze * count - usedFreezeDays),
+    freezesLeft: Math.max(0, count - usedFreezes),
+    freezeMax: perFreeze,
+    ...(plan.visits ? { visitsLeft: Math.max(0, plan.visits - usedVisits) } : {}),
+    ...(plan.dayOnly ? { dayOnly: true } : {}),
+    ...(cur.frozenUntil ? { frozenUntil: cur.frozenUntil } : {}),
+  };
 }
 
 const AppContext = createContext<(State & Actions) | null>(null);
@@ -535,6 +570,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [state.user, state.remote, state.membership, state.staffCode],
   );
 
+  const changePlan = useCallback(
+    async (memberId: string, planId: string, fields: { endDate: string; visitsLeft?: number }, reason: string) => {
+      const isSelf = state.user?.id === memberId;
+      const remote = state.remote.find((r) => r.id === memberId);
+      const cur = isSelf ? state.membership : remote?.membership;
+      if (!state.staffCode || !cur || !planById(planId)) return false;
+      const { visitsLeft: _v, ...base } = replacePlan(cur, planId);
+      // the desk may still correct the end date and the visits it was shown
+      const next: Membership = { ...base, endDate: fields.endDate, ...(fields.visitsLeft !== undefined ? { visitsLeft: fields.visitsLeft } : {}) };
+      if (!(await planFixRemote(state.staffCode, memberId, next, reason))) return false;
+      setState((s) => (isSelf ? { ...s, membership: next } : { ...s, remote: s.remote.map((x) => (x.id === memberId ? { ...x, membership: next } : x)) }));
+      return true;
+    },
+    [state.user, state.remote, state.membership, state.staffCode],
+  );
+
   const moveClient = useCallback(
     async (memberId: string, clubId: string) => {
       if (!state.staffCode || !(await clientMove(state.staffCode, memberId, clubId))) return false;
@@ -781,6 +832,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       grantPlan,
       moveClient,
       editMembership,
+      changePlan,
       recordSale,
       refreshSales,
       refreshContent,
@@ -823,7 +875,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, moveClient, editMembership, recordSale, refreshSales, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, staffFreeze, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, cancelOrder, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, moveClient, editMembership, changePlan, recordSale, refreshSales, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, staffFreeze, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, cancelOrder, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

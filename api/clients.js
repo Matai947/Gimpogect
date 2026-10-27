@@ -646,6 +646,20 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    // A plan added by mistake is swapped for the right one by the manager or the owner; who, when, from what and why is kept on the client.
+    if (req.method === 'POST' && op === 'plan-fix') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const id = str(body.id, 20);
+      const membership = cleanMembership(body.membership);
+      const reason = str(body.reason, 120);
+      if (!ID.test(id) || !membership || reason.length < 3 || /[<>]/.test(reason)) return res.status(400).json({ error: 'bad data' });
+      const prev = await read(id);
+      if (!prev || !prev.membership) return res.status(404).json({ error: 'no plan' });
+      const fix = { ts: Date.now(), by: staffName(''), from: prev.membership.planId, to: membership.planId, fromEnd: prev.membership.endDate, toEnd: membership.endDate, reason };
+      await write(id, { ...prev, membership, planFixes: [fix, ...(prev.planFixes || [])].slice(0, 20) });
+      return res.status(200).json({ ok: true });
+    }
+
     /* ---- payments and visits for the reports ---- */
     // The register may only report what it sells; refunds and debt payments exist only through their own ops (refund is owner-only).
     const SALE_KINDS = ['plan', 'shop', 'personal', 'debt'];

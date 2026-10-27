@@ -9,7 +9,7 @@ import { goalTitle } from '@/data/fitness';
 import type { PayMethod } from '@/data/owner';
 import { resetPasswordRemote } from '@/lib/api';
 import { DAY_ONLY_UNTIL, clubs, clubById, clubHour, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
-import { useApp, useCanManage, useI18n, useMembers, usePlans, usePresence, type MemberInfo } from '@/store/app-context';
+import { replacePlan, useApp, useCanManage, useI18n, useMembers, usePlans, usePresence, type MemberInfo } from '@/store/app-context';
 
 export const hm = (ts: number) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
@@ -30,7 +30,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   const plans = usePlans();
   // The scanner passes a snapshot; re-read so the card updates right after a plan is issued.
   const member = useMembers().byId(snapshot.id) ?? snapshot;
-  const { staff, staffCode, logCheckin, checkoutMember, grantPlan, editMembership, staffFreeze, moveClient } = useApp();
+  const { staff, staffCode, logCheckin, checkoutMember, grantPlan, editMembership, changePlan, staffFreeze, moveClient, remote, membership } = useApp();
   const canManage = useCanManage();
   const [moveMsg, setMoveMsg] = useState('');
   const [freezing, setFreezing] = useState(false);
@@ -45,6 +45,16 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   const [visitsText, setVisitsText] = useState('');
   const [editMsg, setEditMsg] = useState<{ text: string; bad: boolean } | null>(null);
   const [editPlan, setEditPlan] = useState<string | null>(null); // the type picked for a client who has none
+  const [fixPlan, setFixPlan] = useState<string | null>(null); // manager: the right plan instead of one added by mistake
+  const [fixReason, setFixReason] = useState('');
+  const pickFix = (planId: string) => {
+    const cur = member.isSelf ? membership : remote.find((r) => r.id === member.id)?.membership;
+    if (!cur) return;
+    const next = replacePlan(cur, planId);
+    setFixPlan(planId);
+    setEndText(showDay(next.endDate));
+    setVisitsText(next.visitsLeft === undefined ? '' : String(next.visitsLeft));
+  };
   const editable = plans.filter((p) => !p.staffOnly && !p.trial && !p.partner);
   const [saving, setSaving] = useState(false);
   const here = usePresence().find((p) => p.memberId === snapshot.id);
@@ -98,6 +108,8 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
     setEndText(showDay(member.endDate));
     setVisitsText(member.visitsLeft === undefined ? '' : String(member.visitsLeft));
     setEditPlan(null);
+    setFixPlan(null);
+    setFixReason('');
     setEditMsg(null);
     setEditing(true);
   };
@@ -106,6 +118,16 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
     if (!member.planId && !editPlan) return setEditMsg({ text: t('edit_plan_pick'), bad: true });
     if (!endDate) return setEditMsg({ text: t('edit_plan_bad_date'), bad: true });
     const visits = visitsText.trim() === '' ? undefined : Number(visitsText.replace(/\D/g, ''));
+    if (fixPlan) {
+      if (fixReason.trim().length < 3) return setEditMsg({ text: t('plan_fix_reason_need'), bad: true });
+      setSaving(true);
+      const fixed = await changePlan(member.id, fixPlan, { endDate, visitsLeft: visits }, fixReason.trim());
+      setSaving(false);
+      if (!fixed) return setEditMsg({ text: t('cash_fail'), bad: true });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      setEditing(false);
+      return setEditMsg({ text: t('plan_fix_saved', { name: td(plans.find((p) => p.id === fixPlan)?.name ?? ''), date: formatDateLong(endDate) }), bad: false });
+    }
     setSaving(true);
     const ok = await editMembership(member.id, { planId: member.planId ? undefined : editPlan ?? undefined, endDate, visitsLeft: visits });
     setSaving(false);
@@ -271,6 +293,32 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
               <T type="small" style={{ fontWeight: '700' }}>
                 {member.planId ? t('edit_plan_title', { name: td(member.planName ?? '') }) : t('edit_plan_new')}
               </T>
+              {member.planId && canManage ? (
+                <View style={{ gap: 6 }}>
+                  <T type="small" color={Colors.textMuted}>
+                    {t('plan_fix_title')}
+                  </T>
+                  <Row gap={6} style={{ flexWrap: 'wrap' }}>
+                    {editable
+                      .filter((p) => p.id !== member.planId)
+                      .map((p) => (
+                        <Chip key={p.id} label={td(p.name)} active={fixPlan === p.id} onPress={() => pickFix(p.id)} />
+                      ))}
+                  </Row>
+                  {fixPlan ? (
+                    <>
+                      <TextInput value={fixReason} onChangeText={setFixReason} placeholder={t('plan_fix_reason')} placeholderTextColor={Colors.textMuted} maxLength={120} style={styles.input} />
+                      <T type="small" color={Colors.textMuted}>
+                        {t('plan_fix_hint')}
+                      </T>
+                    </>
+                  ) : null}
+                </View>
+              ) : member.planId ? (
+                <T type="small" color={Colors.textMuted}>
+                  {t('plan_fix_manager_only')}
+                </T>
+              ) : null}
               {!member.planId ? (
                 <Row gap={6} style={{ flexWrap: 'wrap' }}>
                   {editable.map((p) => (
