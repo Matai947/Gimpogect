@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { OwnerAccent, OwnerHeader } from '@/components/owner-header';
 import { OneFitStat } from '@/components/onefit-stat';
+import { StaffToday } from '@/components/staff-today';
 import { Chip, ChipRow, ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { addDays, clubById, clubs, formatPrice, toISODate } from '@/data/mock';
@@ -60,6 +61,8 @@ export default function OwnerOverview() {
           <Chip label={t('period_7')} active={period === 7} onPress={() => { setPeriod(7); setSel(null); }} />
           <Chip label={t('period_30')} active={period === 30} onPress={() => { setPeriod(30); setSel(null); }} />
         </ChipRow>
+
+        <StaffToday accent={OwnerAccent} />
 
         <View style={styles.hero}>
           <T type="small" color={Colors.textSecondary}>
