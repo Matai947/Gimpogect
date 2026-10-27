@@ -136,6 +136,10 @@ export const stockMove = async (code: string, b: { id: string; qty: number; from
   return r.status === 200 ? 'ok' : r.status === 400 ? 'short' : 'fail';
 };
 export const clientMove = (code: string, id: string, clubId: string) => call<{ ok: true }>('client-move', { method: 'POST', code, body: { id, clubId } });
+/** A hand-made entry in the owner's safe: taken out (to the owner, collection, expenses) or put in (opening balance, top-up). */
+export type SafeEntry = { id: string; ts: number; clubId: string; kind: 'in' | 'out'; amount: number; note: string; staff: string };
+export const fetchSafe = async (code: string) => (await call<{ entries: SafeEntry[] }>('safe', { code }))?.entries ?? null;
+export const safeOp = (code: string, b: { clubId: string; kind: 'in' | 'out'; amount: number; note: string }) => call<{ ok: true }>('safe-op', { method: 'POST', code, body: b });
 export const fetchCashes = async (code: string, days = 30) => (await call<{ cashes: CashDrawer[] }>('cashes', { code, query: `&days=${days}` }))?.cashes ?? null;
 
 /** Editable content (prices, plans, trainers, rules, schedule, promotions, photos), as the administrators set it. */

@@ -928,6 +928,23 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ moves: rows.map((r) => r.data) });
     }
 
+    /* ---- the owner's safe: money the owner takes out or puts in by hand; what the desks put in comes from their withdrawals ---- */
+    if (req.method === 'GET' && op === 'safe') {
+      if (!isOwner(req)) return res.status(403).json({ error: 'owner only' });
+      const rows = await pageAll('settings?select=data&key=like.safe:*&order=key.desc');
+      return res.status(200).json({ entries: rows.map((r) => r.data) });
+    }
+    if (req.method === 'POST' && op === 'safe-op') {
+      if (!isOwner(req)) return res.status(403).json({ error: 'owner only' });
+      const amount = int(body.amount, 100000000);
+      const note = str(body.note, 80);
+      if (!['in', 'out'].includes(body.kind) || amount < 1 || note.length < 2 || /[<>]/.test(note) || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
+      const now = Date.now();
+      const id = String(now) + Math.random().toString(36).slice(2, 5).padEnd(3, '0');
+      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: 'safe:' + id, data: { id, ts: now, clubId: body.clubId, kind: body.kind, amount, note, staff: 'owner' } }) });
+      return res.status(200).json({ ok: true });
+    }
+
     if (req.method === 'GET' && op === 'cash') {
       const clubId = str(req.query.clubId, 6);
       if (!(await validClub(clubId))) return res.status(400).json({ error: 'bad club' });
