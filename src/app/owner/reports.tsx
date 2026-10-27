@@ -145,13 +145,13 @@ export default function OwnerReports() {
           <T type="subheading">{t('rep_days')}</T>
           {dayRows.length ? (
             <Row gap={Spacing.two}>
-              {(['bar', 'plans'] as const).map((g) => {
+              {(['bar', 'plans', 'trainers'] as const).map((g) => {
                 const cash = dayRows.reduce((n, r) => n + r.groups[g].cash, 0);
                 const nonCash = dayRows.reduce((n, r) => n + r.groups[g].nonCash, 0);
                 return (
-                  <View key={g} style={[styles.groupBox, { borderColor: g === 'bar' ? Colors.warning : OwnerAccent }]}>
+                  <View key={g} style={[styles.groupBox, { borderColor: g === 'bar' ? Colors.warning : g === 'plans' ? OwnerAccent : Colors.info }]}>
                     <T type="small" color={Colors.textSecondary}>
-                      {t(g === 'bar' ? 'grp_bar' : 'grp_plans')}
+                      {t(g === 'bar' ? 'grp_bar' : g === 'plans' ? 'grp_plans' : 'grp_trainers')}
                     </T>
                     <T type="subheading">{formatPrice(cash + nonCash)}</T>
                     <T type="small" color={Colors.textMuted}>
@@ -182,10 +182,10 @@ export default function OwnerReports() {
                   {r.refunds ? ` • ${t('rep_refunds')}: ${formatPrice(r.refunds)}` : ''}
                   {r.taken ? ` • ${t('cash_taken')}: ${formatPrice(r.taken)}` : ''}
                 </T>
-                {(['bar', 'plans'] as const).map((g) =>
+                {(['bar', 'plans', 'trainers'] as const).map((g) =>
                   r.groups[g].cash || r.groups[g].nonCash ? (
                     <T key={g} type="small" color={Colors.textSecondary}>
-                      {t(g === 'bar' ? 'grp_bar' : 'grp_plans')}: <T type="small" style={{ fontWeight: '700' }}>{formatPrice(r.groups[g].cash + r.groups[g].nonCash)}</T> ({t('rep_day_cash')} {formatPrice(r.groups[g].cash)} • {t('rep_day_noncash')} {formatPrice(r.groups[g].nonCash)})
+                      {t(g === 'bar' ? 'grp_bar' : g === 'plans' ? 'grp_plans' : 'grp_trainers')}: <T type="small" style={{ fontWeight: '700' }}>{formatPrice(r.groups[g].cash + r.groups[g].nonCash)}</T> ({t('rep_day_cash')} {formatPrice(r.groups[g].cash)} • {t('rep_day_noncash')} {formatPrice(r.groups[g].nonCash)})
                     </T>
                   ) : null,
                 )}

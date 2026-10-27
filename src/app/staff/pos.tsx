@@ -5,6 +5,7 @@ import { Linking, Platform, Pressable, ScrollView, Share, StyleSheet, TextInput,
 
 import { BarcodeSheet, cleanBarcode } from '@/components/barcode-sheet';
 import { CashDrawerCard } from '@/components/cash-drawer';
+import { TrainerCash } from '@/components/trainer-cash';
 import { CancellationsLog } from '@/components/cancellations-log';
 import { ReceiptsToday } from '@/components/receipts-today';
 import { StaffAccent } from '@/components/member-result';
@@ -337,6 +338,7 @@ export default function StaffPosScreen() {
       <StaffHeader title={t('staff_tab_pos')} />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <CashDrawerCard />
+        <TrainerCash accent={StaffAccent} />
         <ReceiptsToday accent={StaffAccent} />
         {canManage ? <CancellationsLog accent={StaffAccent} /> : null}
 

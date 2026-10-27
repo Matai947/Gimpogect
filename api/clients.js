@@ -823,6 +823,7 @@ module.exports = async function handler(req, res) {
       let cashIn = 0;
       let refunds = 0;
       for (const { data: x } of rows) {
+        if (x.trainerId) continue; // personal training money is the trainers' till, kept apart from this drawer
         if (['plan', 'shop', 'personal', 'debt_payment'].includes(x.kind)) cashIn += x.amount;
         else if (x.kind === 'debt') cashIn -= x.amount; // the unpaid part of a check was never handed over
         else if (x.kind === 'refund') refunds += x.amount;
