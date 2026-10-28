@@ -47,6 +47,10 @@ export function CashDrawerCard() {
   }, [staffCode, clubId, now, sales.length, tick]);
 
   if (drawer === undefined) return null;
+  // a drawer left open from an earlier day keeps adding yesterday's money to today's
+  const day = (ts: number) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10);
+  const openDay = drawer ? day(drawer.open) : '';
+  const stale = !!drawer && openDay < day(now);
 
   const run = async (job: () => Promise<CashDrawer | null>, then?: (d: CashDrawer) => void) => {
     setBusy(true);
@@ -120,8 +124,15 @@ export function CashDrawerCard() {
             {formatPrice(drawer.expected)}
           </T>
           <T type="small" color={Colors.textSecondary}>
-            {t('cash_now')} • {clockTime(drawer.open)} {drawer.staff}
+            {t('cash_now')} • {t('cash_opened', { when: `${stale ? `${openDay.split('-').reverse().join('.')} ` : ''}${clockTime(drawer.open)}`, name: drawer.staff })}
           </T>
+          {stale ? (
+            <View style={styles.stale}>
+              <T type="small" color={Colors.danger} style={{ fontWeight: '700' }}>
+                {t('cash_stale', { day: openDay.split('-').reverse().join('.') })}
+              </T>
+            </View>
+          ) : null}
           <View style={{ gap: 2 }}>
             <Line label={t('cash_start')} value={formatPrice(drawer.openCash)} />
             {drawer.added ? <Line label={t('cash_added')} value={`+${formatPrice(drawer.added)}`} /> : null}
@@ -230,6 +241,7 @@ function Line({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
+  stale: { padding: Spacing.two, borderRadius: Radius.md, backgroundColor: 'rgba(214,59,71,0.08)', borderWidth: 1, borderColor: 'rgba(214,59,71,0.4)' },
   incoming: { gap: 4, padding: Spacing.two, borderRadius: Radius.md, backgroundColor: 'rgba(31,138,76,0.1)', borderWidth: 1, borderColor: Colors.success },
   out: { gap: Spacing.two, paddingVertical: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.border },
   input: { height: 48, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: Spacing.three, color: Colors.text, fontSize: 16, backgroundColor: Colors.background },

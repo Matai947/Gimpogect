@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { endShift, fetchShifts, startShift, type Shift } from '@/lib/api';
+import { endShift, fetchCash, fetchShifts, startShift, type Shift } from '@/lib/api';
 import { useApp, useI18n, useNow } from '@/store/app-context';
 
 const ALMATY = 5 * 3600000; // the clubs' clock: UTC+5
@@ -73,6 +73,7 @@ export function useDuration() {
 export function ShiftBar() {
   const { t } = useI18n();
   const { open, ready, begin, finish } = useShift();
+  const { staff, staffCode } = useApp();
   const dur = useDuration();
   const now = useNow();
   const [sure, setSure] = useState(false);
@@ -99,6 +100,14 @@ export function ShiftBar() {
     clearTimeout(timer.current);
     setSure(false);
     setBusy(true);
+    // The last one leaving the club closes the drawer first, so the next day starts from a fresh count instead of carrying on.
+    const clubId = staff?.clubId ?? open?.clubId ?? 'c1';
+    const [drawer, shifts] = await Promise.all([fetchCash(staffCode, clubId), fetchShifts(staffCode, 2)]);
+    const others = (shifts ?? []).some((s) => !s.end && !s.auto && s.clubId === clubId && s.id !== open?.id);
+    if (drawer && !others) {
+      setBusy(false);
+      return setNote(t('shift_close_cash_first'));
+    }
     const worked = await finish();
     setNote(worked == null ? t('shift_fail') : t('shift_done', { dur: dur(worked) }));
     setBusy(false);
