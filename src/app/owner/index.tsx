@@ -59,7 +59,7 @@ export default function OwnerOverview() {
         return m;
       }, { bar: 0, plans: 0, trainers: 0 }),
       clubs: clubs.map((c) => ({ id: c.id, name: c.name.replace('Seven Gym ', ''), revenue: sum(cur.filter((s) => s.clubId === c.id)), today: sum(cur.filter((s) => s.clubId === c.id && dayOf(s.ts) === today)) })),
-      checksToday: cur.filter((s) => dayOf(s.ts) === today && ['plan', 'shop', 'personal'].includes(s.kind)).length,
+      checksToday: new Set(cur.filter((s) => dayOf(s.ts) === today && ['plan', 'shop', 'personal'].includes(s.kind)).map((s) => `${s.staff}|${s.memberId ?? ''}|${Math.round(s.ts / 10000)}`)).size,
     };
   }, [sales, raw, period, now, today]);
 
@@ -72,7 +72,7 @@ export default function OwnerOverview() {
   const best = d.days.reduce((a, b) => (b.value > a.value ? b : a), d.days[0]);
   const active = list.filter((m) => m.active).length;
   const expiring = list.filter((m) => m.active && m.daysLeft <= 7).length;
-  const payments = d.cur.filter((s) => ['plan', 'shop', 'personal'].includes(s.kind)).length;
+  const payments = new Set(d.cur.filter((s) => ['plan', 'shop', 'personal'].includes(s.kind)).map((s) => `${s.staff}|${s.memberId ?? ''}|${Math.round(s.ts / 10000)}`)).size;
 
   // the clock of the clubs, not the phone's
   const local = new Date(now + ALMATY);

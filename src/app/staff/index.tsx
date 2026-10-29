@@ -27,6 +27,7 @@ export default function StaffScanScreen() {
   const [result, setResult] = useState<Result | null>(null);
   const [manual, setManual] = useState('');
   const [paused, setPaused] = useState(false);
+  const [scanN, setScanN] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   // The camera never stops: the next client's QR is read straight away. Only the same code held in view is ignored for a few seconds.
   const last = useRef({ raw: '', ts: 0 });
@@ -74,6 +75,7 @@ export default function StaffScanScreen() {
   const handle = (raw: string, scanned = false) => {
     const r = resolve(raw);
     setResult(r);
+    setScanN((n) => n + 1);
     setPaused(true);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -142,7 +144,7 @@ export default function StaffScanScreen() {
           ) : null}
         </View>
         {/* Result */}
-        {result?.kind === 'member' ? <MemberResult member={result.member} onDone={reset} /> : null}
+        {result?.kind === 'member' ? <MemberResult key={scanN} member={result.member} onDone={reset} /> : null}
         {result?.kind === 'notfound' ? (
           <View style={styles.notice}>
             <Ionicons name="person-remove-outline" size={22} color={Colors.warning} />
