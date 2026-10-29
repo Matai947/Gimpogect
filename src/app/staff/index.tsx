@@ -28,6 +28,14 @@ export default function StaffScanScreen() {
   const [manual, setManual] = useState('');
   const [paused, setPaused] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  // The camera never stops: the next client's QR is read straight away. Only the same code held in view is ignored for a few seconds.
+  const last = useRef({ raw: '', ts: 0 });
+  const fresh = (raw: string) => {
+    const now = Date.now();
+    if (raw === last.current.raw && now - last.current.ts < 6000) return false;
+    last.current = { raw, ts: now };
+    return true;
+  };
   const canCamera = Platform.OS !== 'web';
 
   const resolve = useCallback(
@@ -89,8 +97,7 @@ export default function StaffScanScreen() {
   };
 
   const onScan = (res: BarcodeScanningResult) => {
-    if (paused) return;
-    handle(res.data, true);
+    if (fresh(res.data)) handle(res.data, true);
   };
 
   const reset = () => {
@@ -107,9 +114,9 @@ export default function StaffScanScreen() {
         {/* Camera */}
         <View style={[styles.cameraWrap, result ? styles.cameraFolded : null]}>
           {!canCamera ? (
-            <WebQrScanner onScan={(d) => { if (!paused) handle(d, true); }} paused={paused} permissionText={t('scan_permission')} allowText={t('scan_allow')} accent={StaffAccent} />
+            <WebQrScanner onScan={(d) => { if (fresh(d)) handle(d, true); }} paused={false} permissionText={t('scan_permission')} allowText={t('scan_allow')} accent={StaffAccent} />
           ) : permission?.granted ? (
-            <CameraView style={StyleSheet.absoluteFill} facing="back" barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={paused ? undefined : onScan} />
+            <CameraView style={StyleSheet.absoluteFill} facing="back" barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={onScan} />
           ) : (
             <View style={styles.noCamera}>
               <Ionicons name={canCamera ? 'camera-outline' : 'desktop-outline'} size={34} color={Colors.textMuted} />

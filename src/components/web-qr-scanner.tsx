@@ -51,14 +51,23 @@ export function WebQrScanner({ onScan, paused, permissionText, allowText, accent
         })
         .catch(() => setStatus('unsupported'));
     let busy = false;
+    let busySince = 0;
     let frame = 0;
 
     const tick = () => {
       raf = requestAnimationFrame(tick);
       const video = videoRef.current;
+      // Safari sometimes pauses the picture (after a re-layout, a tab switch): start it again instead of showing a frozen frame
+      if (video && video.paused && video.srcObject) void video.play().catch(() => {});
+      // the browser's own detector can hang on a frame and never answer: after 2 s it is dropped and jsQR reads instead
+      if (busy && Date.now() - busySince > 2000) {
+        busy = false;
+        if (!barcodes) detector = null;
+      }
       if (!video || !ctx || video.readyState < 2 || pausedRef.current || busy) return;
       if (detector) {
         busy = true;
+        busySince = Date.now();
         detector
           .detect(video)
           .then((codes) => codes[0]?.rawValue && onScanRef.current(codes[0].rawValue))
@@ -95,6 +104,8 @@ export function WebQrScanner({ onScan, paused, permissionText, allowText, accent
           return;
         }
         stream = s;
+        // the camera was taken away (another app, the phone locked): open it again by itself
+        s.getVideoTracks().forEach((tr) => tr.addEventListener('ended', () => !cancelled && setAttempt((a) => a + 1)));
         const video = videoRef.current;
         if (video) {
           video.srcObject = s;
