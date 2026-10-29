@@ -943,6 +943,52 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ moves: rows.map((r) => r.data) });
     }
 
+    /* ---- club expenses: the manager keeps the monthly must-pays (rent, utilities, salaries) and records what was paid; the owner sees it all ---- */
+    const newId = () => String(Date.now()) + Math.random().toString(36).slice(2, 5).padEnd(3, '0');
+    const plainText = (v) => v.length >= 2 && !/[<>]/.test(v);
+    if (req.method === 'GET' && op === 'expenses') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const [tpl, pays] = await Promise.all([pageAll('settings?select=data&key=like.exptpl:*'), pageAll(`settings?select=data&key=like.expense:*&${enc('data->>ts')}=gte.${Date.now() - 400 * 86400000}`)]);
+      return res.status(200).json({ templates: tpl.map((r) => r.data), payments: pays.map((r) => r.data) });
+    }
+    if (req.method === 'POST' && op === 'exp-tpl-save') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const title = str(body.title, 60);
+      const amount = int(body.amount, 100000000);
+      const day = Math.max(1, Math.min(31, int(body.day, 31) || 1));
+      const id = /^\d{13}[a-z0-9]{3}$/.test(String(body.id)) ? body.id : newId();
+      if (!plainText(title) || amount < 1 || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
+      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'exptpl:' + id, data: { id, clubId: body.clubId, title, amount, day, by: staffName('owner'), at: Date.now() } }) });
+      return res.status(200).json({ ok: true, id });
+    }
+    if (req.method === 'POST' && op === 'exp-tpl-del') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const id = str(body.id, 20);
+      if (!/^\d{13}[a-z0-9]{3}$/.test(id)) return res.status(400).json({ error: 'bad id' });
+      await sb(`settings?key=eq.exptpl:${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+      return res.status(200).json({ ok: true });
+    }
+    // A payment: of a must-pay for a month (tplId + month) or a one-off expense. Cash or non-cash.
+    if (req.method === 'POST' && op === 'exp-pay') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const title = str(body.title, 60);
+      const note = str(body.note, 80);
+      const amount = int(body.amount, 100000000);
+      const month = /^\d{4}-\d{2}$/.test(String(body.month)) ? body.month : new Date(Date.now() + 5 * 3600000).toISOString().slice(0, 7);
+      const tplId = /^\d{13}[a-z0-9]{3}$/.test(String(body.tplId)) ? body.tplId : undefined;
+      if (!plainText(title) || /[<>]/.test(note) || amount < 1 || !['cash', 'noncash'].includes(body.method) || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
+      const id = newId();
+      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: 'expense:' + id, data: { id, ts: Date.now(), clubId: body.clubId, month, ...(tplId ? { tplId } : {}), title, amount, method: body.method, note, staff: staffName('owner') } }) });
+      return res.status(200).json({ ok: true, id });
+    }
+    if (req.method === 'POST' && op === 'exp-del') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const id = str(body.id, 20);
+      if (!/^\d{13}[a-z0-9]{3}$/.test(id)) return res.status(400).json({ error: 'bad id' });
+      await sb(`settings?key=eq.expense:${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+      return res.status(200).json({ ok: true });
+    }
+
     /* ---- the owner's safe: money the owner takes out or puts in by hand; what the desks put in comes from their withdrawals ---- */
     if (req.method === 'GET' && op === 'safe') {
       if (!isOwner(req)) return res.status(403).json({ error: 'owner only' });

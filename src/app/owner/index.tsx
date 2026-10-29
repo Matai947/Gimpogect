@@ -6,6 +6,7 @@ import Svg, { Circle, Defs, Line, Path, Stop, LinearGradient as SvgGradient } fr
 
 import { OwnerAccent, OwnerHeader } from '@/components/owner-header';
 import { OneFitStat } from '@/components/onefit-stat';
+import { ExpensesPanel } from '@/components/expenses-panel';
 import { StaffToday } from '@/components/staff-today';
 import { Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -217,6 +218,8 @@ export default function OwnerOverview() {
             </Row>
           ))}
         </View>
+
+        <ExpensesPanel accent={OwnerAccent} owner />
 
         {/* the clubs side by side */}
         <Row gap={Spacing.two} style={{ alignItems: 'stretch' }}>

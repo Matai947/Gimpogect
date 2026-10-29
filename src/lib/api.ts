@@ -140,6 +140,15 @@ export const clientMove = (code: string, id: string, clubId: string) => call<{ o
 export type SafeEntry = { id: string; ts: number; clubId: string; kind: 'in' | 'out'; amount: number; note: string; staff: string };
 export const fetchSafe = async (code: string) => (await call<{ entries: SafeEntry[] }>('safe', { code }))?.entries ?? null;
 export const safeOp = (code: string, b: { clubId: string; kind: 'in' | 'out'; amount: number; note: string }) => call<{ ok: true }>('safe-op', { method: 'POST', code, body: b });
+/** A must-pay of a club, every month by a day (rent, utilities, salaries). */
+export type ExpenseTpl = { id: string; clubId: string; title: string; amount: number; day: number; by: string };
+/** An expense paid: of a must-pay for a month (tplId) or a one-off. */
+export type Expense = { id: string; ts: number; clubId: string; month: string; tplId?: string; title: string; amount: number; method: 'cash' | 'noncash'; note: string; staff: string };
+export const fetchExpenses = async (code: string) => (await call<{ templates: ExpenseTpl[]; payments: Expense[] }>('expenses', { code })) ?? null;
+export const saveExpenseTpl = (code: string, b: { id?: string; clubId: string; title: string; amount: number; day: number }) => call<{ ok: true; id: string }>('exp-tpl-save', { method: 'POST', code, body: b });
+export const deleteExpenseTpl = (code: string, id: string) => call<{ ok: true }>('exp-tpl-del', { method: 'POST', code, body: { id } });
+export const payExpense = (code: string, b: { clubId: string; month: string; tplId?: string; title: string; amount: number; method: 'cash' | 'noncash'; note: string }) => call<{ ok: true; id: string }>('exp-pay', { method: 'POST', code, body: b });
+export const deleteExpense = (code: string, id: string) => call<{ ok: true }>('exp-del', { method: 'POST', code, body: { id } });
 export const fetchCashes = async (code: string, days = 30) => (await call<{ cashes: CashDrawer[] }>('cashes', { code, query: `&days=${days}` }))?.cashes ?? null;
 
 /** Editable content (prices, plans, trainers, rules, schedule, promotions, photos), as the administrators set it. */

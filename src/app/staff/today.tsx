@@ -4,14 +4,16 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { StaffAccent, hm } from '@/components/member-result';
+import { ExpensesPanel } from '@/components/expenses-panel';
 import { StaffHeader } from '@/components/staff-header';
 import { Card, ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { mockOrders } from '@/data/members';
 import { clubById, occupancyLabel, sessionsForDate, toISODate, trainerById } from '@/data/mock';
-import { SESSION_MS, useApp, useI18n, useNow, usePresence, orderClosed } from '@/store/app-context';
+import { SESSION_MS, useApp, useI18n, useNow, usePresence, orderClosed, useCanManage } from '@/store/app-context';
 
 export default function StaffTodayScreen() {
+  const canManage = useCanManage();
   const { staff, staffLog, orders, orderStatusOverrides, checkoutMember } = useApp();
   const now = useNow();
   const inside = usePresence().filter((p) => p.clubId === (staff?.clubId ?? 'c1'));
@@ -31,6 +33,7 @@ export default function StaffTodayScreen() {
     <View style={styles.root}>
       <StaffHeader title={t('staff_tab_today')} />
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        {canManage ? <ExpensesPanel accent={StaffAccent} /> : null}
         <View style={styles.grid}>
           <Stat value={okCount} label={t('today_checkins')} icon="log-in-outline" color={Colors.success} onPress={() => router.push('/staff')} />
           <Stat value={deniedCount} label={t('today_denied')} icon="close-circle-outline" color={Colors.danger} />
