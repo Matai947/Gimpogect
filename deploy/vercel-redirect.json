@@ -1,0 +1,4 @@
+{
+  "_comment": "After the move: deployed to the old Vercel project as vercel.json, so every old link (sevengym / sevengim.matai.kz, QR posters, bookmarks) lands on 7gym.kz. The old API is switched off with it.",
+  "redirects": [{ "source": "/(.*)", "destination": "https://7gym.kz/$1", "permanent": true }]
+}
