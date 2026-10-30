@@ -3,7 +3,7 @@ import { StyleSheet, TextInput, View } from 'react-native';
 
 import { Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { formatPrice } from '@/data/mock';
+import { clubs, formatPrice } from '@/data/mock';
 import { groupTotals, saleGroup, saleValue, type Sale } from '@/data/owner';
 import { fetchExpenses, fetchSales, type Expense } from '@/lib/api';
 import { useApp, useI18n, useNow, useRawSales } from '@/store/app-context';
@@ -21,9 +21,12 @@ function parse(s: string): string {
 }
 
 /** Owner: pick any two dates and get the whole sum of that period — money in, how it came, what it was for, what went out, and the profit. */
-export function PeriodSummary({ club, accent }: { club: string; accent: string }) {
+/** `club` given = the owner's reports pick it; `pick` = the manager chooses a club here; neither = the administrator's own club. `money` = expenses and profit (owner, manager, accountant). */
+export function PeriodSummary({ club: given, accent, pick, money = true }: { club?: string; accent: string; pick?: boolean; money?: boolean }) {
   const { t } = useI18n();
-  const { staffCode } = useApp();
+  const { staffCode, staff } = useApp();
+  const [picked, setPicked] = useState<string>(staff?.clubId ?? 'all');
+  const club = given ?? (pick ? picked : (staff?.clubId ?? 'c1'));
   const loaded = useRawSales();
   const now = useNow();
   const today = dayOf(now);
@@ -47,13 +50,13 @@ export function PeriodSummary({ club, accent }: { club: string; accent: string }
     };
   }, [staffCode, daysBack]);
   useEffect(() => {
-    if (!staffCode) return;
+    if (!staffCode || !money) return;
     let live = true;
     fetchExpenses(staffCode).then((d) => live && d && setExpenses(d.payments));
     return () => {
       live = false;
     };
-  }, [staffCode]);
+  }, [staffCode, money]);
 
   const r = useMemo(() => {
     if (!ok) return null;
@@ -88,6 +91,18 @@ export function PeriodSummary({ club, accent }: { club: string; accent: string }
   return (
     <View style={styles.card}>
       <T type="subheading">{t('ps_title')}</T>
+      {pick ? (
+        <ChipRow>
+          <Chip label={t('all')} active={club === 'all'} onPress={() => setPicked('all')} />
+          {clubs.map((c) => (
+            <Chip key={c.id} label={c.name.replace('Seven Gym ', '')} active={club === c.id} onPress={() => setPicked(c.id)} />
+          ))}
+        </ChipRow>
+      ) : !given ? (
+        <T type="small" color={Colors.textMuted}>
+          {clubs.find((c) => c.id === club)?.name}
+        </T>
+      ) : null}
       <Row gap={Spacing.two} style={{ alignItems: 'center' }}>
         <T type="small" color={Colors.textSecondary}>
           {t('ps_from')}
@@ -131,16 +146,20 @@ export function PeriodSummary({ club, accent }: { club: string; accent: string }
           <Line label={t('grp_bar')} value={r.kinds.bar} />
           <Line label={t('grp_trainers')} value={r.kinds.trainers} />
           {r.given ? <Line label={t('ps_discounts', { n: r.givenN })} value={r.given} muted /> : null}
-          <View style={styles.sep} />
-          <Line label={t('ex_spent_period')} value={-r.spent} />
-          <Row style={{ justifyContent: 'space-between' }}>
-            <T type="body" style={{ fontWeight: '800' }}>
-              {t('ex_profit')}
-            </T>
-            <T type="body" color={r.revenue - r.spent >= 0 ? Colors.success : Colors.danger} style={{ fontWeight: '800' }}>
-              {formatPrice(r.revenue - r.spent)}
-            </T>
-          </Row>
+          {money ? (
+            <>
+              <View style={styles.sep} />
+              <Line label={t('ex_spent_period')} value={-r.spent} />
+              <Row style={{ justifyContent: 'space-between' }}>
+                <T type="body" style={{ fontWeight: '800' }}>
+                  {t('ex_profit')}
+                </T>
+                <T type="body" color={r.revenue - r.spent >= 0 ? Colors.success : Colors.danger} style={{ fontWeight: '800' }}>
+                  {formatPrice(r.revenue - r.spent)}
+                </T>
+              </Row>
+            </>
+          ) : null}
         </>
       )}
     </View>

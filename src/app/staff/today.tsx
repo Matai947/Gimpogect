@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { StaffAccent, hm } from '@/components/member-result';
 import { ExpensesPanel } from '@/components/expenses-panel';
+import { PeriodSummary } from '@/components/period-summary';
 import { StaffHeader } from '@/components/staff-header';
 import { Card, ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -33,6 +34,7 @@ export default function StaffTodayScreen() {
     <View style={styles.root}>
       <StaffHeader title={t('staff_tab_today')} />
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        <PeriodSummary accent={StaffAccent} pick={canManage} money={canManage} />
         {canManage ? <ExpensesPanel accent={StaffAccent} /> : null}
         <View style={styles.grid}>
           <Stat value={okCount} label={t('today_checkins')} icon="log-in-outline" color={Colors.success} onPress={() => router.push('/staff')} />
