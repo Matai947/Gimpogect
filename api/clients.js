@@ -314,8 +314,10 @@ async function freezeRules() {
     const o = (p.overrides && p.overrides[id]) || {};
     const c = (p.custom || []).find((x) => x.id === id) || {};
     const b = BUILTIN_FREEZE[id] || [];
-    const days = Number(o.freezeDays ?? c.freezeDays ?? b[0] ?? 0) || 0;
-    return days > 0 ? [days, Number(o.freezeCount ?? c.freezeCount ?? b[1] ?? 1) || 1] : null;
+    // clamped like a stored pass: at most 365 days in all and 10 freezes
+    const days = Math.max(0, Math.min(365, Math.round(Number(o.freezeDays ?? c.freezeDays ?? b[0] ?? 0) || 0)));
+    const count = Math.max(1, Math.min(10, Math.round(Number(o.freezeCount ?? c.freezeCount ?? b[1] ?? 1) || 1)));
+    return days > 0 ? [days, Math.max(1, Math.min(count, Math.floor(365 / days)))] : null;
   };
 }
 /** A pass that never froze and carries no freeze days (set by hand, brought from the old base) gets its plan's rule. Nothing is written here. */
