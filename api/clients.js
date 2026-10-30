@@ -760,6 +760,18 @@ module.exports = async function handler(req, res) {
       const rows = await sb(`sales?id=eq.${encodeURIComponent(saleId)}&select=data`);
       const sale = rows[0]?.data;
       if (!sale || !['plan', 'shop', 'personal'].includes(sale.kind)) return res.status(400).json({ error: 'bad data' });
+      // A check given free (100%) has no money to return, but a mistake is still cancelled: once, and its goods go back on the shelf.
+      if (sale.disc === 100 && !sale.amount) {
+        const almaty = (ts) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10);
+        if (!manages() && almaty(sale.ts) !== almaty(Date.now())) return res.status(403).json({ error: 'only today' });
+        const marked = await sb(`sales?id=eq.${encodeURIComponent(saleId)}&${encodeURIComponent('data->>cancelled')}=is.null`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { ...sale, cancelled: true } }) });
+        if (!Array.isArray(marked) || marked.length !== 1) return res.status(409).json({ error: 'already changed' });
+        const now = Date.now();
+        const rid = 'F' + now.toString(36) + Math.random().toString(36).slice(2, 5);
+        await sb('sales', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: rid, ts: now, data: { id: rid, ts: now, kind: 'refund', title: 'Возврат: ' + sale.title, name: sale.name, memberId: sale.memberId, amount: 0, clubId: sale.clubId, method: sale.method, staff: staffName(''), reason, refundOf: saleId } }) });
+        if (sale.kind === 'shop' && Array.isArray(sale.items)) await adjustStock(sale.items.filter((i) => (i.taken ?? 0) > 0), 1, sale.clubId);
+        return res.status(200).json({ ok: true });
+      }
       const left = sale.amount - (sale.refunded || 0);
       const amount = body.amount == null ? left : int(body.amount, 10000000);
       if (amount < 1 || amount > left) return res.status(400).json({ error: 'bad amount' });

@@ -87,7 +87,7 @@ export function ReceiptsToday({ accent }: { accent: string }) {
     setSure(null);
     setBusy(c.key);
     let ok = true;
-    for (const r of paidRows(c)) if (r.amount - (r.refunded ?? 0) > 0 && !(await refundRemote(staffCode, r.id, t('refund_r1')))) ok = false;
+    for (const r of paidRows(c)) if ((r.amount - (r.refunded ?? 0) > 0 || (r.disc === 100 && !r.amount && !r.cancelled)) && !(await refundRemote(staffCode, r.id, t('refund_r1')))) ok = false;
     await refreshSales();
     await refreshContent();
     setBusy(null);
@@ -135,7 +135,7 @@ export function ReceiptsToday({ accent }: { accent: string }) {
           </T>
         ) : (
           checks.slice(0, 40).map((c) => {
-            const cancelled = c.total > 0 && c.refunded >= c.total;
+            const cancelled = c.total > 0 ? c.refunded >= c.total : paidRows(c).every((r) => r.cancelled);
             return (
               <View key={c.key} style={[styles.check, cancelled && { opacity: 0.55 }]}>
                 <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>

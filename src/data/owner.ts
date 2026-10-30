@@ -20,6 +20,7 @@ export type Sale = {
   items?: { id: string; qty: number }[]; // shop: what was sold, so the shelf count follows
   disc?: number; // the desk's discount on this check, percent
   off?: number; // how much that discount took off this line, in tenge
+  cancelled?: boolean; // a free (100%) check cancelled as a mistake
   refundOf?: string; // refund / debt payment: the row it belongs to
   synced?: boolean; // reached the server
 };
