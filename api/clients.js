@@ -306,6 +306,25 @@ const trainerFrom = async (req) => {
 const account = (c) => (c ? { membership: c.membership ?? null, name: c.name ?? null, homeClubId: c.homeClubId ?? null, profile: c.profile ?? null } : null);
 const publicClient = ({ passHash: _p, passReset: _r, ...c }) => c;
 
+// Freeze rule of the built-in plans (days in one freeze, freezes per pass); edited and custom plans come from the content.
+const BUILTIN_FREEZE = { i1: [5, 1], i2: [5, 1], i3: [5, 1], i4: [5, 1], i5: [5, 1], i6: [7, 1], i7: [10, 1], i8: [7, 2] };
+async function freezeRules() {
+  const p = (await getContent()).plans || {};
+  return (id) => {
+    const o = (p.overrides && p.overrides[id]) || {};
+    const c = (p.custom || []).find((x) => x.id === id) || {};
+    const b = BUILTIN_FREEZE[id] || [];
+    const days = Number(o.freezeDays ?? c.freezeDays ?? b[0] ?? 0) || 0;
+    return days > 0 ? [days, Number(o.freezeCount ?? c.freezeCount ?? b[1] ?? 1) || 1] : null;
+  };
+}
+/** A pass that never froze and carries no freeze days (set by hand, brought from the old base) gets its plan's rule. Nothing is written here. */
+function withFreeze(m, rule) {
+  if (!m || m.freezesLeft !== undefined || m.freezeDaysLeft || m.frozenUntil) return m;
+  const r = rule(m.planId);
+  return r ? { ...m, freezeDaysLeft: r[0] * r[1], freezesLeft: r[1], freezeMax: r[0] } : m;
+}
+
 function cleanMembership(m) {
   if (!m || typeof m !== 'object') return null;
   const out = { planId: str(m.planId, 12), startDate: str(m.startDate, 10), endDate: str(m.endDate, 10), freezeDaysLeft: Math.max(0, Math.min(365, Number(m.freezeDaysLeft) || 0)) };
@@ -443,7 +462,8 @@ module.exports = async function handler(req, res) {
         // otherwise anyone who knows the phone number could claim it.
         return res.status(409).json({ error: 'reset required' });
       }
-      return res.status(200).json({ token: issueToken(id), account: account(c) });
+      const rule = await freezeRules();
+      return res.status(200).json({ token: issueToken(id), account: account(c && { ...c, membership: withFreeze(c.membership, rule) }) });
     }
 
     if (req.method === 'POST' && op === 'register') {
@@ -478,7 +498,8 @@ module.exports = async function handler(req, res) {
       if (!ID.test(id)) return res.status(400).json({ error: 'bad id' });
       if (tokenOwner(req) !== id && !authed()) return res.status(401).json({ error: 'auth' });
       const c = await read(id);
-      return res.status(200).json(account(c) ?? { membership: null, name: null, homeClubId: null, profile: null });
+      const rule = await freezeRules();
+      return res.status(200).json(account(c && { ...c, membership: withFreeze(c.membership, rule) }) ?? { membership: null, name: null, homeClubId: null, profile: null });
     }
 
     // Freeze: the client on their own phone (token) or the desk (staff code). Days come out of the plan's freeze days and the end date moves.
@@ -488,7 +509,7 @@ module.exports = async function handler(req, res) {
       if (!ID.test(id)) return res.status(400).json({ error: 'bad id' });
       if (tokenOwner(req) !== id && !authed()) return res.status(401).json({ error: 'auth' });
       const c = await read(id);
-      const m = c && c.membership;
+      const m = c && withFreeze(c.membership, await freezeRules());
       const almaty = (ts) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10);
       const today = almaty(Date.now());
       const plusDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
@@ -543,7 +564,8 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'GET' && op === 'list') {
-      return res.status(200).json({ clients: (await readAll()).map(publicClient).sort((a, b) => String(b.since).localeCompare(String(a.since))) });
+      const rule = await freezeRules();
+      return res.status(200).json({ clients: (await readAll()).map((c) => publicClient(c.membership ? { ...c, membership: withFreeze(c.membership, rule) } : c)).sort((a, b) => String(b.since).localeCompare(String(a.since))) });
     }
 
     // Entry/exit of a client at a club. The server clock is the source of truth for the visit.

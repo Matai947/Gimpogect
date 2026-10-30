@@ -561,7 +561,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!state.staffCode || !planId || (!isSelf && !remote)) return false;
       const today = toISODate(new Date());
       // An imported pass that was still waiting for its first entry starts today once the desk gives it dates.
-      const next: Membership = { planId, startDate: cur?.startDate ?? today, endDate: fields.endDate, freezeDaysLeft: cur?.freezeDaysLeft ?? remote?.pending?.freezeDays ?? 0, ...(cur?.frozenUntil ? { frozenUntil: cur.frozenUntil } : {}), ...(cur?.dayOnly || remote?.pending?.dayOnly || (!cur && picked?.dayOnly) ? { dayOnly: true } : {}), ...(fields.visitsLeft !== undefined ? { visitsLeft: fields.visitsLeft } : {}) };
+      // A pass that never froze and carries no freeze days (set by hand, brought from the old base) gets its plan's freeze rule.
+      const rule = planById(planId);
+      const perFreeze = rule && !rule.trial ? (rule.freezeDays ?? 0) : 0;
+      const count = perFreeze ? (rule?.freezeCount ?? 1) : 0;
+      const neverFroze = !cur || (cur.freezesLeft === undefined && !cur.freezeDaysLeft && !cur.frozenUntil);
+      const freeze = neverFroze && perFreeze && !remote?.pending?.freezeDays ? { freezeDaysLeft: perFreeze * count, freezesLeft: count, freezeMax: perFreeze } : {};
+      const next: Membership = { planId, startDate: cur?.startDate ?? today, endDate: fields.endDate, freezeDaysLeft: cur?.freezeDaysLeft ?? remote?.pending?.freezeDays ?? 0, ...(cur?.frozenUntil ? { frozenUntil: cur.frozenUntil } : {}), ...(cur?.dayOnly || remote?.pending?.dayOnly || (!cur && picked?.dayOnly) ? { dayOnly: true } : {}), ...(fields.visitsLeft !== undefined ? { visitsLeft: fields.visitsLeft } : {}), ...freeze };
       const ok = await grantRemote(state.staffCode, { id: memberId, name: isSelf ? state.user!.name : remote!.name, phone: isSelf ? state.user!.phone : remote!.phone, membership: next });
       if (!ok) return false;
       setState((s) => (isSelf ? { ...s, membership: next } : { ...s, remote: s.remote.map((x) => (x.id === memberId ? { ...x, membership: next, pending: undefined } : x)) }));
