@@ -14,7 +14,7 @@ grep -Eq '^TOKEN_SECRET=[0-9a-f]{64}$' $ENV || set_kv TOKEN_SECRET "$(openssl ra
 set_kv PORT 3100
 set_kv DIST_DIR /srv/sevengym/app/dist
 set_kv MEDIA_DIR /srv/sevengym/media
-set_kv PUBLIC_URL https://sevengym.matai.kz
+set_kv PUBLIC_URL https://7gym.kz
 set_kv DB_REST_URL http://127.0.0.1:3000
 set_kv BEHIND_NGINX 1
 cp deploy/sevengym.service /etc/systemd/system/sevengym.service
