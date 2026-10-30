@@ -25,6 +25,10 @@ do $$ begin
   if not exists (select from pg_roles where rolname = 'authenticator') then create role authenticator noinherit login; end if;
 end $$;
 grant web_anon to authenticator;
+-- running this file again (or over an older setup) never leaves rights with the role that has no token
+revoke all on all tables in schema public from web_anon;
+revoke all on all sequences in schema public from web_anon;
+revoke usage on schema public from web_anon;
 grant web_app to authenticator;
 grant usage on schema public to web_app;
 grant select, insert, update, delete on all tables in schema public to web_app;
