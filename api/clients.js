@@ -572,7 +572,9 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'GET' && op === 'list') {
       const rule = await freezeRules();
-      return res.status(200).json({ clients: (await readAll()).map((c) => publicClient(c.membership ? { ...c, membership: withFreeze(c.membership, rule) } : c)).sort((a, b) => String(b.since).localeCompare(String(a.since))) });
+      // the accountant gets only what the money screens count: no phones, profiles or sessions
+      const slim = (c) => ({ id: c.id, name: c.name, homeClubId: c.homeClubId, since: c.since, phone: '', ...(c.membership ? { membership: { planId: c.membership.planId, startDate: c.membership.startDate, endDate: c.membership.endDate } } : {}), ...(c.onefit ? { onefit: c.onefit } : {}) });
+      return res.status(200).json({ clients: (await readAll()).map((c) => (isAcc ? slim(c) : publicClient(c.membership ? { ...c, membership: withFreeze(c.membership, rule) } : c))).sort((a, b) => String(b.since).localeCompare(String(a.since))) });
     }
 
     // Entry/exit of a client at a club. The server clock is the source of truth for the visit.
