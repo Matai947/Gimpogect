@@ -34,7 +34,7 @@ export default function StaffTodayScreen() {
     <View style={styles.root}>
       <StaffHeader title={t('staff_tab_today')} />
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <PeriodSummary accent={StaffAccent} pick={canManage} money={canManage} />
+        {canManage ? <PeriodSummary accent={StaffAccent} pick money /> : null}
         {canManage ? <ExpensesPanel accent={StaffAccent} /> : null}
         <View style={styles.grid}>
           <Stat value={okCount} label={t('today_checkins')} icon="log-in-outline" color={Colors.success} onPress={() => router.push('/staff')} />
