@@ -958,7 +958,9 @@ module.exports = async function handler(req, res) {
       const day = Math.max(1, Math.min(31, int(body.day, 31) || 1));
       const id = /^\d{13}[a-z0-9]{3}$/.test(String(body.id)) ? body.id : newId();
       if (!plainText(title) || amount < 1 || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
-      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'exptpl:' + id, data: { id, clubId: body.clubId, title, amount, day, by: staffName('owner'), at: Date.now() } }) });
+      // an edit keeps the month the must-pay started in, so earlier months do not change
+      const was = (await sb(`settings?key=eq.exptpl:${id}&select=data`))[0]?.data;
+      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'exptpl:' + id, data: { id, clubId: body.clubId, title, amount, day, by: staffName('owner'), at: was?.at ?? Date.now() } }) });
       return res.status(200).json({ ok: true, id });
     }
     if (req.method === 'POST' && op === 'exp-tpl-del') {

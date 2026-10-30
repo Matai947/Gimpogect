@@ -17,7 +17,7 @@ const shiftMonth = (m: string, d: number) => {
 };
 const digits = (s: string) => Number(s.replace(/\D/g, '')) || 0;
 
-type Form = { kind: 'tpl'; id?: string; title: string; amount: string; day: string } | { kind: 'pay'; tpl?: ExpenseTpl; title: string; amount: string; method: 'cash' | 'noncash'; note: string };
+type Form = { kind: 'tpl'; id?: string; clubId?: string; title: string; amount: string; day: string } | { kind: 'pay'; tpl?: ExpenseTpl; title: string; amount: string; method: 'cash' | 'noncash'; note: string };
 
 /**
  * The club's expenses by month: the must-pays (rent, utilities, salaries) with paid / not yet, and one-off expenses.
@@ -48,7 +48,7 @@ export function ExpensesPanel({ accent, owner }: { accent: string; owner?: boole
 
   const inClub = (id: string) => club === 'all' || id === club;
   const v = useMemo(() => {
-    const tpls = (data?.templates ?? []).filter((x) => inClub(x.clubId)).sort((a, b) => a.day - b.day);
+    const tpls = (data?.templates ?? []).filter((x) => inClub(x.clubId) && (!x.at || monthOf(x.at) <= month)).sort((a, b) => a.day - b.day);
     const pays = (data?.payments ?? []).filter((x) => x.month === month && inClub(x.clubId)).sort((a, b) => b.ts - a.ts);
     const paidOf = (id: string) => pays.filter((p) => p.tplId === id);
     const planned = tpls.reduce((n, x) => n + x.amount, 0);
@@ -61,7 +61,7 @@ export function ExpensesPanel({ accent, owner }: { accent: string; owner?: boole
 
   const save = async () => {
     if (!form) return;
-    const clubId = club === 'all' ? (form.kind === 'pay' && form.tpl ? form.tpl.clubId : clubs[0].id) : club;
+    const clubId = form.kind === 'pay' && form.tpl ? form.tpl.clubId : form.kind === 'tpl' && form.clubId ? form.clubId : club === 'all' ? clubs[0].id : club;
     setBusy(true);
     const ok =
       form.kind === 'tpl'
@@ -178,7 +178,7 @@ export function ExpensesPanel({ accent, owner }: { accent: string; owner?: boole
                 </T>
               </View>
               {!paid.length ? <Button title={t('ex_pay')} size="sm" onPress={() => setForm({ kind: 'pay', tpl: x, title: x.title, amount: String(x.amount), method: 'noncash', note: '' })} style={{ backgroundColor: accent, paddingHorizontal: 12 }} /> : null}
-              <Pressable onPress={() => setForm({ kind: 'tpl', id: x.id, title: x.title, amount: String(x.amount), day: String(x.day) })} hitSlop={8}>
+              <Pressable onPress={() => setForm({ kind: 'tpl', id: x.id, clubId: x.clubId, title: x.title, amount: String(x.amount), day: String(x.day) })} hitSlop={8}>
                 <Ionicons name="create-outline" size={18} color={Colors.textMuted} />
               </Pressable>
             </View>

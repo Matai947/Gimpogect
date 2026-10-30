@@ -141,7 +141,7 @@ export type SafeEntry = { id: string; ts: number; clubId: string; kind: 'in' | '
 export const fetchSafe = async (code: string) => (await call<{ entries: SafeEntry[] }>('safe', { code }))?.entries ?? null;
 export const safeOp = (code: string, b: { clubId: string; kind: 'in' | 'out'; amount: number; note: string }) => call<{ ok: true }>('safe-op', { method: 'POST', code, body: b });
 /** A must-pay of a club, every month by a day (rent, utilities, salaries). */
-export type ExpenseTpl = { id: string; clubId: string; title: string; amount: number; day: number; by: string };
+export type ExpenseTpl = { id: string; clubId: string; title: string; amount: number; day: number; by: string; at?: number };
 /** An expense paid: of a must-pay for a month (tplId) or a one-off. */
 export type Expense = { id: string; ts: number; clubId: string; month: string; tplId?: string; title: string; amount: number; method: 'cash' | 'noncash'; note: string; staff: string };
 export const fetchExpenses = async (code: string) => (await call<{ templates: ExpenseTpl[]; payments: Expense[] }>('expenses', { code })) ?? null;
