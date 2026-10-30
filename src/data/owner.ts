@@ -18,6 +18,8 @@ export type Sale = {
   refunded?: number; // sale: already returned
   reason?: string; // refund: why the money went back
   items?: { id: string; qty: number }[]; // shop: what was sold, so the shelf count follows
+  disc?: number; // the desk's discount on this check, percent
+  off?: number; // how much that discount took off this line, in tenge
   refundOf?: string; // refund / debt payment: the row it belongs to
   synced?: boolean; // reached the server
 };

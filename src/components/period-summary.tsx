@@ -72,8 +72,10 @@ export function PeriodSummary({ club, accent }: { club: string; accent: string }
     const checks = new Set(rows.filter((x) => ['plan', 'shop', 'personal'].includes(x.kind)).map((x) => `${x.staff}|${x.memberId ?? ''}|${Math.round(x.ts / 10000)}`)).size;
     const cash = g.bar.cash + g.plans.cash + g.trainers.cash;
     const nonCash = g.bar.nonCash + g.plans.nonCash + g.trainers.nonCash;
+    const discRows = rows.filter((x) => x.disc && x.kind !== 'refund');
+    const given = discRows.reduce((n, x) => n + (x.off ?? 0), 0);
     const spent = expenses.filter((e) => (club === 'all' || e.clubId === club) && dayOf(e.ts) >= from && dayOf(e.ts) <= to).reduce((n, e) => n + e.amount, 0);
-    return { revenue, refunds, checks, cash, nonCash, other: revenue - cash - nonCash, kinds, spent, days: Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1 };
+    return { revenue, refunds, checks, cash, nonCash, other: revenue - cash - nonCash, kinds, spent, given, givenN: discRows.length, days: Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1 };
   }, [ok, daysBack, older, loaded, club, from, to, expenses]);
 
   const set = (a: string, b: string) => {
@@ -128,6 +130,7 @@ export function PeriodSummary({ club, accent }: { club: string; accent: string }
           <Line label={t('grp_plans')} value={r.kinds.plans} />
           <Line label={t('grp_bar')} value={r.kinds.bar} />
           <Line label={t('grp_trainers')} value={r.kinds.trainers} />
+          {r.given ? <Line label={t('ps_discounts', { n: r.givenN })} value={r.given} muted /> : null}
           <View style={styles.sep} />
           <Line label={t('ex_spent_period')} value={-r.spent} />
           <Row style={{ justifyContent: 'space-between' }}>

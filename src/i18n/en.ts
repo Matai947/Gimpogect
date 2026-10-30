@@ -56,6 +56,8 @@ export const en: Record<TKey, string> = {
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
   trainer_quals: 'Qualifications',
+  pos_manual_disc: 'Discount:',
+  ps_discounts: 'Desk discounts ({n})',
   acc_title: 'Accountant',
   role_accountant: 'Accountant',
   role_accountant_hint: 'Sees the money: overview, payments, reports, period totals, safe and drawers. Keeps the expenses. Sells nothing and changes no clients or settings.',

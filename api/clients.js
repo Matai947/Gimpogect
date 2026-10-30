@@ -707,6 +707,8 @@ module.exports = async function handler(req, res) {
       const ts = Number(body.ts) > now - 30 * 86400000 && Number(body.ts) < now + 3600000 ? Math.round(Number(body.ts)) : now;
       const sale = { id, ts, kind, title: str(body.title, 120), name: str(body.name, 60), memberId: str(body.memberId, 20), amount: int(body.amount, 10000000), clubId: body.clubId, method: METHODS.includes(body.method) ? body.method : 'cash', staff: str(body.staff, 40) };
       if (/^t\d{1,3}$/.test(String(body.trainerId))) sale.trainerId = body.trainerId;
+      if ([10, 20, 30, 50, 100].includes(Number(body.disc))) sale.disc = Number(body.disc);
+      if (sale.disc && body.off != null) sale.off = int(body.off, 10000000);
       if (kind === 'debt') sale.remaining = Math.min(sale.amount, int(body.remaining ?? body.amount, 10000000));
       const items = Array.isArray(body.items) ? body.items.slice(0, 50).map((i) => ({ id: str(i && i.id, 24), qty: int(i && i.qty, 100000) })).filter((i) => /^[A-Za-z0-9_-]{1,24}$/.test(i.id) && i.qty >= 1) : [];
       // the same product twice in one check is one line, so what leaves and what comes back are counted once
@@ -717,7 +719,7 @@ module.exports = async function handler(req, res) {
       // return=representation: an empty answer means this id was already stored, so the shelf is not charged twice
       const stored = await sb('sales?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=representation' }, body: JSON.stringify({ id, ts, data: sale }) });
       // a zero-amount "sale" cannot write stock off: units leave the shelf only with money (a write-off is the manager's count on the product card)
-      if (kind === 'shop' && items.length && sale.amount >= 1 && Array.isArray(stored) && stored.length) {
+      if (kind === 'shop' && items.length && (sale.amount >= 1 || sale.disc === 100) && Array.isArray(stored) && stored.length) {
         const moved = await adjustStock(items, -1, sale.clubId);
         if (moved.length) await sb(`sales?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...sale, items: items.map((i) => ({ ...i, taken: (moved.find((m) => m.id === i.id) || {}).taken ?? 0 })) } }) });
       }

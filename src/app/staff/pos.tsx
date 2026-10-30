@@ -20,7 +20,7 @@ import { MEMBER_DISCOUNT } from '@/data/shop';
 import { useApp, useCanManage, useCatalog, useI18n, useMembers, usePlans, useRawSales, type MemberInfo } from '@/store/app-context';
 
 type Line = { key: string; title: string; price: number; qty: number; planId?: string; productId?: string; trainerId?: string; grams?: number };
-type Receipt = { id: string; ts: number; lines: Line[]; subtotal: number; discount: number; total: number; debt?: number; method: PayMethod; client?: MemberInfo; mixCash?: number; mixOther?: PayMethod };
+type Receipt = { id: string; ts: number; lines: Line[]; subtotal: number; discount: number; total: number; debt?: number; method: PayMethod; client?: MemberInfo; mixCash?: number; mixOther?: PayMethod; disc?: number };
 
 const PLANS_TAB = '__plans';
 const TRAINERS_TAB = '__trainers';
@@ -58,6 +58,7 @@ export default function StaffPosScreen() {
   const [error, setError] = useState<string | null>(null);
   const [partial, setPartial] = useState(false);
   const [promoCode, setPromoCode] = useState('');
+  const [manualPct, setManualPct] = useState(0); // the desk's own discount on the whole check
   const [settle, setSettle] = useState('');
   const [scanOpen, setScanOpen] = useState(false);
   const [code, setCode] = useState('');
@@ -81,9 +82,12 @@ export default function StaffPosScreen() {
   const promo = promoCode.trim() ? promoByCode(promoCode, toISODate(new Date()), staff?.clubId) : undefined;
   const promoDisc = promo ? promoDiscount(promo, subtotal) : 0;
   const usePromo = promoDisc > memberDisc;
-  const discount = usePromo ? promoDisc : memberDisc;
-  // With a promo every sale row carries its share of the discount; with the member discount only goods do.
-  const share = usePromo && subtotal > 0 ? (subtotal - discount) / subtotal : 1;
+  // The desk's discount (10–100%) replaces the others and takes the percent off the whole check.
+  const discount = manualPct ? Math.round((subtotal * manualPct) / 100) : usePromo ? promoDisc : memberDisc;
+  const whole = !!manualPct || usePromo;
+  // With a promo or the desk's discount every sale row carries its share; with the member discount only goods do.
+  const share = whole && subtotal > 0 ? (subtotal - discount) / subtotal : 1;
+  const meta = (full: number, paid: number) => (manualPct ? { disc: manualPct, off: full - paid } : {});
   const total = subtotal - discount;
   const received = Number(cash.replace(/\D/g, '')) || 0;
   const change = received - total; // negative = not enough cash
@@ -153,25 +157,31 @@ export default function StaffPosScreen() {
     // Plans go through grantPlan so the client gets access and the owner sees the sale; goods are one receipt.
     planLines.forEach((l) => {
       for (let i = 0; i < l.qty; i++) {
-        const amount = usePromo ? Math.round(l.price * share) : l.price;
-        grantPlan(client!.id, l.planId!, amount, parts(amount));
+        const amount = whole ? Math.round(l.price * share) : l.price;
+        grantPlan(client!.id, l.planId!, amount, parts(amount), meta(l.price, amount));
       }
     });
     // Personal training: one sale per package, tied to the trainer for the owner's reports.
     trainerLines.forEach((l) => {
-      for (let i = 0; i < l.qty; i++) parts(usePromo ? Math.round(l.price * share) : l.price).forEach((p) => recordSale({ memberId: client!.id, name: client!.name, title: l.title, kind: 'personal', amount: p.amount, method: p.method, trainerId: l.trainerId }));
+      for (let i = 0; i < l.qty; i++) {
+        const amount = whole ? Math.round(l.price * share) : l.price;
+        parts(amount).forEach((p, k) => recordSale({ memberId: client!.id, name: client!.name, title: l.title, kind: 'personal', amount: p.amount, method: p.method, trainerId: l.trainerId, ...(k === 0 ? meta(l.price, amount) : {}) }));
+      }
     });
     const goodLines = lines.filter((l) => !l.planId && !l.trainerId);
     if (goodLines.length) {
       // the shelf is taken once: the goods travel on the first row only
-      parts(usePromo ? Math.round(goodLines.reduce((sum, l) => sum + l.price * l.qty, 0) * share) : goods - memberDisc).forEach((p, i) => recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: p.amount, method: p.method, ...(i === 0 ? { items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.grams ?? l.qty })) } : {}) }));
+      const goodsPaid = whole ? Math.round(goods * share) : goods - memberDisc;
+      const goodsParts = parts(goodsPaid);
+      // a 100% discount still writes the goods down, with a zero, so the shelf follows and the owner sees it
+      (goodsParts.length ? goodsParts : [{ method, amount: 0 }]).forEach((p, i) => recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: p.amount, method: p.method, ...(i === 0 ? { items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.grams ?? l.qty })), ...meta(goods, goodsPaid) } : {}) }));
       // the shelf counts come back from the server once the sale has reached it
       setTimeout(() => void refreshContent(), 2500);
     }
     if (debtAmt > 0) recordSale({ memberId: client!.id, name: client!.name, title: t('pos_debt_title'), kind: 'debt', amount: debtAmt, remaining: debtAmt, method });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     const ts = newTs();
-    setReceipt({ id: ts.toString(36).toUpperCase(), ts, lines, subtotal, discount, total, debt: debtAmt || undefined, method, client: client ?? undefined, ...(mix ? { mixCash, mixOther } : {}) });
+    setReceipt({ id: ts.toString(36).toUpperCase(), ts, lines, subtotal, discount, total, debt: debtAmt || undefined, method, client: client ?? undefined, ...(mix ? { mixCash, mixOther } : {}), ...(manualPct ? { disc: manualPct } : {}) });
   };
 
   /** The client brings money for an old debt: oldest debts first. */
@@ -221,6 +231,7 @@ export default function StaffPosScreen() {
     setPartial(false);
     setMix(false);
     setPromoCode('');
+    setManualPct(0);
   };
 
   const clientSearch = (
@@ -300,7 +311,7 @@ export default function StaffPosScreen() {
               </Row>
             ))}
             <View style={styles.dash} />
-            {receipt.discount ? <Sum label={t('pos_discount')} value={`−${formatPrice(receipt.discount)}`} /> : null}
+            {receipt.discount ? <Sum label={receipt.disc ? `${t('pos_discount')} ${receipt.disc}%` : t('pos_discount')} value={`−${formatPrice(receipt.discount)}`} /> : null}
             <Sum label={t('pos_total')} value={formatPrice(receipt.total)} big />
             {receipt.debt ? <Sum label={t('pos_debt_title')} value={formatPrice(receipt.debt)} /> : null}
             {receipt.mixCash ? (
@@ -539,8 +550,16 @@ export default function StaffPosScreen() {
               ))}
             </ScrollView>
             <View style={styles.dash} />
-            {discount ? <Sum label={t('pos_discount')} value={`−${formatPrice(discount)}`} /> : null}
+            {discount ? <Sum label={manualPct ? `${t('pos_discount')} ${manualPct}%` : t('pos_discount')} value={`−${formatPrice(discount)}`} /> : null}
             <Sum label={t('pos_total')} value={formatPrice(total)} big />
+            <Row gap={6} style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+              <T type="small" color={Colors.textSecondary}>
+                {t('pos_manual_disc')}
+              </T>
+              {[10, 20, 30, 50, 100].map((p) => (
+                <Chip key={p} label={`${p}%`} active={manualPct === p} onPress={() => setManualPct((v) => (v === p ? 0 : p))} />
+              ))}
+            </Row>
             <Row gap={Spacing.two} style={{ alignItems: 'center' }}>
               <Ionicons name="pricetag-outline" size={16} color={StaffAccent} />
               <TextInput value={promoCode} onChangeText={setPromoCode} placeholder={t('pos_promo_ph')} placeholderTextColor={Colors.textMuted} autoCapitalize="characters" style={[styles.searchInput, { height: 38, flex: 1 }]} />

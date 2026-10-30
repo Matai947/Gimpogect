@@ -116,7 +116,7 @@ type Actions = {
   completeOnboarding: (profile: FitnessProfile) => void;
   /** Manager: the client's home club changes; they move to that club's list. */
   moveClient: (memberId: string, clubId: string) => Promise<boolean>;
-  grantPlan: (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[]) => void;
+  grantPlan: (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[], meta?: { disc?: number; off?: number }) => void;
   /** The desk corrects a client's current plan: when it ends and how many visits are left. No sale is recorded. */
   editMembership: (memberId: string, fields: { planId?: string; endDate: string; visitsLeft?: number }) => Promise<boolean>;
   /** Manager or owner: a plan added by mistake becomes the right one (same start date, what was used stays used). No sale is recorded. */
@@ -603,7 +603,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const grantPlan = useCallback(
-    (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[]) => {
+    (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[], meta?: { disc?: number; off?: number }) => {
       const plan = planById(planId);
       if (!plan) return;
       // Clients that exist on the server get the new plan there too, so their own phone picks it up.
@@ -616,8 +616,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setState((s) => {
         const price = amount ?? s.planPrices[planId]?.price ?? plan.price;
         // one row per way it was paid: a mixed payment (cash + Kaspi) is two rows, so the drawer counts only the cash
-        const parts = (pays ?? [{ method: 'desk' as PayMethod, amount: price }]).filter((p) => p.amount > 0);
-        const sold = (name: string): Sale[] => [...parts.map((p): Sale => ({ id: `S${Date.now()}${Math.random().toString(36).slice(2, 5)}`, ts: Date.now(), memberId, name, title: plan.name, kind: 'plan', amount: p.amount, clubId: s.staff?.clubId ?? 'c1', method: p.method, staff: s.staff?.name ?? '' })), ...s.sales];
+        const parts = (pays ?? [{ method: 'desk' as PayMethod, amount: price }]).filter((p, i) => p.amount > 0 || (i === 0 && meta?.disc === 100));
+        const sold = (name: string): Sale[] => [...parts.map((p, i): Sale => ({ id: `S${Date.now()}${Math.random().toString(36).slice(2, 5)}`, ts: Date.now(), memberId, name, title: plan.name, kind: 'plan', amount: p.amount, clubId: s.staff?.clubId ?? 'c1', method: p.method, staff: s.staff?.name ?? '', ...(i === 0 && meta?.disc ? { disc: meta.disc, off: meta.off } : {}) })), ...s.sales];
         if (s.user?.id === memberId) return { ...s, sales: sold(s.user.name), trialUsed: s.trialUsed || (!!plan.trial && !plan.staffOnly), membership: extendMembership(s.membership, planId) };
         const r = s.remote.find((x) => x.id === memberId);
         if (r) {

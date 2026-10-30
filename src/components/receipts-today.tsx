@@ -145,6 +145,7 @@ export function ReceiptsToday({ accent }: { accent: string }) {
                     </T>
                     <T type="small" color={Colors.textMuted} numberOfLines={1}>
                       {payOf(c)} • {c.staff}
+                      {c.rows.find((r) => r.disc) ? ` • ${t('pos_discount')} ${c.rows.find((r) => r.disc)!.disc}%` : ''}
                     </T>
                   </View>
                   <T type="body" style={{ fontWeight: '800', textDecorationLine: cancelled ? 'line-through' : 'none' }}>
