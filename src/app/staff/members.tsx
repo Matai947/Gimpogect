@@ -10,7 +10,7 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { addDays, clubs, toISODate } from '@/data/mock';
 import { useApp, useCanManage, useI18n, useMembers } from '@/store/app-context';
 
-type Filter = 'all' | 'new' | 'active' | 'expiring' | 'expired' | 'frozen';
+type Filter = 'all' | 'new' | 'active' | 'expiring' | 'expired' | 'frozen' | 'onefit';
 
 export default function StaffMembersScreen() {
   const { t, td } = useI18n();
@@ -37,6 +37,7 @@ export default function StaffMembersScreen() {
         if (filter === 'expiring') return m.active && m.daysLeft <= 7;
         if (filter === 'expired') return !m.active;
         if (filter === 'frozen') return m.frozen;
+        if (filter === 'onefit') return m.onefitVisits !== undefined;
         return true;
       })
       .filter((m) => (q ? m.name.toLowerCase().includes(q) || m.phone.replace(/\s/g, '').includes(q.replace(/\s/g, '')) || m.id.includes(q) : true))
@@ -50,6 +51,7 @@ export default function StaffMembersScreen() {
     { key: 'expiring', label: t('filter_expiring') },
     { key: 'expired', label: t('filter_expired') },
     { key: 'frozen', label: t('filter_frozen') },
+    { key: 'onefit', label: '1Fit' },
   ];
 
   return (
@@ -111,7 +113,7 @@ export default function StaffMembersScreen() {
                   ) : null}
                 </Row>
                 <T type="small" color={Colors.textSecondary} numberOfLines={1}>
-                  {m.phone} • {m.planName ? `${td(m.planName)}${m.active ? `, ${t('member_days_left', { n: m.daysLeft })}` : ''}` : t('member_no_plan')}
+                  {m.phone} • {m.planName ? `${td(m.planName)}${m.active ? `, ${t('member_days_left', { n: m.daysLeft })}` : ''}` : m.onefitVisits !== undefined ? t('member_onefit', { n: m.onefitVisits, date: m.onefitLast ? m.onefitLast.split('-').reverse().join('.') : '—' }) : t('member_no_plan')}
                 </T>
               </View>
               <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />

@@ -56,6 +56,7 @@ export const en: Record<TKey, string> = {
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
   trainer_quals: 'Qualifications',
+  member_onefit: '1Fit: {n} visits, last {date}',
   pos_manual_disc: 'Discount:',
   ps_discounts: 'Desk discounts ({n})',
   acc_title: 'Accountant',

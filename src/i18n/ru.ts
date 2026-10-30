@@ -57,6 +57,7 @@ export const ru = {
   auth_terms: 'Продолжая, вы соглашаетесь с условиями членства и политикой конфиденциальности',
   rules_title: 'Правила клуба',
   trainer_quals: 'Квалификация',
+  member_onefit: '1Fit: {n} визит(ов), последний {date}',
   pos_manual_disc: 'Скидка:',
   ps_discounts: 'Скидки на кассе ({n})',
   acc_title: 'Бухгалтер',

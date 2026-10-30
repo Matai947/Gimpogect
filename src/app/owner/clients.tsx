@@ -11,7 +11,7 @@ import { goalTitle } from '@/data/fitness';
 import { clubById, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
 import { useI18n, useMembers, useSales } from '@/store/app-context';
 
-type Filter = 'all' | 'active' | 'expiring' | 'expired' | 'frozen';
+type Filter = 'all' | 'active' | 'expiring' | 'expired' | 'frozen' | 'onefit';
 
 export default function OwnerClients() {
   const { t, td } = useI18n();
@@ -35,6 +35,7 @@ export default function OwnerClients() {
         if (filter === 'expiring') return m.active && m.daysLeft <= 7;
         if (filter === 'expired') return !m.active;
         if (filter === 'frozen') return m.frozen;
+        if (filter === 'onefit') return m.onefitVisits !== undefined;
         return true;
       })
       .filter((m) => (q ? m.name.toLowerCase().includes(q) || m.phone.replace(/\s/g, '').includes(q.replace(/\s/g, '')) : true))
@@ -47,6 +48,7 @@ export default function OwnerClients() {
     { key: 'expiring', label: t('filter_expiring') },
     { key: 'expired', label: t('filter_expired') },
     { key: 'frozen', label: t('filter_frozen') },
+    { key: 'onefit', label: '1Fit' },
   ];
 
   return (
@@ -79,7 +81,7 @@ export default function OwnerClients() {
                     {m.name}
                   </T>
                   <T type="small" color={Colors.textSecondary} numberOfLines={1}>
-                    {m.planName ? `${td(m.planName)}${m.active ? ` • ${t('member_days_left', { n: m.daysLeft })}` : ''}` : t('member_no_plan')}
+                    {m.planName ? `${td(m.planName)}${m.active ? ` • ${t('member_days_left', { n: m.daysLeft })}` : ''}` : m.onefitVisits !== undefined ? t('member_onefit', { n: m.onefitVisits, date: m.onefitLast ? m.onefitLast.split('-').reverse().join('.') : '—' }) : t('member_no_plan')}
                   </T>
                 </View>
                 <T type="small" color={OwnerAccent} style={{ fontWeight: '700' }}>

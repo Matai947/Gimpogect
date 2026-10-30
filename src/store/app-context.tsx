@@ -981,6 +981,8 @@ export type MemberInfo = {
   homeClubId: string;
   visitsThisMonth: number;
   note?: string;
+  onefitVisits?: number; // came through 1Fit this many times
+  onefitLast?: string; // the last 1Fit visit, a day
   isSelf: boolean;
   since: string;
   lastVisit?: string;
@@ -1021,6 +1023,8 @@ export function useMembers() {
         homeClubId: m.homeClubId,
         visitsThisMonth: m.visitsThisMonth,
         note: m.note,
+        onefitVisits: m.onefitVisits,
+        onefitLast: m.onefitLast,
         isSelf,
         since: m.since,
         lastVisit: m.lastVisit,
@@ -1046,7 +1050,7 @@ export function useMembers() {
     const fresh = remote
       .filter((r) => r.id !== user?.id && !members.some((m) => m.id === r.id))
       .map((r) => {
-        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId ?? r.pending?.planId, endDate: r.membership?.endDate ?? (r.pending ? toISODate(addDays(today, r.pending.days)) : undefined), pendingActivation: !!r.pending && !r.membership, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, note: r.note, trialUsed: r.trialUsed, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0, freezesLeft: r.membership?.freezesLeft, freezeMax: r.membership?.freezeMax, visitsLeft: r.membership?.visitsLeft ?? r.pending?.visitsLeft }, false);
+        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId ?? r.pending?.planId, endDate: r.membership?.endDate ?? (r.pending ? toISODate(addDays(today, r.pending.days)) : undefined), pendingActivation: !!r.pending && !r.membership, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, note: r.note, onefitVisits: r.onefit?.length || (r.note === '1Fit' ? 0 : undefined), onefitLast: r.onefit?.length ? r.onefit[r.onefit.length - 1].d : undefined, trialUsed: r.trialUsed, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0, freezesLeft: r.membership?.freezesLeft, freezeMax: r.membership?.freezeMax, visitsLeft: r.membership?.visitsLeft ?? r.pending?.visitsLeft }, false);
         info.params = r.profile?.heightCm ? `${r.profile.heightCm} см • ${r.profile.weightKg} кг` : undefined;
         return info;
       });
