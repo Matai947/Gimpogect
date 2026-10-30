@@ -7,7 +7,8 @@ chown -R sevengym:sevengym /srv/sevengym
 ENV=/etc/sevengym.env
 touch $ENV && chmod 600 $ENV
 set_kv() { grep -q "^$1=" $ENV && sed -i "s|^$1=.*|$1=$2|" $ENV || echo "$1=$2" >> $ENV; }
-grep -q '^OWNER_CODE=.\+' $ENV || set_kv OWNER_CODE "000000"
+# a placeholder nobody can type at the login (not digits) until copy-secrets.ps1 puts the real code
+grep -q '^OWNER_CODE=.\+' $ENV || set_kv OWNER_CODE "unset-$(openssl rand -hex 16)"
 grep -q '^TOKEN_SECRET=.\+' $ENV || set_kv TOKEN_SECRET "temporary-until-copy-secrets-$(openssl rand -hex 8)"
 set_kv PORT 3100
 set_kv DIST_DIR /srv/sevengym/app/dist

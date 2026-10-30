@@ -7,7 +7,8 @@ sudo -u postgres psql -tAc "select 1 from pg_database where datname='sevengym'" 
 sudo -u postgres psql -q -d sevengym -f schema.sql
 PW=$(openssl rand -hex 24)
 JWT=$(openssl rand -hex 32)
-sudo -u postgres psql -q -d sevengym -c "alter role authenticator password '$PW'"
+printf "alter role authenticator password '%s';
+" "$PW" | sudo -u postgres psql -q -d sevengym
 mkdir -p /etc/postgrest
 cat > /etc/postgrest/sevengym.conf <<EOF
 db-uri = "postgres://authenticator:$PW@127.0.0.1:5432/sevengym"
@@ -21,7 +22,7 @@ EOF
 chmod 600 /etc/postgrest/sevengym.conf
 cp postgrest.service /etc/systemd/system/postgrest.service
 systemctl daemon-reload && systemctl enable -q --now postgrest && sleep 2 && systemctl restart postgrest && sleep 2
-TOKEN=$(node -e "const c=require('crypto'),b=o=>Buffer.from(JSON.stringify(o)).toString('base64url'),h=b({alg:'HS256',typ:'JWT'}),p=b({role:'web_app'});console.log(h+'.'+p+'.'+c.createHmac('sha256',process.argv[1]).update(h+'.'+p).digest('base64url'))" "$JWT")
+TOKEN=$(JWT="$JWT" node -e "const c=require('crypto'),b=o=>Buffer.from(JSON.stringify(o)).toString('base64url'),h=b({alg:'HS256',typ:'JWT'}),p=b({role:'web_app'});console.log(h+'.'+p+'.'+c.createHmac('sha256',process.env.JWT).update(h+'.'+p).digest('base64url'))")
 touch /etc/sevengym.env && chmod 600 /etc/sevengym.env
 grep -q '^DB_REST_TOKEN=' /etc/sevengym.env && sed -i "s|^DB_REST_TOKEN=.*|DB_REST_TOKEN=$TOKEN|" /etc/sevengym.env || echo "DB_REST_TOKEN=$TOKEN" >> /etc/sevengym.env
 echo "with token: $(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" 'http://127.0.0.1:3000/settings?limit=1')  without: $(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:3000/settings?limit=1')"
