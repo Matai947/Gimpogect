@@ -14,7 +14,8 @@ function TabIcon({ name, outline, color, focused }: IconProps & { name: IconName
 }
 
 export default function OwnerLayout() {
-  const { owner, hydrated } = useApp();
+  const { owner, accountant, hydrated } = useApp();
+  const hide = accountant ? { href: null } : {};
   const { t } = useI18n();
   if (!hydrated) return null;
   if (!owner) return <Redirect href="/staff-login" />;
@@ -30,12 +31,12 @@ export default function OwnerLayout() {
         tabBarAllowFontScaling: false,
       }}>
       <Tabs.Screen name="index" options={{ title: t('tab_overview'), tabBarIcon: (p: IconProps) => <TabIcon name="stats-chart" outline="stats-chart-outline" {...p} /> }} />
-      <Tabs.Screen name="clients" options={{ title: t('tab_clients'), tabBarIcon: (p: IconProps) => <TabIcon name="people" outline="people-outline" {...p} /> }} />
+      <Tabs.Screen name="clients" options={{ ...hide, title: t('tab_clients'), tabBarIcon: (p: IconProps) => <TabIcon name="people" outline="people-outline" {...p} /> }} />
       <Tabs.Screen name="sales" options={{ title: t('tab_sales'), tabBarIcon: (p: IconProps) => <TabIcon name="card" outline="card-outline" {...p} /> }} />
       <Tabs.Screen name="safe" options={{ title: t('tab_safe'), tabBarIcon: (p: IconProps) => <TabIcon name="lock-closed" outline="lock-closed-outline" {...p} /> }} />
       <Tabs.Screen name="reports" options={{ title: t('tab_reports'), tabBarIcon: (p: IconProps) => <TabIcon name="bar-chart" outline="bar-chart-outline" {...p} /> }} />
-      <Tabs.Screen name="settings" options={{ title: t('tab_settings'), tabBarIcon: (p: IconProps) => <TabIcon name="settings" outline="settings-outline" {...p} /> }} />
-      <Tabs.Screen name="clubs" options={{ title: t('tab_clubs_o'), tabBarIcon: (p: IconProps) => <TabIcon name="business" outline="business-outline" {...p} /> }} />
+      <Tabs.Screen name="settings" options={{ ...hide, title: t('tab_settings'), tabBarIcon: (p: IconProps) => <TabIcon name="settings" outline="settings-outline" {...p} /> }} />
+      <Tabs.Screen name="clubs" options={{ ...hide, title: t('tab_clubs_o'), tabBarIcon: (p: IconProps) => <TabIcon name="business" outline="business-outline" {...p} /> }} />
     </Tabs>
   );
 }

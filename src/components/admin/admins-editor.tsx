@@ -75,7 +75,7 @@ export function AdminsEditor({ accent }: { accent: string }) {
                 {a.name}
               </T>
               <T type="small" color={Colors.textMuted}>
-                {a.role === 'manager' ? t('role_manager') : t('role_admin')} • {t('admin_code_set', { date: new Date(a.at).toLocaleDateString('ru-RU') })}
+                {a.role === 'manager' ? t('role_manager') : a.role === 'accountant' ? t('role_accountant') : t('role_admin')} • {t('admin_code_set', { date: new Date(a.at).toLocaleDateString('ru-RU') })}
               </T>
             </View>
             <T type="small" color={accent} style={{ fontWeight: '700', padding: 6 }} onPress={() => startEdit(a)}>
@@ -99,9 +99,10 @@ export function AdminsEditor({ accent }: { accent: string }) {
         <ChipRow>
           <Chip label={t('role_admin')} active={role === 'admin'} onPress={() => setRole('admin')} />
           <Chip label={t('role_manager')} active={role === 'manager'} onPress={() => setRole('manager')} />
+          <Chip label={t('role_accountant')} active={role === 'accountant'} onPress={() => setRole('accountant')} />
         </ChipRow>
         <T type="small" color={Colors.textMuted}>
-          {role === 'manager' ? t('role_manager_hint') : t('role_admin_hint')}
+          {role === 'manager' ? t('role_manager_hint') : role === 'accountant' ? t('role_accountant_hint') : t('role_admin_hint')}
         </T>
         <Field label={editing ? t('admin_new_code') : t('admin_code')} value={code} onChange={(v) => setCode(v.replace(/\D/g, '').slice(0, 8))} keyboard="number-pad" placeholder="••••••" />
         <T type="small" color={Colors.textMuted}>

@@ -12,7 +12,7 @@ export const OwnerAccent = '#B8952B';
 
 /** Gold header band for owner CRM screens. Exit is direct: Alert.alert is a no-op on web. */
 export function OwnerHeader({ title }: { title: string }) {
-  const { ownerLogout } = useApp();
+  const { ownerLogout, accountant } = useApp();
   const { t } = useI18n();
   return (
     <SafeAreaView edges={['top']} style={styles.wrap}>
@@ -21,7 +21,7 @@ export function OwnerHeader({ title }: { title: string }) {
           <View style={styles.tag}>
             <Ionicons name="briefcase" size={13} color={OwnerAccent} />
             <T type="small" color={OwnerAccent} style={{ fontWeight: '700', fontSize: 12 }}>
-              {t('owner_title')}
+              {accountant ? t('acc_title') : t('owner_title')}
             </T>
           </View>
           <Row gap={4}>

@@ -32,6 +32,12 @@ export default function StaffLoginScreen() {
       router.replace('/owner' as Href); // typed-routes cache can lag behind new route folders
       return;
     }
+    // the accountant works in the owner's money screens
+    if (r.data.role === 'accountant') {
+      ownerLogin(r.data.token, true);
+      router.replace('/owner' as Href);
+      return;
+    }
     staffLogin(r.data.name, clubId, r.data.token, r.data.role);
     router.replace('/staff');
   };

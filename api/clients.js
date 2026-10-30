@@ -282,7 +282,7 @@ const adminFrom = async (req) => {
   const expect = sign(who + '.' + version + '.' + exp);
   if (sig.length !== expect.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect))) return null;
   const rec = (await sb(`settings?key=eq.admin:${who.slice(1)}&select=data`))[0]?.data;
-  return rec && String(rec.at) === version ? { id: rec.id, name: rec.name, role: rec.role === 'manager' ? 'manager' : 'admin' } : null;
+  return rec && String(rec.at) === version ? { id: rec.id, name: rec.name, role: rec.role === 'manager' ? 'manager' : rec.role === 'accountant' ? 'accountant' : 'admin' } : null;
 };
 const listAdmins = async () => (await sb('settings?key=like.admin:*&select=data&order=key')).map((r) => r.data);
 
@@ -358,7 +358,9 @@ module.exports = async function handler(req, res) {
   if (!OWNER_CODE || !TOKEN_SECRET || !SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'not configured' });
   const op = String(req.query.op || '');
   const admin = req.headers['x-code'] ? await adminFrom(req) : null;
-  const authed = () => isOwner(req) || !!admin;
+  // The accountant only reads the money (and keeps the expenses): never the desk, the clients' passes or the settings.
+  const isAcc = admin?.role === 'accountant';
+  const authed = () => isOwner(req) || (!!admin && !isAcc);
   // Three roles: the administrator runs the desk; the manager also edits goods, prices and the rest of the content and confirms refunds and withdrawals; the owner sees everything.
   const manages = () => isOwner(req) || admin?.role === 'manager';
   const staffName = (fallback) => (admin ? admin.name : isOwner(req) ? 'owner' : str(fallback, 40));
@@ -555,10 +557,13 @@ module.exports = async function handler(req, res) {
         return res.status(401).json({ error: 'wrong code' });
       }
       await gate.hit();
-      return res.status(200).json({ role: who.role === 'manager' ? 'manager' : 'admin', token: adminToken(who.id, who.at), name: who.name, id: who.id });
+      return res.status(200).json({ role: who.role === 'manager' ? 'manager' : who.role === 'accountant' ? 'accountant' : 'admin', token: adminToken(who.id, who.at), name: who.name, id: who.id });
     }
 
-    if (!authed()) return res.status(401).json({ error: 'code' });
+    const ACC_READ = ['list', 'sales', 'visits', 'shifts', 'cash', 'cashes', 'withdrawals', 'cash-moves', 'expenses', 'safe', 'loads'];
+    const ACC_WRITE = ['exp-pay', 'exp-del', 'exp-tpl-save', 'exp-tpl-del'];
+    const accOk = isAcc && ((req.method === 'GET' && ACC_READ.includes(op)) || (req.method === 'POST' && ACC_WRITE.includes(op)));
+    if (!authed() && !accOk) return res.status(isAcc ? 403 : 401).json({ error: isAcc ? 'accountant reads only' : 'code' });
 
     if (req.method === 'GET' && op === 'leads') {
       const rows = await sb('leads?select=data&order=ts.desc&limit=200');
@@ -972,12 +977,12 @@ module.exports = async function handler(req, res) {
     const newId = () => String(Date.now()) + Math.random().toString(36).slice(2, 5).padEnd(3, '0');
     const plainText = (v) => v.length >= 2 && !/[<>]/.test(v);
     if (req.method === 'GET' && op === 'expenses') {
-      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      if (!manages() && !isAcc) return res.status(403).json({ error: 'manager only' });
       const [tpl, pays] = await Promise.all([pageAll('settings?select=data&key=like.exptpl:*'), pageAll(`settings?select=data&key=like.expense:*&${enc('data->>ts')}=gte.${Date.now() - 400 * 86400000}`)]);
       return res.status(200).json({ templates: tpl.map((r) => r.data), payments: pays.map((r) => r.data) });
     }
     if (req.method === 'POST' && op === 'exp-tpl-save') {
-      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      if (!manages() && !isAcc) return res.status(403).json({ error: 'manager only' });
       const title = str(body.title, 60);
       const amount = int(body.amount, 100000000);
       const day = Math.max(1, Math.min(31, int(body.day, 31) || 1));
@@ -989,7 +994,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, id });
     }
     if (req.method === 'POST' && op === 'exp-tpl-del') {
-      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      if (!manages() && !isAcc) return res.status(403).json({ error: 'manager only' });
       const id = str(body.id, 20);
       if (!/^\d{13}[a-z0-9]{3}$/.test(id)) return res.status(400).json({ error: 'bad id' });
       await sb(`settings?key=eq.exptpl:${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
@@ -997,7 +1002,7 @@ module.exports = async function handler(req, res) {
     }
     // A payment: of a must-pay for a month (tplId + month) or a one-off expense. Cash or non-cash.
     if (req.method === 'POST' && op === 'exp-pay') {
-      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      if (!manages() && !isAcc) return res.status(403).json({ error: 'manager only' });
       const title = str(body.title, 60);
       const note = str(body.note, 80);
       const amount = int(body.amount, 100000000);
@@ -1009,7 +1014,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, id });
     }
     if (req.method === 'POST' && op === 'exp-del') {
-      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      if (!manages() && !isAcc) return res.status(403).json({ error: 'manager only' });
       const id = str(body.id, 20);
       if (!/^\d{13}[a-z0-9]{3}$/.test(id)) return res.status(400).json({ error: 'bad id' });
       await sb(`settings?key=eq.expense:${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
@@ -1018,7 +1023,7 @@ module.exports = async function handler(req, res) {
 
     /* ---- the owner's safe: money the owner takes out or puts in by hand; what the desks put in comes from their withdrawals ---- */
     if (req.method === 'GET' && op === 'safe') {
-      if (!isOwner(req)) return res.status(403).json({ error: 'owner only' });
+      if (!isOwner(req) && !isAcc) return res.status(403).json({ error: 'owner only' });
       const rows = await pageAll('settings?select=data&key=like.safe:*&order=key.desc');
       return res.status(200).json({ entries: rows.map((r) => r.data) });
     }
@@ -1144,7 +1149,7 @@ module.exports = async function handler(req, res) {
         const old = id ? all.find((a) => a.id === id) : null;
         if (id && !old) return res.status(404).json({ error: 'unknown' });
         const now = Date.now();
-        const role = body.role === 'manager' ? 'manager' : body.role === 'admin' || !old ? 'admin' : old.role;
+        const role = ['manager', 'accountant', 'admin'].includes(body.role) ? body.role : old ? old.role : 'admin';
         const rec = { id: id || 'a' + now.toString(36) + Math.random().toString(36).slice(2, 5), name, role, hash: code ? hashPassword(code) : old.hash, at: code ? now : old.at, since: old ? old.since : now };
         await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'admin:' + rec.id, data: rec }) });
         return res.status(200).json({ ok: true, id: rec.id });

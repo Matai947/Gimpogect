@@ -75,6 +75,7 @@ type State = {
   trialUsed: boolean;
   staff: StaffSession | null;
   owner: boolean; // owner (CRM) session, separate code from staff
+  accountant?: boolean; // the owner's screens for the accountant: money only, read-only except the expenses
   staffCode: string; // code typed at staff/owner login, sent to the API to read the client list
   token: string; // the client's own access token from the server (password sign-in)
   remote: RemoteClient[]; // clients registered from any device, fetched while staff or owner is signed in
@@ -153,7 +154,7 @@ type Actions = {
   setLang: (lang: Lang) => void;
   staffLogin: (name: string, clubId: string, code: string, role: 'admin' | 'manager') => void;
   staffLogout: () => void;
-  ownerLogin: (code: string) => void;
+  ownerLogin: (code: string, accountant?: boolean) => void;
   ownerLogout: () => void;
   setStaffClub: (clubId: string) => void;
   logCheckin: (entry: Omit<CheckinEntry, 'ts'>, served?: { visitsLeft?: number; membership?: RemoteMembership | null }) => void;
@@ -430,8 +431,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const staffLogout = useCallback(() => setState((s) => ({ ...s, staff: null, staffCode: s.owner ? s.staffCode : '' })), []);
-  const ownerLogin = useCallback((code: string) => setState((s) => ({ ...s, owner: true, staffCode: code })), []);
-  const ownerLogout = useCallback(() => setState((s) => ({ ...s, owner: false, staffCode: s.staff ? s.staffCode : '' })), []);
+  const ownerLogin = useCallback((code: string, accountant?: boolean) => setState((s) => ({ ...s, owner: true, accountant: !!accountant, staffCode: code })), []);
+  const ownerLogout = useCallback(() => setState((s) => ({ ...s, owner: false, accountant: false, staffCode: s.staff ? s.staffCode : '' })), []);
 
   const setStaffClub = useCallback((clubId: string) => setState((s) => (s.staff ? { ...s, staff: { ...s.staff, clubId } } : s)), []);
 

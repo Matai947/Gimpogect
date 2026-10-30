@@ -18,7 +18,7 @@ type Line = { ts: number; clubId: string; amount: number; title: string; who: st
 /** The owner's safe: what the desks put in (withdrawals "to the safe") and what the owner took out or added, per club. */
 export default function OwnerSafe() {
   const { t } = useI18n();
-  const { staffCode } = useApp();
+  const { staffCode, accountant } = useApp();
   const [club, setClub] = useState(clubs[0]?.id ?? 'c1');
   const [lines, setLines] = useState<Line[] | null>(null);
   const [mode, setMode] = useState<'in' | 'out' | null>(null);
@@ -99,7 +99,7 @@ export default function OwnerSafe() {
                 <Button title={t('cancel')} variant="secondary" onPress={() => setMode(null)} />
               </Row>
             </View>
-          ) : (
+          ) : accountant ? null : (
             <Row gap={Spacing.two}>
               <Button title={t('safe_out')} icon="arrow-up-circle-outline" onPress={() => (setMode('out'), setNote(''), setMsg(null))} style={{ flex: 1, backgroundColor: OwnerAccent }} />
               <Button title={t('safe_in')} icon="arrow-down-circle-outline" variant="secondary" onPress={() => (setMode('in'), setNote(''), setMsg(null))} style={{ flex: 1 }} />

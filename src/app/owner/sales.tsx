@@ -12,7 +12,7 @@ import { useApp, useI18n, useSales } from '@/store/app-context';
 export default function OwnerSales() {
   const { t, td } = useI18n();
   const sales = useSales();
-  const { staffCode, refreshSales } = useApp();
+  const { staffCode, refreshSales, accountant } = useApp();
 
   const [refunding, setRefunding] = useState<(typeof sales)[number] | null>(null);
   const [reason, setReason] = useState('');
@@ -109,7 +109,7 @@ export default function OwnerSales() {
                   {formatPrice(s.amount)}
                 </T>
                 {['plan', 'shop', 'personal'].includes(s.kind) && s.amount - (s.refunded ?? 0) > 0 ? (
-                  <T type="small" color={Colors.danger} style={{ fontWeight: '700', paddingLeft: 10 }} onPress={() => { setRefunding(s); setReason(''); setFailed(false); }}>
+                  <T type="small" color={Colors.danger} style={{ fontWeight: '700', paddingLeft: 10, display: accountant ? 'none' : 'flex' }} onPress={() => { setRefunding(s); setReason(''); setFailed(false); }}>
                     {t('refund_btn')}
                   </T>
                 ) : null}

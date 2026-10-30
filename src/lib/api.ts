@@ -71,9 +71,9 @@ export const fetchQrProof = async (id: string, token: string) => (await call<{ c
 /** Staff mode: the owner's code or an administrator's personal code. 401 = wrong, 429 = locked for 15 minutes, 0 = offline. */
 export const staffLoginRemote = async (code: string) => {
   const r = await raw('staff-login', { method: 'POST', body: { code } });
-  return { status: r.status, data: r.status === 200 ? (r.data as { role: 'owner' } | { role: 'admin' | 'manager'; token: string; name: string; id: string }) : null };
+  return { status: r.status, data: r.status === 200 ? (r.data as { role: 'owner' } | { role: 'admin' | 'manager' | 'accountant'; token: string; name: string; id: string }) : null };
 };
-export type StaffRole = 'admin' | 'manager';
+export type StaffRole = 'admin' | 'manager' | 'accountant';
 export type AdminRec = { id: string; name: string; role?: StaffRole; at: number; since: number };
 export const fetchAdmins = async (code: string) => (await call<{ admins: AdminRec[] }>('admins', { code }))?.admins ?? null;
 export const saveAdmin = async (code: string, b: { id?: string; name: string; code: string; role: StaffRole }) => ({ status: (await raw('admin-save', { method: 'POST', code, body: b })).status });
