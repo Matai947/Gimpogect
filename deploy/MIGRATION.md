@@ -5,13 +5,16 @@
 
 ## 1. Какой сервер заказать
 
-- Ubuntu 24.04, **2 ядра, 4 ГБ памяти, 40 ГБ диска** (хватит с запасом).
+- Ubuntu 24.04, **2 ядра, 2 ГБ памяти, 40 ГБ диска** (взят PS.kz Basic-2). Для работы хватает: сервер, база и nginx вместе занимают ~0,5 ГБ.
+- Сборку приложения (`expo export`) делаем **на компьютере**, а на сервер копируем готовую папку `dist`: сборка просит больше 2 ГБ памяти.
 - Публичный IP-адрес и доступ по SSH (логин root или пользователь с sudo).
 - Провайдер в Казахстане: PS.kz, Hoster.kz или другой — любой с Ubuntu.
 
 ## 2. Поставить программы на сервер
 
 ```bash
+# 2 ГБ запаса на диске на случай пиков памяти
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile && echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 sudo apt update && sudo apt -y upgrade
 sudo apt -y install nginx postgresql certbot python3-certbot-nginx git curl
 curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash - && sudo apt -y install nodejs
@@ -24,7 +27,10 @@ sudo useradd -r -m -d /srv/sevengym sevengym
 
 ```bash
 sudo -u sevengym git clone https://github.com/Matai947/Gimpogect.git /srv/sevengym/app
-cd /srv/sevengym/app && sudo -u sevengym npm ci && sudo -u sevengym npx expo export --platform web && sudo -u sevengym node scripts/prepare-deploy.js
+sudo -u sevengym mkdir -p /srv/sevengym/app/dist
+# на компьютере, в папке проекта: собрать и отправить готовое приложение
+#   npx expo export --platform web && node scripts/prepare-deploy.js
+#   scp -r dist/* root@IP:/srv/sevengym/app/dist/ && ssh root@IP chown -R sevengym /srv/sevengym/app/dist
 sudo -u sevengym mkdir -p /srv/sevengym/media
 ```
 
@@ -80,6 +86,6 @@ TOKEN_SECRET обязательно тот же: иначе все сотруд�
 ## 8. После переезда
 
 - Ночная копия базы на сервере: `crontab -e` → `30 3 * * * /srv/sevengym/app/deploy/backup-cron.sh` (хранит 30 дней).
-- Обновление приложения: `cd /srv/sevengym/app && git pull && npx expo export --platform web && node scripts/prepare-deploy.js && sudo systemctl restart sevengym`
+- Обновление приложения: на компьютере `npx expo export --platform web && node scripts/prepare-deploy.js`, затем `scp -r dist/* root@IP:/srv/sevengym/app/dist/`; если менялся сервер — `ssh root@IP 'cd /srv/sevengym/app && git pull && systemctl restart sevengym'`
 - APK для Android смотрит на адрес sevengym.matai.kz — менять не нужно.
 - Через 2–4 недели спокойной работы: отключить Vercel и Supabase.
