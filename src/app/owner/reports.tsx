@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { OwnerAccent, OwnerHeader } from '@/components/owner-header';
+import { PeriodSummary } from '@/components/period-summary';
 import { Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubs, formatDateHuman, formatPrice, toISODate, trainers, weekdayShort } from '@/data/mock';
@@ -123,6 +124,8 @@ export default function OwnerReports() {
             <Chip key={c.id} label={c.name.replace('Seven Gym ', '')} active={club === c.id} onPress={() => setClub(c.id)} />
           ))}
         </ChipRow>
+
+        <PeriodSummary club={club} accent={OwnerAccent} />
 
         {/* attendance */}
         <View style={styles.card}>
