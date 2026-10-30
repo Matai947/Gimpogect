@@ -62,7 +62,7 @@ sudo cp deploy/nginx-sevengym.conf /etc/nginx/sites-available/sevengym
 sudo ln -s /etc/nginx/sites-available/sevengym /etc/nginx/sites-enabled/ && sudo nginx -t && sudo systemctl reload nginx
 ```
 
-TOKEN_SECRET обязательно тот же: иначе все сотрудники и клиенты выйдут из приложения.
+TOKEN_SECRET с Vercel достать нельзя (хранится как «секретный»), поэтому на сервере свой, новый. Следствие одно: в день переезда все сотрудники и клиенты один раз входят заново (сотрудники — кодом, клиенты — номером и паролем; приложение само покажет «сессия истекла»).
 
 ## 6. День переезда (лучше ночью, после закрытия касс — займёт ~30 минут)
 

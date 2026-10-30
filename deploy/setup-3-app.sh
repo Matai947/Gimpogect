@@ -1,15 +1,15 @@
 #!/bin/sh
 # Step 3: the app's files are in /srv/sevengym/app (copied from the computer); the env, systemd service and nginx site.
-# OWNER_CODE and TOKEN_SECRET are filled by deploy/copy-secrets.ps1 run by the owner; a placeholder keeps the server starting meanwhile.
+# OWNER_CODE is put into /etc/sevengym.env by hand; TOKEN_SECRET is a fresh random one (Vercel's cannot be read back).
 set -e
 cd /srv/sevengym/app
 chown -R sevengym:sevengym /srv/sevengym
 ENV=/etc/sevengym.env
 touch $ENV && chmod 600 $ENV
 set_kv() { grep -q "^$1=" $ENV && sed -i "s|^$1=.*|$1=$2|" $ENV || echo "$1=$2" >> $ENV; }
-# a placeholder nobody can type at the login (not digits) until copy-secrets.ps1 puts the real code
+# a placeholder nobody can type at the login (not digits) until the real owner code is put in by hand
 grep -q '^OWNER_CODE=.\+' $ENV || set_kv OWNER_CODE "unset-$(openssl rand -hex 16)"
-grep -q '^TOKEN_SECRET=.\+' $ENV || set_kv TOKEN_SECRET "temporary-until-copy-secrets-$(openssl rand -hex 8)"
+grep -q '^TOKEN_SECRET=.\+' $ENV || set_kv TOKEN_SECRET "$(openssl rand -hex 32)"
 set_kv PORT 3100
 set_kv DIST_DIR /srv/sevengym/app/dist
 set_kv MEDIA_DIR /srv/sevengym/media
