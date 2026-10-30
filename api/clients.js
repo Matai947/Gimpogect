@@ -492,7 +492,7 @@ module.exports = async function handler(req, res) {
       if (profile) next.profile = profile;
       // Blob writes are the scarce quota: skip the write when nothing changed (the app re-sends on every launch).
       if (!existing || JSON.stringify(next) !== JSON.stringify(existing)) await write(id, next);
-      return res.status(200).json({ ok: true, membership: next.membership ?? null, token: existing ? undefined : issueToken(id) });
+      return res.status(200).json({ ok: true, membership: next.membership ? withFreeze(next.membership, await freezeRules()) : null, token: existing ? undefined : issueToken(id) });
     }
 
     if (req.method === 'GET' && op === 'me') {
@@ -617,7 +617,8 @@ module.exports = async function handler(req, res) {
       // A plan with a visit counter loses one visit per calendar day on the first check-in of that day.
       if (op === 'checkin' && membership && membership.visitsLeft > 0 && firstToday) membership = { ...membership, visitsLeft: membership.visitsLeft - 1 };
       await write(id, { ...prev, session, ...(membership ? { membership } : {}), ...(proofExp ? { qrUsed: proofExp } : {}) });
-      return res.status(200).json({ ok: true, visitsLeft: membership?.visitsLeft, membership: membership ?? null });
+      // the desk's card is refreshed from this answer: it carries the freeze rule like the list does
+      return res.status(200).json({ ok: true, visitsLeft: membership?.visitsLeft, membership: membership ? withFreeze(membership, await freezeRules()) : null });
     }
 
     // Front desk: let in a 1Fit member. Finds the client by phone or creates a card, and records one 1Fit visit per day.
