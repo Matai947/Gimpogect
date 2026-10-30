@@ -36,9 +36,13 @@ sudo -u sevengym mkdir -p /srv/sevengym/media
 sudo -u postgres psql -c "create database sevengym"
 sudo -u postgres psql -d sevengym -f /srv/sevengym/app/deploy/schema.sql
 sudo -u postgres psql -d sevengym -c "alter role authenticator password 'ПРИДУМАЙТЕ-ДЛИННЫЙ-ПАРОЛЬ'"
-sudo mkdir -p /etc/postgrest && sudo cp deploy/postgrest.conf /etc/postgrest/sevengym.conf   # вписать тот же пароль
+sudo mkdir -p /etc/postgrest && sudo cp deploy/postgrest.conf /etc/postgrest/sevengym.conf
+# в файле: тот же пароль и jwt-secret — случайная строка: openssl rand -hex 32
 sudo cp deploy/postgrest.service /etc/systemd/system/ && sudo systemctl enable --now postgrest
-curl http://127.0.0.1:3000/settings?limit=1      # ответ [] — база отвечает
+# токен для сервера (подставить свой jwt-secret), его вписать в DB_REST_TOKEN на шаге 5:
+node -e "const c=require('crypto'),b=o=>Buffer.from(JSON.stringify(o)).toString('base64url'),h=b({alg:'HS256',typ:'JWT'}),p=b({role:'web_app'});console.log(h+'.'+p+'.'+c.createHmac('sha256',process.argv[1]).update(h+'.'+p).digest('base64url'))" ВАШ-JWT-SECRET
+curl -H "Authorization: Bearer ТОКЕН" http://127.0.0.1:3000/settings?limit=1   # ответ [] — база отвечает
+curl http://127.0.0.1:3000/settings?limit=1      # без токена — отказ (так и должно быть)
 ```
 
 ## 5. Сервер приложения
@@ -61,7 +65,7 @@ TOKEN_SECRET обязательно тот же: иначе все сотруд�
    `SUPABASE_URL=… SUPABASE_SECRET_KEY=… node scripts/db-backup.js` → папка `backup/<дата>`.
 3. Скопировать папку на сервер: `scp -r backup/<дата> root@IP:/srv/sevengym/`
 4. **Залить в новую базу**:
-   `DB_REST_URL=http://127.0.0.1:3000 node scripts/db-restore.js /srv/sevengym/<дата>`
+   `DB_REST_URL=http://127.0.0.1:3000 DB_REST_TOKEN=ТОКЕН node scripts/db-restore.js /srv/sevengym/<дата>`
    Числа «в базе» должны совпасть с `counts.json` копии. Потом счётчики:
    `sudo -u postgres psql -d sevengym -c "select setval(pg_get_serial_sequence('visits','id'), (select coalesce(max(id),1) from visits)); select setval(pg_get_serial_sequence('clicks','id'), (select coalesce(max(id),1) from clicks));"`
 5. **DNS** в PS.kz (console.ps.kz → DNS matai.kz): записи `sevengym` и `sevengim` — тип **A**, значение **IP сервера** (вместо записей Vercel).

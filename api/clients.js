@@ -20,7 +20,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const dayOf = (ts) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10); // Almaty calendar day
 
 const sb = async (path, init = {}) => {
-  const r = await fetch(`${REST}/${path}`, { ...init, headers: { ...(SUPABASE_KEY ? { apikey: SUPABASE_KEY } : {}), 'content-type': 'application/json', ...init.headers } });
+  const r = await fetch(`${REST}/${path}`, { ...init, headers: { ...(SUPABASE_KEY ? { apikey: SUPABASE_KEY } : {}), ...(process.env.DB_REST_TOKEN ? { authorization: `Bearer ${process.env.DB_REST_TOKEN}` } : {}), 'content-type': 'application/json', ...init.headers } });
   if (!r.ok) throw new Error('db ' + r.status);
   const text = await r.text(); // writes with return=minimal come back empty
   return text ? JSON.parse(text) : null;
@@ -238,7 +238,8 @@ async function codeGate(key, limit = 3) {
 async function guessGates(req, kind, account) {
   // Only Cloudflare's own header counts: it is set by the edge and cannot be sent by the client. Without it (local runs) the device gate is shared.
   // On Vercel the platform sets x-real-ip the same way; on either host the client cannot forge the header the host itself writes.
-  const ip = String((process.env.VERCEL ? req.headers['x-real-ip'] : req.headers['cf-connecting-ip']) || '').trim();
+  // the address the proxy in front wrote itself: Vercel's or our nginx (X-Real-IP, overwritten there), else Cloudflare's
+  const ip = String((process.env.VERCEL || process.env.BEHIND_NGINX ? req.headers['x-real-ip'] : req.headers['cf-connecting-ip']) || '').trim();
   const keys = [[kind + ':ip:' + (ip ? crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16) : 'any'), 3], [kind + ':all', 30]];
   if (account) keys.push([kind + ':' + account, 3]);
   const gates = [];

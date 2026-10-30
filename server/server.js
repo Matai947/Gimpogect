@@ -3,7 +3,7 @@
 // nginx in front terminates HTTPS and proxies to this process on PORT (127.0.0.1 only).
 //
 //   PORT=3100 DIST_DIR=/srv/sevengym/dist MEDIA_DIR=/srv/sevengym/media PUBLIC_URL=https://sevengym.matai.kz \
-//   DB_REST_URL=http://127.0.0.1:3000 OWNER_CODE=… TOKEN_SECRET=… node server/server.js
+//   DB_REST_URL=http://127.0.0.1:3000 DB_REST_TOKEN=… BEHIND_NGINX=1 OWNER_CODE=… TOKEN_SECRET=… node server/server.js
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -19,7 +19,13 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 
 /** A file inside `root`, or null: no way out of the folder with ../ */
 function inside(root, rel) {
-  const p = path.resolve(root, '.' + path.posix.normalize('/' + decodeURIComponent(rel)));
+  let clean;
+  try {
+    clean = decodeURIComponent(rel);
+  } catch {
+    return null; // a broken %-escape is just not a file
+  }
+  const p = path.resolve(root, '.' + path.posix.normalize('/' + clean));
   return p === root || p.startsWith(root + path.sep) ? p : null;
 }
 const isFile = (p) => {
@@ -69,8 +75,7 @@ async function api(req, res, url) {
   }
 }
 
-http
-  .createServer((req, res) => {
+function route(req, res) {
     const url = new URL(req.url, 'http://localhost');
     const p = url.pathname;
     if (p === '/api/clients' || p.startsWith('/api/clients/')) return void api(req, res, url);
@@ -84,5 +89,17 @@ http
     for (const c of [f, f && f + '.html', f && path.join(f, 'index.html')]) if (isFile(c)) return sendFile(res, c, p.startsWith('/_expo/static/'));
     if (p.startsWith('/_expo/') || p.startsWith('/assets/')) return void res.writeHead(404).end();
     return sendFile(res, path.join(DIST, 'index.html'), false);
+}
+
+http
+  .createServer((req, res) => {
+    // a bad request never takes the server down
+    try {
+      route(req, res);
+    } catch (e) {
+      console.error(new Date().toISOString(), req.url, e && e.message);
+      if (!res.headersSent) res.writeHead(400);
+      res.end();
+    }
   })
   .listen(PORT, '127.0.0.1', () => console.log(`Seven Gym on http://127.0.0.1:${PORT} (app ${DIST}${MEDIA ? `, media ${MEDIA}` : ''})`));

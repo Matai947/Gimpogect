@@ -12,7 +12,7 @@ const TABLES = { clients: 'id', sales: 'id', visits: 'id', leads: 'id', trainer_
 async function all(table, order) {
   const rows = [];
   for (let from = 0; ; from += 1000) {
-    const r = await fetch(`${REST}/${table}?select=*&order=${order}&limit=1000&offset=${from}`, { headers: KEY ? { apikey: KEY } : {} });
+    const r = await fetch(`${REST}/${table}?select=*&order=${order}&limit=1000&offset=${from}`, { headers: { ...(KEY ? { apikey: KEY } : {}), ...(process.env.DB_REST_TOKEN ? { authorization: `Bearer ${process.env.DB_REST_TOKEN}` } : {}) } });
     if (r.status === 404) return null; // the table does not exist there
     if (!r.ok) throw new Error(`${table}: ${r.status} ${await r.text()}`);
     const page = await r.json();

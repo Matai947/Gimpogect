@@ -17,12 +17,15 @@ create index if not exists sales_ts on sales (ts);
 create index if not exists visits_ts on visits (ts);
 create index if not exists trainer_sessions_ts on trainer_sessions (ts);
 
--- PostgREST: listens on 127.0.0.1 only, so only our server reaches it; it works as `web_anon` with full rights on these tables.
+-- PostgREST listens on 127.0.0.1 only. Without a token it is `web_anon`, which may do nothing;
+-- our server sends a token signed with PostgREST's jwt-secret for the role `web_app`, which has the rights.
 do $$ begin
   if not exists (select from pg_roles where rolname = 'web_anon') then create role web_anon nologin; end if;
+  if not exists (select from pg_roles where rolname = 'web_app') then create role web_app nologin; end if;
   if not exists (select from pg_roles where rolname = 'authenticator') then create role authenticator noinherit login; end if;
 end $$;
 grant web_anon to authenticator;
-grant usage on schema public to web_anon;
-grant select, insert, update, delete on all tables in schema public to web_anon;
-grant usage, select on all sequences in schema public to web_anon;
+grant web_app to authenticator;
+grant usage on schema public to web_app;
+grant select, insert, update, delete on all tables in schema public to web_app;
+grant usage, select on all sequences in schema public to web_app;
