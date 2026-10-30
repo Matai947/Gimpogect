@@ -9,7 +9,8 @@ touch $ENV && chmod 600 $ENV
 set_kv() { grep -q "^$1=" $ENV && sed -i "s|^$1=.*|$1=$2|" $ENV || echo "$1=$2" >> $ENV; }
 # a placeholder nobody can type at the login (not digits) until the real owner code is put in by hand
 grep -q '^OWNER_CODE=.\+' $ENV || set_kv OWNER_CODE "unset-$(openssl rand -hex 16)"
-grep -q '^TOKEN_SECRET=.\+' $ENV || set_kv TOKEN_SECRET "$(openssl rand -hex 32)"
+# only a real 64-hex secret counts; anything else (a placeholder, an old short one) is replaced
+grep -Eq '^TOKEN_SECRET=[0-9a-f]{64}$' $ENV || set_kv TOKEN_SECRET "$(openssl rand -hex 32)"
 set_kv PORT 3100
 set_kv DIST_DIR /srv/sevengym/app/dist
 set_kv MEDIA_DIR /srv/sevengym/media
