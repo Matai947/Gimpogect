@@ -15,7 +15,7 @@ const DIST = path.resolve(process.env.DIST_DIR || path.join(__dirname, '..', 'di
 const MEDIA = process.env.MEDIA_DIR ? path.resolve(process.env.MEDIA_DIR) : '';
 const MAX_BODY = 6 * 1024 * 1024; // a photo is at most 2.5 MB, base64 makes it a third bigger
 
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.ttf': 'font/ttf', '.woff': 'font/woff', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml', '.map': 'application/json' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.ttf': 'font/ttf', '.woff': 'font/woff', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml', '.map': 'application/json', '.apk': 'application/vnd.android.package-archive' };
 
 /** A file inside `root`, or null: no way out of the folder with ../ */
 function inside(root, rel) {
