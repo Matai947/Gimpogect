@@ -1,0 +1,12 @@
+# /etc/systemd/system/postgrest.service
+[Unit]
+Description=PostgREST for Seven Gym
+After=postgresql.service
+
+[Service]
+ExecStart=/usr/local/bin/postgrest /etc/postgrest/sevengym.conf
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

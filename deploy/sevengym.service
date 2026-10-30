@@ -1,0 +1,15 @@
+# /etc/systemd/system/sevengym.service — the app and its API; restarts by itself and after a reboot.
+[Unit]
+Description=Seven Gym app and API
+After=network.target postgrest.service
+
+[Service]
+User=sevengym
+WorkingDirectory=/srv/sevengym/app
+EnvironmentFile=/etc/sevengym.env
+ExecStart=/usr/bin/node server/server.js
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -2,11 +2,16 @@
 // Tables clients / leads are private (RLS on, no policies); only this server holds the secret key.
 const crypto = require('crypto');
 
-// No defaults: the codes live only in the Vercel environment, and the API refuses to work without them.
+// No defaults: the codes live only in the server's environment, and the API refuses to work without them.
 const OWNER_CODE = process.env.OWNER_CODE;
 const TOKEN_SECRET = process.env.TOKEN_SECRET; // signs client access tokens
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY;
+// On our own server the database is Postgres behind PostgREST on localhost (DB_REST_URL); on Supabase it is SUPABASE_URL/rest/v1.
+const REST = process.env.DB_REST_URL || (SUPABASE_URL ? `${SUPABASE_URL}/rest/v1` : '');
+// On our own server uploaded photos are files in MEDIA_DIR, served at PUBLIC_URL/media/…
+const MEDIA_DIR = process.env.MEDIA_DIR;
+const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
 const TOKEN_DAYS = 180;
 
 // u_<phone digits> for people with a phone; x_<n> for cards imported without one (no app account).
@@ -15,7 +20,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const dayOf = (ts) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10); // Almaty calendar day
 
 const sb = async (path, init = {}) => {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...init, headers: { apikey: SUPABASE_KEY, 'content-type': 'application/json', ...init.headers } });
+  const r = await fetch(`${REST}/${path}`, { ...init, headers: { ...(SUPABASE_KEY ? { apikey: SUPABASE_KEY } : {}), 'content-type': 'application/json', ...init.headers } });
   if (!r.ok) throw new Error('db ' + r.status);
   const text = await r.text(); // writes with return=minimal come back empty
   return text ? JSON.parse(text) : null;
@@ -355,7 +360,7 @@ module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  if (!OWNER_CODE || !TOKEN_SECRET || !SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'not configured' });
+  if (!OWNER_CODE || !TOKEN_SECRET || !REST || (!process.env.DB_REST_URL && !SUPABASE_KEY)) return res.status(503).json({ error: 'not configured' });
   const op = String(req.query.op || '');
   const admin = req.headers['x-code'] ? await adminFrom(req) : null;
   // The accountant only reads the money (and keeps the expenses): never the desk, the clients' passes or the settings.
@@ -1203,6 +1208,13 @@ module.exports = async function handler(req, res) {
       const bytes = kind && typeof body.data === 'string' ? Buffer.from(body.data, 'base64') : null;
       if (!bytes || bytes.length < 200 || bytes.length > 2500000) return res.status(400).json({ error: 'bad image' });
       const path = `p/${Date.now().toString(36)}${crypto.randomBytes(4).toString('hex')}.${String(body.ext).toLowerCase()}`;
+      if (MEDIA_DIR) {
+        const fs = require('fs');
+        const nodePath = require('path');
+        await fs.promises.mkdir(nodePath.join(MEDIA_DIR, 'p'), { recursive: true });
+        await fs.promises.writeFile(nodePath.join(MEDIA_DIR, path), bytes);
+        return res.status(200).json({ ok: true, url: `${PUBLIC_URL}/media/${path}` });
+      }
       const up = await fetch(`${SUPABASE_URL}/storage/v1/object/media/${path}`, { method: 'POST', headers: { apikey: SUPABASE_KEY, 'content-type': kind, 'cache-control': '31536000' }, body: bytes });
       if (!up.ok) return res.status(502).json({ error: 'storage' });
       return res.status(200).json({ ok: true, url: `${SUPABASE_URL}/storage/v1/object/public/media/${path}` });

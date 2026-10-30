@@ -53,3 +53,6 @@ example
 
 .vercel
 .env*
+
+# database copies hold clients' data: never committed
+backup/
