@@ -65,12 +65,17 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   const [choice, setChoice] = useState<string | null>(null);
   // a paid plan sold from the card says how it was paid, so its cash reaches the drawer
   const [payBy, setPayBy] = useState<PayMethod | null>(null);
+  const [pct, setPct] = useState(0); // the desk's discount on this plan
   const chosen = plans.find((p) => p.id === choice);
 
   const grant = (planId: string) => {
-    const price = plans.find((p) => p.id === planId)?.price ?? 0;
-    grantPlan(member.id, planId, price, payBy && price > 0 ? [{ method: payBy, amount: price }] : undefined);
+    const full = plans.find((p) => p.id === planId)?.price ?? 0;
+    const price = pct ? Math.round((full * (100 - pct)) / 100) : full;
+    // free (100%) needs no way of paying; it is still written down with its zero
+    const by = payBy ?? (pct === 100 ? 'cash' : null);
+    grantPlan(member.id, planId, price, by && full > 0 ? [{ method: by, amount: price }] : undefined, pct && full > 0 ? { disc: pct, off: full - price } : undefined);
     setPayBy(null);
+    setPct(0);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setPicking(false);
     setChoice(null);
@@ -429,10 +434,20 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
                 ))}
               </Row>
             ) : null}
+            {chosen && chosen.price > 0 ? (
+              <Row gap={6} style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+                <T type="small" color={Colors.textSecondary}>
+                  {t('pos_manual_disc')}
+                </T>
+                {[10, 20, 30, 50, 100].map((p) => (
+                  <Chip key={p} label={`${p}%`} active={pct === p} onPress={() => setPct((v) => (v === p ? 0 : p))} />
+                ))}
+              </Row>
+            ) : null}
             {chosen ? (
               <Button
-                disabled={chosen.price > 0 && !payBy}
-                title={chosen.price > 0 ? t('grant_confirm', { price: formatPrice(chosen.price), name: td(chosen.name) }) : t('grant_confirm_free', { name: td(chosen.name) })}
+                disabled={chosen.price > 0 && pct !== 100 && !payBy}
+                title={chosen.price > 0 ? t('grant_confirm', { price: formatPrice(pct ? Math.round((chosen.price * (100 - pct)) / 100) : chosen.price), name: td(chosen.name) }) : t('grant_confirm_free', { name: td(chosen.name) })}
                 icon="checkmark-circle-outline"
                 onPress={() => grant(chosen.id)}
               />
