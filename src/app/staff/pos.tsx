@@ -125,15 +125,22 @@ export default function StaffPosScreen() {
     setLines((ls) => (ls.some((x) => x.key === l.key) ? ls.map((x) => (x.key === l.key ? { ...x, qty: x.qty + 1 } : x)) : [...ls, { ...l, qty: 1 }]));
   };
   /** A scanned or typed barcode puts its product into the check. */
-  const addByCode = (raw: string) => {
+  const addByCode = (raw: string): { ok: boolean; text: string } | void => {
     const c = cleanBarcode(raw);
     setCode('');
     if (!c) return;
     const p = products.find((x) => x.barcode === c);
-    if (!p) return setCodeMsg(t('bc_unknown', { code: c }));
-    if (!p.inStock || p.stock === 0) return setCodeMsg(t('bc_out', { name: p.name }));
+    if (!p) {
+      setCodeMsg(t('bc_unknown', { code: c }));
+      return { ok: false, text: t('bc_unknown', { code: c }) };
+    }
+    if (!p.inStock || p.stock === 0) {
+      setCodeMsg(t('bc_out', { name: p.name }));
+      return { ok: false, text: t('bc_out', { name: p.name }) };
+    }
     setCodeMsg('');
     pick(p);
+    return { ok: true, text: p.byWeight ? t('bc_added_weigh', { name: p.name }) : t('bc_added', { name: p.name, price: formatPrice(p.price) }) };
   };
   const bump = (key: string, d: number) =>
     key.startsWith('w:') ? setLines((ls) => (d < 0 ? ls.filter((x) => x.key !== key) : ls)) : setLines((ls) => ls.map((x) => (x.key === key ? { ...x, qty: x.qty + d } : x)).filter((x) => x.qty > 0));

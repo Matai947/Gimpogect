@@ -217,7 +217,10 @@ function ProductEditForm({ id }: { id?: string }) {
               {t('bc_taken', { name: barcodeOwner.name })}
             </T>
           ) : null}
-          <BarcodeSheet visible={scanOpen} onClose={() => setScanOpen(false)} onCode={setBarcode} accent={StaffAccent} />
+          <BarcodeSheet visible={scanOpen} onClose={() => setScanOpen(false)} onCode={(c) => {
+              setBarcode(c);
+              setScanOpen(false);
+            }} accent={StaffAccent} />
 
           <Label text={byWeight ? t('p_stock_g') : t('p_stock')} />
           <Field value={stockText} onChange={(v) => setStockText(v.replace(/\D/g, ''))} placeholder={t('p_stock_ph')} keyboardType="number-pad" />
