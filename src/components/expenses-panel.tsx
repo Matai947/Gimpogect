@@ -55,7 +55,11 @@ export function ExpensesPanel({ accent, owner }: { accent: string; owner?: boole
     const paid = pays.reduce((n, x) => n + x.amount, 0);
     const left = tpls.filter((x) => paidOf(x.id).length === 0).reduce((n, x) => n + x.amount, 0);
     const revenue = sales.filter((s) => monthOf(s.ts) === month && inClub(s.clubId)).reduce((n, s) => n + s.amount, 0);
-    return { tpls, pays, paidOf, planned, paid, left, revenue };
+    // everything ever paid, and since the start of the year, for the chosen club(s)
+    const allPays = (data?.payments ?? []).filter((x) => inClub(x.clubId));
+    const allTime = allPays.reduce((n, x) => n + x.amount, 0);
+    const year = allPays.filter((x) => x.month.slice(0, 4) === month.slice(0, 4)).reduce((n, x) => n + x.amount, 0);
+    return { tpls, pays, paidOf, planned, paid, left, revenue, allTime, year };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, month, club, sales]);
 
@@ -122,6 +126,14 @@ export function ExpensesPanel({ accent, owner }: { accent: string; owner?: boole
         <Sum label={t('ex_paid_total')} value={formatPrice(v.paid)} color={Colors.text} />
         <Sum label={t('ex_left')} value={formatPrice(v.left)} color={v.left ? Colors.warning : Colors.success} />
       </View>
+      <Row style={{ justifyContent: 'space-between' }}>
+        <T type="small" color={Colors.textSecondary}>
+          {t('ex_year', { y: month.slice(0, 4) })} <T type="small" style={{ fontWeight: '800' }}>{formatPrice(v.year)}</T>
+        </T>
+        <T type="small" color={Colors.textSecondary}>
+          {t('ex_all_time')} <T type="small" style={{ fontWeight: '800' }}>{formatPrice(v.allTime)}</T>
+        </T>
+      </Row>
       {owner ? (
         <View style={styles.profit}>
           <Row style={{ justifyContent: 'space-between' }}>

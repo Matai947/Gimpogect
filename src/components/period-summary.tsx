@@ -77,8 +77,12 @@ export function PeriodSummary({ club: given, accent, pick, money = true }: { clu
     const nonCash = g.bar.nonCash + g.plans.nonCash + g.trainers.nonCash;
     const discRows = rows.filter((x) => x.disc && x.kind !== 'refund');
     const given = discRows.reduce((n, x) => n + (x.off ?? 0), 0);
-    const spent = expenses.filter((e) => (club === 'all' || e.clubId === club) && dayOf(e.ts) >= from && dayOf(e.ts) <= to).reduce((n, e) => n + e.amount, 0);
-    return { revenue, refunds, checks, cash, nonCash, other: revenue - cash - nonCash, kinds, spent, given, givenN: discRows.length, days: Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1 };
+    const exRows = expenses.filter((e) => (club === 'all' || e.clubId === club) && dayOf(e.ts) >= from && dayOf(e.ts) <= to);
+    const spent = exRows.reduce((n, e) => n + e.amount, 0);
+    // what the money went on in the period, biggest first
+    const byTitle = [...exRows.reduce((m, e) => m.set(e.title, (m.get(e.title) ?? 0) + e.amount), new Map<string, number>()).entries()].sort((a, b) => b[1] - a[1]);
+    const spentCash = exRows.filter((e) => e.method === 'cash').reduce((n, e) => n + e.amount, 0);
+    return { revenue, refunds, checks, cash, nonCash, other: revenue - cash - nonCash, kinds, spent, byTitle, spentCash, given, givenN: discRows.length, days: Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1 };
   }, [ok, daysBack, older, loaded, club, from, to, expenses]);
 
   const set = (a: string, b: string) => {
@@ -150,6 +154,10 @@ export function PeriodSummary({ club: given, accent, pick, money = true }: { clu
             <>
               <View style={styles.sep} />
               <Line label={t('ex_spent_period')} value={-r.spent} />
+              {r.byTitle.map(([title, sum]) => (
+                <Line key={title} label={`   ${title}`} value={-sum} muted />
+              ))}
+              {r.spent ? <Line label={`   ${t('ps_spent_cash', { cash: formatPrice(r.spentCash), noncash: formatPrice(r.spent - r.spentCash) })}`} value={0} muted hideValue /> : null}
               <Row style={{ justifyContent: 'space-between' }}>
                 <T type="body" style={{ fontWeight: '800' }}>
                   {t('ex_profit')}
@@ -166,16 +174,18 @@ export function PeriodSummary({ club: given, accent, pick, money = true }: { clu
   );
 }
 
-function Line({ label, value, muted }: { label: string; value: number; muted?: boolean }) {
+function Line({ label, value, muted, hideValue }: { label: string; value: number; muted?: boolean; hideValue?: boolean }) {
   return (
     <Row style={{ justifyContent: 'space-between' }}>
       <T type="small" color={muted ? Colors.textMuted : Colors.textSecondary}>
         {label}
       </T>
-      <T type="small" style={{ fontWeight: '700' }}>
-        {value < 0 ? '−' : ''}
-        {formatPrice(Math.abs(value))}
-      </T>
+      {hideValue ? null : (
+        <T type="small" style={{ fontWeight: '700' }}>
+          {value < 0 ? '−' : ''}
+          {formatPrice(Math.abs(value))}
+        </T>
+      )}
     </Row>
   );
 }
