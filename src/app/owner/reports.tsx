@@ -49,7 +49,7 @@ export default function OwnerReports() {
   const inClub = (c: string) => club === 'all' || c === club;
 
   const attendance = useMemo(() => {
-    const mine = (visits ?? []).filter((v) => v.ts >= from && inClub(v.club));
+    const mine = (visits ?? []).filter((v) => v.ts >= from && inClub(v.club) && v.kind !== 'out');
     const byDay = WEEK.map((d) => mine.filter((v) => new Date(v.ts + ALMATY).getUTCDay() === d).length);
     const byHour = HOURS.map((h) => mine.filter((v) => new Date(v.ts + ALMATY).getUTCHours() === h).length);
     return { total: mine.length, byDay, byHour };

@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { StaffAccent, hm } from '@/components/member-result';
 import { ExpensesPanel } from '@/components/expenses-panel';
+import { DayVisitors } from '@/components/day-visitors';
 import { PeriodSummary } from '@/components/period-summary';
 import { StaffHeader } from '@/components/staff-header';
 import { Card, ProgressBar, Row, T } from '@/components/ui';
@@ -34,6 +35,7 @@ export default function StaffTodayScreen() {
     <View style={styles.root}>
       <StaffHeader title={t('staff_tab_today')} />
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        {canManage ? <DayVisitors accent={StaffAccent} /> : null}
         {canManage ? <PeriodSummary accent={StaffAccent} pick money /> : null}
         {canManage ? <ExpensesPanel accent={StaffAccent} /> : null}
         <View style={styles.grid}>

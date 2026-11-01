@@ -627,6 +627,7 @@ module.exports = async function handler(req, res) {
       const session = op === 'checkin' ? { clubId: str(body.clubId, 8) || 'c1', inTs: now } : prev.session ? { ...prev.session, outTs: now } : undefined;
       let membership = prev.membership;
       if (op === 'checkin' && firstToday) await logVisit(session.clubId, id, 'qr');
+      if (op === 'checkout' && session) await logVisit(session.clubId, id, 'out');
       // A plan with a visit counter loses one visit per calendar day on the first check-in of that day.
       if (op === 'checkin' && membership && membership.visitsLeft > 0 && firstToday) membership = { ...membership, visitsLeft: membership.visitsLeft - 1 };
       await write(id, { ...prev, session, ...(membership ? { membership } : {}), ...(proofExp ? { qrUsed: proofExp } : {}) });
