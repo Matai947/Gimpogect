@@ -56,6 +56,8 @@ export const en: Record<TKey, string> = {
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
   trainer_quals: 'Qualifications',
+  p_cat_new: 'New category',
+  p_cat_new_ph: 'Name, e.g. Gainers',
   ex_year: 'In {y}:',
   ex_all_time: 'All time:',
   ps_spent_cash: 'cash {cash} • non-cash {noncash}',

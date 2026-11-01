@@ -8,13 +8,14 @@ import { ProductCard } from '@/components/product-card';
 import { Badge, IconButton, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
-import { shopCategories, type Product, type ShopCategory } from '@/data/shop';
-import { useApp, useCartSummary, useCatalog, useFitnessProfile, useI18n, useMembershipInfo } from '@/store/app-context';
+import { type Product, type ShopCategory } from '@/data/shop';
+import { useApp, useCartSummary, useCatalog, useFitnessProfile, useI18n, useMembershipInfo, useShopCategories } from '@/store/app-context';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 type Sort = 'popular' | 'cheap' | 'expensive' | 'rating';
 
 export default function ShopScreen() {
+  const cats = useShopCategories();
   const { addToCart } = useApp();
   const { t, td } = useI18n();
   const cart = useCartSummary();
@@ -87,7 +88,7 @@ export default function ShopScreen() {
 
       {/* Categories */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }} style={{ marginBottom: Spacing.three }}>
-        {shopCategories.map((c) => {
+        {cats.map((c) => {
           const active = category === c.key;
           return (
             <Pressable key={c.key} onPress={() => setCategory(c.key)} style={[styles.cat, active && styles.catActive]}>

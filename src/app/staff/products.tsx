@@ -9,10 +9,11 @@ import { Badge, Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { ProductPhoto } from '@/components/product-photo';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice, priceLabel } from '@/data/mock';
-import { shopCategories, type ShopCategory } from '@/data/shop';
-import { useCanManage, useApp, useCatalog, useI18n } from '@/store/app-context';
+import { type ShopCategory } from '@/data/shop';
+import { useCanManage, useApp, useCatalog, useI18n, useShopCategories } from '@/store/app-context';
 
 export default function StaffProductsScreen() {
+  const cats = useShopCategories();
   const { t, td } = useI18n();
   const { all, hidden, isCustom } = useCatalog();
   const { upsertProduct, restoreProduct, productOverrides } = useApp();
@@ -45,7 +46,7 @@ export default function StaffProductsScreen() {
         <TextInput value={query} onChangeText={setQuery} placeholder={t('shop_search_ph')} placeholderTextColor={Colors.textMuted} style={styles.searchInput} />
       </View>
       <ChipRow>
-        {shopCategories.map((c) => (
+        {cats.map((c) => (
           <Chip key={c.key} label={c.key === 'Все' ? t('all') : td(c.key)} active={category === c.key} onPress={() => setCategory(c.key)} />
         ))}
         <Chip label={`${t('filter_hidden')} ${hidden.length ? `(${hidden.length})` : ''}`} icon="eye-off-outline" active={category === 'hidden'} onPress={() => setCategory('hidden')} />

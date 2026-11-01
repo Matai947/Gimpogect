@@ -1,4 +1,5 @@
-export type ShopCategory = 'Протеин' | 'Креатин и амино' | 'Витамины' | 'Батончики' | 'Напитки' | 'Аксессуары' | 'Одежда';
+/** The built-in categories, plus any the manager types for a new product (they appear once a product carries them). */
+export type ShopCategory = string;
 
 export type Product = {
   id: string;

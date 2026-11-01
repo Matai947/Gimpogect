@@ -56,6 +56,8 @@ export const kk: Record<TKey, string> = {
   auth_terms: 'Жалғастыра отырып, мүшелік шарттарымен және құпиялылық саясатымен келісесіз',
   rules_title: 'Клуб ережесі',
   trainer_quals: 'Біліктілігі',
+  p_cat_new: 'Жаңа санат',
+  p_cat_new_ph: 'Атауы, мысалы: Гейнерлер',
   ex_year: '{y} жыл:',
   ex_all_time: 'Барлығы:',
   ps_spent_cash: 'қолма-қол {cash} • қолма-қолсыз {noncash}',

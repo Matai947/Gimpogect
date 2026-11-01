@@ -11,10 +11,10 @@ import { BarcodeSheet, cleanBarcode } from '@/components/barcode-sheet';
 import { StaffAccent } from '@/components/member-result';
 import { Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { shopCategories, type Product, type ShopCategory } from '@/data/shop';
+import { type Product, type ShopCategory } from '@/data/shop';
 import { clubs } from '@/data/mock';
 import { stockMove, stockSet, uploadPhoto } from '@/lib/api';
-import { clubStock, useApp, useCatalog, useI18n } from '@/store/app-context';
+import { clubStock, useApp, useCatalog, useI18n, useShopCategories } from '@/store/app-context';
 
 const badges: (NonNullable<Product['badge']> | 'none')[] = ['none', 'Хит', 'Новинка', 'Скидка'];
 const optionLabels: NonNullable<Product['options']>['label'][] = ['Вкус', 'Размер', 'Цвет'];
@@ -39,6 +39,8 @@ function ProductEditForm({ id }: { id?: string }) {
   const [name, setName] = useState(existing?.name ?? '');
   const [brand, setBrand] = useState(existing?.brand ?? 'Seven Gym');
   const [category, setCategory] = useState<ShopCategory | null>(existing?.category ?? null);
+  const cats = useShopCategories();
+  const [newCat, setNewCat] = useState<string | null>(null); // typing a category that is not in the list yet
   const [price, setPrice] = useState(existing ? String(existing.price) : '');
   const [oldPrice, setOldPrice] = useState(existing?.oldPrice ? String(existing.oldPrice) : '');
   const [unit, setUnit] = useState(existing?.unit ?? '');
@@ -189,12 +191,25 @@ function ProductEditForm({ id }: { id?: string }) {
 
           <Label text={t('p_category')} required />
           <Row gap={Spacing.two} style={{ flexWrap: 'wrap' }}>
-            {shopCategories
+            {cats
               .filter((c) => c.key !== 'Все')
               .map((c) => (
-                <Chip key={c.key} label={td(c.key)} active={category === c.key} onPress={() => setCategory(c.key as ShopCategory)} />
+                <Chip key={c.key} label={td(c.key)} active={category === c.key && newCat === null} onPress={() => (setNewCat(null), setCategory(c.key))} />
               ))}
+            {category && newCat === null && !cats.some((c) => c.key === category) ? <Chip label={category} active onPress={() => setNewCat(category)} /> : null}
+            <Chip label={t('p_cat_new')} icon="add-outline" active={newCat !== null} onPress={() => (setNewCat(''), setCategory(null))} />
           </Row>
+          {newCat !== null ? (
+            <Field
+              value={newCat}
+              onChange={(v) => {
+                const name = v.replace(/[<>]/g, '').slice(0, 30);
+                setNewCat(name);
+                setCategory(name.trim().length >= 2 ? name.trim() : null);
+              }}
+              placeholder={t('p_cat_new_ph')}
+            />
+          ) : null}
 
           <Row gap={Spacing.two}>
             <View style={{ flex: 1 }}>

@@ -7,7 +7,7 @@ import { members, mockOrders, type Member } from '@/data/members';
 import { mockSales, saleValue, type PayMethod, type Sale } from '@/data/owner';
 import { applyContent, promoByCode, promoDiscount, type Content, type ContentSection } from '@/data/content';
 import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig } from '@/data/mock';
-import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
+import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product, shopCategories } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
 import { trainerLoginRemote, checkinRemote, clientMove, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, fetchMemberVisits, grantRemote, planFixRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
@@ -1176,6 +1176,16 @@ export function useCatalog() {
     const all = c.all.map(withStock);
     return { products: c.visible.map(withStock), all, hidden: hiddenProducts, byId: (id: string) => all.find((p) => p.id === id), isCustom: (id: string) => customProducts.some((p) => p.id === id) };
   }, [customProducts, productOverrides, hiddenProducts, stock]);
+}
+
+/** The shop's categories: the built-in ones, then every other one a product carries (added by the manager). */
+export function useShopCategories() {
+  const { all } = useCatalog();
+  return useMemo(() => {
+    const known = new Set(shopCategories.map((c) => c.key));
+    const extra = [...new Set(all.map((p) => p.category).filter((c) => c && !known.has(c)))].sort((a, b) => a.localeCompare(b, 'ru'));
+    return [...shopCategories, ...extra.map((key) => ({ key, icon: 'pricetag-outline' }))];
+  }, [all]);
 }
 
 /** Cart totals with member / promo discount. */
