@@ -18,7 +18,10 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || '/';
+  // only a page of this site opens from a message
+  let url = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin);
+  if (url.origin !== self.location.origin) url = new URL('/', self.location.origin);
+  url = url.href;
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
       for (const w of wins) {

@@ -395,7 +395,15 @@ module.exports = async function handler(req, res) {
       const sub = body.sub || {};
       const endpoint = String(sub.endpoint || '');
       const keys = sub.keys || {};
-      if (!/^https:\/\/[\w.\-]+\//.test(endpoint) || endpoint.length > 600 || typeof keys.p256dh !== 'string' || typeof keys.auth !== 'string' || keys.p256dh.length > 200 || keys.auth.length > 100) return res.status(400).json({ error: 'bad sub' });
+      // only the browsers' own push services: the server never posts to an address a visitor made up
+      let host = '';
+      try {
+        host = new URL(endpoint).hostname;
+      } catch {
+        host = '';
+      }
+      const PUSH_HOSTS = /(^|\.)(fcm\.googleapis\.com|android\.googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|notify\.windows\.com)$/;
+      if (!endpoint.startsWith('https://') || !PUSH_HOSTS.test(host) || endpoint.length > 600 || typeof keys.p256dh !== 'string' || typeof keys.auth !== 'string' || keys.p256dh.length > 200 || keys.auth.length > 100) return res.status(400).json({ error: 'bad sub' });
       const memberId = str(body.memberId, 20);
       // a client's phone is tied to the client only with the client's own token
       const member = memberId && ID.test(memberId) && tokenOwner(req) === memberId ? memberId : '';
@@ -1037,7 +1045,7 @@ module.exports = async function handler(req, res) {
       if (!process.env.VAPID_PUBLIC || !process.env.VAPID_PRIVATE) return res.status(503).json({ error: 'push off' });
       const title = str(body.title, 60);
       const text = str(body.body, 240);
-      const url = /^\/[\w\-\/?=&.]{0,80}$/.test(String(body.url || '')) ? body.url : '/';
+      const url = ['/', '/shop', '/membership'].includes(String(body.url)) ? body.url : '/';
       const audience = ['all', 'active', 'expired'].includes(body.audience) ? body.audience : 'all';
       const clubId = (await validClub(body.clubId)) ? body.clubId : '';
       if (title.length < 2 || /[<>]/.test(title + text)) return res.status(400).json({ error: 'bad data' });
@@ -1061,7 +1069,7 @@ module.exports = async function handler(req, res) {
         await Promise.all(
           pick.slice(i, i + 20).map(async (x) => {
             try {
-              await webpush.sendNotification(x.sub, payload, { TTL: 86400 });
+              await webpush.sendNotification(x.sub, payload, { TTL: 86400, timeout: 10000 });
               sent += 1;
             } catch (e) {
               failed += 1;
