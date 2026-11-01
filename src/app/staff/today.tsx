@@ -7,6 +7,7 @@ import { StaffAccent, hm } from '@/components/member-result';
 import { ExpensesPanel } from '@/components/expenses-panel';
 import { DayVisitors } from '@/components/day-visitors';
 import { PeriodSummary } from '@/components/period-summary';
+import { PushPanel } from '@/components/push-panel';
 import { StaffHeader } from '@/components/staff-header';
 import { Card, ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -38,6 +39,7 @@ export default function StaffTodayScreen() {
         {canManage ? <DayVisitors accent={StaffAccent} /> : null}
         {canManage ? <PeriodSummary accent={StaffAccent} pick money /> : null}
         {canManage ? <ExpensesPanel accent={StaffAccent} /> : null}
+        {canManage ? <PushPanel accent={StaffAccent} /> : null}
         <View style={styles.grid}>
           <Stat value={okCount} label={t('today_checkins')} icon="log-in-outline" color={Colors.success} onPress={() => router.push('/staff')} />
           <Stat value={deniedCount} label={t('today_denied')} icon="close-circle-outline" color={Colors.danger} />

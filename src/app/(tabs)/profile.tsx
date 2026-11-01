@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Alert, StyleSheet, View } from 'react-native';
 
+import { ClubNews } from '@/components/club-news';
 import { LangSwitch } from '@/components/lang-switch';
 import { Avatar, Badge, Card, Divider, ListRow, Row, Screen, StatTile, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
@@ -147,9 +148,11 @@ export default function ProfileScreen() {
             </View>
             <LangSwitch compact />
           </View>
-          <Divider />
-          <ListRow icon="notifications-outline" title={t('notifications')} subtitle={t('notif_sub')} onPress={() => Alert.alert(t('notifications'), t('notif_alert'))} />
         </Card>
+      </View>
+
+      <View style={styles.section}>
+        <ClubNews />
       </View>
 
       <View style={styles.section}>

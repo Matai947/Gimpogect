@@ -385,6 +385,34 @@ module.exports = async function handler(req, res) {
     }
 
     // The list of clubs is public (the site and the app show it); only the owner changes it.
+    /* ---- push messages (Web Push): a phone subscribes once; the manager's news reaches it with the app closed ---- */
+    const VAPID_PUBLIC = process.env.VAPID_PUBLIC;
+    const pushKey = (endpoint) => 'push:' + crypto.createHash('sha256').update(String(endpoint)).digest('hex').slice(0, 32);
+    if (req.method === 'GET' && op === 'push-key') {
+      return VAPID_PUBLIC ? res.status(200).json({ key: VAPID_PUBLIC }) : res.status(503).json({ error: 'push off' });
+    }
+    if (req.method === 'POST' && op === 'push-sub') {
+      const sub = body.sub || {};
+      const endpoint = String(sub.endpoint || '');
+      const keys = sub.keys || {};
+      if (!/^https:\/\/[\w.\-]+\//.test(endpoint) || endpoint.length > 600 || typeof keys.p256dh !== 'string' || typeof keys.auth !== 'string' || keys.p256dh.length > 200 || keys.auth.length > 100) return res.status(400).json({ error: 'bad sub' });
+      const memberId = str(body.memberId, 20);
+      // a client's phone is tied to the client only with the client's own token
+      const member = memberId && ID.test(memberId) && tokenOwner(req) === memberId ? memberId : '';
+      const clubId = (await validClub(body.clubId)) ? body.clubId : '';
+      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: pushKey(endpoint), data: { sub: { endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } }, member, clubId, at: Date.now() } }) });
+      return res.status(200).json({ ok: true });
+    }
+    if (req.method === 'POST' && op === 'push-unsub') {
+      await sb(`settings?key=eq.${pushKey(body.endpoint)}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+      return res.status(200).json({ ok: true });
+    }
+    // the last messages, for the app's own news list (also for phones without push)
+    if (req.method === 'GET' && op === 'news') {
+      const rows = await sb(`settings?select=data&key=like.pushlog:*&order=key.desc&limit=15`);
+      return res.status(200).json({ news: rows.map((r) => ({ ts: r.data.ts, title: r.data.title, body: r.data.body, url: r.data.url, clubId: r.data.clubId || '' })) });
+    }
+
     if (req.method === 'GET' && op === 'clubs') return res.status(200).json({ clubs: await getClubs() });
 
     // Editable content is public too: prices, plans, trainers, rules, schedule, promotions, photos.
@@ -1002,6 +1030,57 @@ module.exports = async function handler(req, res) {
       const days = Math.max(1, Math.min(400, Number(req.query.days) || 30));
       const rows = await pageAll(`settings?select=data&key=like.cmove:*&${enc('data->>ts')}=gte.${Date.now() - days * 86400000}&order=key.desc`);
       return res.status(200).json({ moves: rows.map((r) => r.data) });
+    }
+
+    if (req.method === 'POST' && op === 'push-send') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      if (!process.env.VAPID_PUBLIC || !process.env.VAPID_PRIVATE) return res.status(503).json({ error: 'push off' });
+      const title = str(body.title, 60);
+      const text = str(body.body, 240);
+      const url = /^\/[\w\-\/?=&.]{0,80}$/.test(String(body.url || '')) ? body.url : '/';
+      const audience = ['all', 'active', 'expired'].includes(body.audience) ? body.audience : 'all';
+      const clubId = (await validClub(body.clubId)) ? body.clubId : '';
+      if (title.length < 2 || /[<>]/.test(title + text)) return res.status(400).json({ error: 'bad data' });
+      const webpush = require('web-push');
+      webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:info@7gym.kz', process.env.VAPID_PUBLIC, process.env.VAPID_PRIVATE);
+      const subs = (await pageAll('settings?select=key,data&key=like.push:*')).map((r) => ({ key: r.key, ...r.data }));
+      // who gets it: a club (by the client's club, or where the phone subscribed) and whether the pass is running
+      const people = new Map((await readAll()).map((c) => [c.id, c]));
+      const today = dayOf(Date.now());
+      const pick = subs.filter((x) => {
+        const c = x.member ? people.get(x.member) : null;
+        if (clubId && (c ? (c.homeClubId || 'c1') : x.clubId) !== clubId) return false;
+        if (audience === 'all') return true;
+        const live = !!(c && c.membership && c.membership.endDate >= today);
+        return audience === 'active' ? live : !!c && !live;
+      });
+      const payload = JSON.stringify({ title, body: text, url });
+      let sent = 0;
+      let failed = 0;
+      for (let i = 0; i < pick.length; i += 20) {
+        await Promise.all(
+          pick.slice(i, i + 20).map(async (x) => {
+            try {
+              await webpush.sendNotification(x.sub, payload, { TTL: 86400 });
+              sent += 1;
+            } catch (e) {
+              failed += 1;
+              // the phone unsubscribed or the browser dropped it: forget it
+              if (e && (e.statusCode === 404 || e.statusCode === 410)) await sb(`settings?key=eq.${x.key}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+            }
+          }),
+        );
+      }
+      const now = Date.now();
+      const id = String(now) + Math.random().toString(36).slice(2, 5).padEnd(3, '0');
+      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: 'pushlog:' + id, data: { id, ts: now, title, body: text, url, audience, clubId, sent, failed, by: staffName('owner') } }) });
+      return res.status(200).json({ ok: true, sent, failed, total: subs.length });
+    }
+    if (req.method === 'GET' && op === 'push-log') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const rows = await sb(`settings?select=data&key=like.pushlog:*&order=key.desc&limit=30`);
+      const subs = await pageAll('settings?select=key&key=like.push:*');
+      return res.status(200).json({ log: rows.map((r) => r.data), subscribers: subs.length });
     }
 
     /* ---- club expenses: the manager keeps the monthly must-pays (rent, utilities, salaries) and records what was paid; the owner sees it all ---- */
