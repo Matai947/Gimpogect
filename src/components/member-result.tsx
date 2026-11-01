@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
-import { Linking, TextInput, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, TextInput, StyleSheet, View } from 'react-native';
 
 import { Avatar, Badge, Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
 import type { PayMethod } from '@/data/owner';
-import { resetPasswordRemote } from '@/lib/api';
+import { fetchMemberVisits, resetPasswordRemote, type MemberVisit } from '@/lib/api';
+import { VisitCalendar } from '@/components/visit-calendar';
 import { DAY_ONLY_UNTIL, clubs, clubById, clubHour, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
 import { replacePlan, useApp, useCanManage, useI18n, useMembers, usePlans, usePresence, type MemberInfo } from '@/store/app-context';
 
@@ -33,6 +34,12 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   const { staff, staffCode, logCheckin, checkoutMember, grantPlan, editMembership, changePlan, staffFreeze, moveClient, remote, membership } = useApp();
   const canManage = useCanManage();
   const [moveMsg, setMoveMsg] = useState('');
+  const [seen, setSeen] = useState<MemberVisit[] | null>(null);
+  const [showVisits, setShowVisits] = useState(false);
+  const openVisits = () => {
+    setShowVisits((v) => !v);
+    if (!seen && staffCode) void fetchMemberVisits(member.id, { code: staffCode }).then((v) => v && setSeen(v));
+  };
   const [freezing, setFreezing] = useState(false);
   const [freezeMsg, setFreezeMsg] = useState<{ text: string; bad: boolean } | null>(null);
   const doFreeze = async (days: number) => {
@@ -412,6 +419,23 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
           <Fact label={t('fact_age_goal')} value={[member.age ? t('age_n', { n: member.age }) : '', member.goal ? goalTitle(member.goal) : ''].filter(Boolean).join(' • ') || '—'} />
           <Fact label={t('fact_trainer')} value={member.trainerId ? (trainerById(member.trainerId)?.name ?? '—') : t('fact_no_trainer')} />
           <Fact label={t('fact_freeze')} value={member.frozen && member.frozenUntil ? t('frozen_until', { date: formatDateLong(member.frozenUntil) }) : member.freezesLeft === 0 ? t('ms_freeze_used') : t('ms_freeze_rule', { k: member.freezesLeft ?? 1, n: Math.min(member.freezeMax || member.freezeDaysLeft, member.freezeDaysLeft) })} accent={member.frozen} />
+          <Pressable onPress={openVisits} style={styles.visitsToggle}>
+            <Ionicons name="calendar-outline" size={16} color={StaffAccent} />
+            <T type="small" color={StaffAccent} style={{ fontWeight: '700', flex: 1 }}>
+              {t('vc_title')}
+              {seen ? ` • ${t('vc_total', { n: new Set(seen.map((v) => v.d)).size })}` : ''}
+            </T>
+            <Ionicons name={showVisits ? 'chevron-up' : 'chevron-down'} size={16} color={StaffAccent} />
+          </Pressable>
+          {showVisits ? (
+            seen ? (
+              <VisitCalendar days={[...new Set(seen.map((v) => v.d))]} oneFit={new Set(seen.filter((v) => v.onefit).map((v) => v.d))} accent={StaffAccent} />
+            ) : (
+              <T type="small" color={Colors.textMuted}>
+                …
+              </T>
+            )
+          ) : null}
           {member.params ? <Fact label={t('my_params')} value={member.params} /> : null}
           {member.bookingsToday ? <Fact label={t('fact_bookings_today')} value={String(member.bookingsToday)} accent /> : null}
           {member.ordersReady ? <Fact label={t('fact_orders_ready')} value={String(member.ordersReady)} accent /> : null}
@@ -482,6 +506,7 @@ export function Fact({ label, value, accent }: { label: string; value: string; a
 }
 
 const styles = StyleSheet.create({
+  visitsToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   fact: { width: '48%', flexGrow: 1, gap: 1, paddingVertical: 8, paddingHorizontal: 10, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.border },
   card: { backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1.5, overflow: 'hidden', flexDirection: 'row' },

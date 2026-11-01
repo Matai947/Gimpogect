@@ -1,3 +1,4 @@
+import { VisitCalendar } from '@/components/visit-calendar';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -208,6 +209,13 @@ export default function ProgressScreen() {
               </View>
               <Button title={t('record')} onPress={save} disabled={!input} />
             </Row>
+          </Card>
+        </View>
+
+        <View style={{ marginTop: Spacing.four }}>
+          <SectionHeader title={t('vc_title')} />
+          <Card>
+            <VisitCalendar days={visits.map((v) => v.date)} accent={Colors.accent} />
           </Card>
         </View>
 

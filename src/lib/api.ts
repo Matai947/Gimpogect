@@ -64,6 +64,9 @@ export const freezeRemote = async (id: string, days: number, auth: { token?: str
   return r.status === 200 ? (r.data as { membership: RemoteMembership }).membership : null;
 };
 export const fetchMyMembership = (id: string, token: string) => call<RemoteMe>('me', { query: `&id=${id}`, token });
+/** The days a client came: `token` for the client's own app, `code` for the desk. */
+export type MemberVisit = { d: string; c: string; ts: number; onefit: boolean };
+export const fetchMemberVisits = async (id: string, auth: { token?: string; code?: string }) => (await call<{ visits: MemberVisit[] }>('member-visits', { query: `&id=${id}`, token: auth.token, code: auth.code }))?.visits ?? null;
 
 /** A fresh single-use proof for the client's own QR (valid 90 seconds). */
 export const fetchQrProof = async (id: string, token: string) => (await call<{ code: string }>('qr', { token, query: `&id=${id}` }))?.code ?? null;

@@ -9,7 +9,7 @@ import { applyContent, promoByCode, promoDiscount, type Content, type ContentSec
 import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { trainerLoginRemote, checkinRemote, clientMove, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, grantRemote, planFixRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused } from '@/lib/api';
+import { trainerLoginRemote, checkinRemote, clientMove, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, fetchMemberVisits, grantRemote, planFixRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -348,6 +348,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const me = await fetchMyMembership(uid, token);
         const m = me?.membership;
         if (live && me && (!m || planById(m.planId))) setState((s) => (JSON.stringify(s.membership ?? null) === JSON.stringify(m ?? null) ? s : { ...s, membership: m ?? null }));
+        const seen = await fetchMemberVisits(uid, { token });
+        if (live && seen) {
+          const visits = [...new Map(seen.map((v) => [v.d, { date: v.d, clubId: v.c }])).values()];
+          setState((s) => (JSON.stringify(s.visits) === JSON.stringify(visits) ? s : { ...s, visits }));
+        }
       }
     };
     tick();

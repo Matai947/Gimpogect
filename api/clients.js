@@ -503,6 +503,14 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, membership: next.membership ? withFreeze(next.membership, await freezeRules()) : null, token: existing ? undefined : issueToken(id) });
     }
 
+    // The days a client came (a year back): their own app with their token, or the staff.
+    if (req.method === 'GET' && op === 'member-visits') {
+      const id = str(req.query.id, 20);
+      if (!ID.test(id)) return res.status(400).json({ error: 'bad id' });
+      if (tokenOwner(req) !== id && !authed()) return res.status(401).json({ error: 'auth' });
+      const rows = await pageAll(`visits?select=ts,club,kind&member=eq.${encodeURIComponent(id)}&kind=neq.out&ts=gte.${Date.now() - 400 * 86400000}&order=ts.desc`);
+      return res.status(200).json({ visits: rows.map((v) => ({ d: dayOf(v.ts), c: v.club, ts: v.ts, onefit: v.kind === 'onefit' })) });
+    }
     if (req.method === 'GET' && op === 'me') {
       const id = str(req.query.id, 20);
       if (!ID.test(id)) return res.status(400).json({ error: 'bad id' });
