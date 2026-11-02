@@ -8,9 +8,10 @@ import { Fact, hm } from '@/components/member-result';
 import { ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { addDays, clubById, clubs, formatPrice, occupancyLabel } from '@/data/mock';
-import { SESSION_MS, useApp, useI18n, useMembers, useNow, usePresence, useSales } from '@/store/app-context';
+import { SESSION_MS, useApp, useI18n, useMembers, useNow, usePresence, useSales, useOccupancy } from '@/store/app-context';
 
 export default function OwnerClubs() {
+  const occOf = useOccupancy();
   const { t } = useI18n();
   const { staffLog } = useApp();
   const now = useNow();
@@ -33,7 +34,7 @@ export default function OwnerClubs() {
         <ClubEditor />
         {clubs.map((c) => {
           const mine = list.filter((m) => m.homeClubId === c.id);
-          const occ = occupancyLabel(c.occupancy);
+          const occ = occupancyLabel(occOf(c.id).pct);
           return (
             <View key={c.id} style={styles.card}>
               <Row style={{ justifyContent: 'space-between' }}>
@@ -49,9 +50,9 @@ export default function OwnerClubs() {
                 <Fact label={t('present_title')} value={String(present.filter((p) => p.clubId === c.id).length)} accent />
                 <Fact label={t('clubs_clients')} value={String(mine.length)} />
                 <Fact label={t('clubs_visits')} value={String(mine.reduce((s, m) => s + m.visitsThisMonth, 0))} />
-                <Fact label={t('clubs_occ')} value={`${c.occupancy}% • ${occ.label}`} />
+                <Fact label={t('clubs_occ')} value={`${occOf(c.id).pct}% • ${occOf(c.id).inside}/${occOf(c.id).capacity} • ${occ.label}`} />
               </View>
-              <ProgressBar value={c.occupancy / 100} color={occ.color} />
+              <ProgressBar value={occOf(c.id).pct / 100} color={occ.color} />
             </View>
           );
         })}

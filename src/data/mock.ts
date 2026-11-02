@@ -381,6 +381,9 @@ export function planById(id: string) {
   return plans.find((p) => p.id === id);
 }
 
+/** How many people a club holds comfortably: the lockers in its changing rooms. */
+export const clubCapacity: Record<string, number> = { c1: 60, c2: 40 };
+
 export function occupancyLabel(p: number): { label: string; color: string } {
   const lang = getLang();
   if (p < 45) return { label: translate(lang, 'occ_free'), color: '#3DDC84' };

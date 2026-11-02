@@ -135,6 +135,7 @@ function checkSection(section, d) {
   }
 }
 let contentCache = { at: 0, data: {} };
+let occCache = { at: 0, inside: {} };
 // The first counts were kept for one shelf (product -> units); they belong to the first club.
 const normStock = (v) => (!v || typeof v !== 'object' ? {} : Object.values(v).some((x) => typeof x === 'number') ? { c1: v } : v);
 /** Changes the stock row with `change(all)` (club -> product -> units), which answers the result or null to leave it.
@@ -430,6 +431,24 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ news: rows.map((r) => ({ ts: r.data.ts, title: r.data.title, body: r.data.body, url: r.data.url, clubId: r.data.clubId || '' })) });
     }
 
+    // People inside each club now: an entry in the last 2 hours with no exit marked after it. Counts only.
+    if (req.method === 'GET' && op === 'occupancy') {
+      if (Date.now() - occCache.at > 30000) {
+        const rows = await sb(`visits?select=ts,club,member,kind&ts=gte.${Date.now() - 2 * 3600000}&order=ts.asc&limit=2000`);
+        const last = new Map();
+        for (const v of rows) {
+          if (v.kind === 'out') {
+            const was = last.get(v.member);
+            if (was && was.club === v.club) last.delete(v.member);
+          } else last.set(v.member, v);
+        }
+        const inside = {};
+        for (const v of last.values()) inside[v.club] = (inside[v.club] || 0) + 1;
+        occCache = { at: Date.now(), inside };
+      }
+      res.setHeader('Cache-Control', 'public, max-age=30');
+      return res.status(200).json({ inside: occCache.inside });
+    }
     if (req.method === 'GET' && op === 'clubs') return res.status(200).json({ clubs: await getClubs() });
 
     // Editable content is public too: prices, plans, trainers, rules, schedule, promotions, photos.

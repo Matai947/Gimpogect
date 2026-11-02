@@ -13,9 +13,10 @@ import { Card, ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { mockOrders } from '@/data/members';
 import { clubById, occupancyLabel, sessionsForDate, toISODate, trainerById } from '@/data/mock';
-import { SESSION_MS, useApp, useI18n, useNow, usePresence, orderClosed, useCanManage } from '@/store/app-context';
+import { SESSION_MS, useApp, useI18n, useNow, usePresence, orderClosed, useCanManage, useOccupancy } from '@/store/app-context';
 
 export default function StaffTodayScreen() {
+  const occOf = useOccupancy();
   const canManage = useCanManage();
   const { staff, staffLog, orders, orderStatusOverrides, checkoutMember } = useApp();
   const now = useNow();
@@ -30,7 +31,7 @@ export default function StaffTodayScreen() {
   const deniedCount = todayLog.length - okCount;
   const sessions = useMemo(() => sessionsForDate(todayIso).filter((s) => s.clubId === clubId), [todayIso, clubId]);
   const pendingOrders = [...orders, ...mockOrders].filter((o) => o.clubId === clubId && !orderClosed(orderStatusOverrides[o.id] ?? o.status)).length;
-  const occ = occupancyLabel(club.occupancy);
+  const occ = occupancyLabel(occOf(club.id).pct);
 
   return (
     <View style={styles.root}>
@@ -81,10 +82,10 @@ export default function StaffTodayScreen() {
           <Row style={{ justifyContent: 'space-between' }}>
             <T type="subheading">{t('occupancy_label')}</T>
             <T type="label" color={occ.color}>
-              {club.occupancy}% • {occ.label}
+              {occOf(club.id).pct}% • {occOf(club.id).inside}/{occOf(club.id).capacity} • {occ.label}
             </T>
           </Row>
-          <ProgressBar value={club.occupancy / 100} color={occ.color} height={10} />
+          <ProgressBar value={occOf(club.id).pct / 100} color={occ.color} height={10} />
         </Card>
 
         <T type="heading">{t('classes_today')}</T>

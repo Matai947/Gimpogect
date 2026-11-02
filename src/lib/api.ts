@@ -160,6 +160,8 @@ export const fetchNews = async () => (await call<{ news: NewsItem[] }>('news', {
 export type PushLog = { id: string; ts: number; title: string; body: string; url: string; audience: string; clubId: string; sent: number; failed: number; by: string };
 export const fetchPushLog = async (code: string) => (await call<{ log: PushLog[]; subscribers: number }>('push-log', { code })) ?? null;
 export const pushSendRemote = (code: string, b: { title: string; body: string; url: string; audience: string; clubId: string }) => call<{ ok: true; sent: number; failed: number; total: number }>('push-send', { method: 'POST', code, body: b });
+/** People inside each club right now (counts only, public). */
+export const fetchOccupancy = async () => (await call<{ inside: Record<string, number> }>('occupancy', {}))?.inside ?? null;
 export const fetchCashes = async (code: string, days = 30) => (await call<{ cashes: CashDrawer[] }>('cashes', { code, query: `&days=${days}` }))?.cashes ?? null;
 
 /** Editable content (prices, plans, trainers, rules, schedule, promotions, photos), as the administrators set it. */

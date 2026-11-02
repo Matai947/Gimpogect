@@ -7,11 +7,12 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Badge, Card, Chip, ChipRow, ProgressBar, Row, Screen, Stars, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubHours, clubs, occupancyLabel } from '@/data/mock';
-import { useApp, useI18n } from '@/store/app-context';
+import { useApp, useI18n, useOccupancy } from '@/store/app-context';
 
 const cities = ['Все', 'Алматы'];
 
 export default function ClubsScreen() {
+  const occOf = useOccupancy();
   const { favorites, toggleFavorite, user } = useApp();
   const { t, tp, td } = useI18n();
   const [query, setQuery] = useState('');
@@ -53,7 +54,7 @@ export default function ClubsScreen() {
 
       <View style={{ paddingHorizontal: Spacing.three, gap: Spacing.three }}>
         {list.map((c) => {
-          const occ = occupancyLabel(c.occupancy);
+          const occ = occupancyLabel(occOf(c.id).pct);
           const fav = favorites.includes(c.id);
           const isHome = user?.homeClubId === c.id;
           return (
@@ -98,10 +99,10 @@ export default function ClubsScreen() {
                       {occ.label}
                     </T>
                     <T type="small" color={Colors.textSecondary}>
-                      {t('occ_now', { p: c.occupancy })}
+                      {t('occ_now', { p: occOf(c.id).pct })}
                     </T>
                   </Row>
-                  <ProgressBar value={c.occupancy / 100} color={occ.color} />
+                  <ProgressBar value={occOf(c.id).pct / 100} color={occ.color} />
                 </View>
               </View>
             </Card>

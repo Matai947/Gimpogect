@@ -6,10 +6,10 @@ import { bmi, bmiLabel, dailyTargets, goalByKey, type FitnessProfile, type Goal 
 import { members, mockOrders, type Member } from '@/data/members';
 import { mockSales, saleValue, type PayMethod, type Sale } from '@/data/owner';
 import { applyContent, promoByCode, promoDiscount, type Content, type ContentSection } from '@/data/content';
-import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig } from '@/data/mock';
+import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig, clubCapacity } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product, shopCategories } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { trainerLoginRemote, checkinRemote, clientMove, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, fetchMemberVisits, editMembershipRemote, grantRemote, planFixRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused } from '@/lib/api';
+import { trainerLoginRemote, checkinRemote, clientMove, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, fetchMemberVisits, fetchOccupancy, editMembershipRemote, grantRemote, planFixRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -1176,6 +1176,28 @@ export function useCatalog() {
     const all = c.all.map(withStock);
     return { products: c.visible.map(withStock), all, hidden: hiddenProducts, byId: (id: string) => all.find((p) => p.id === id), isCustom: (id: string) => customProducts.some((p) => p.id === id) };
   }, [customProducts, productOverrides, hiddenProducts, stock]);
+}
+
+/** How full each club is now: people inside (from the server's entries and exits) over the club's lockers. */
+export function useOccupancy() {
+  const [inside, setInside] = useState<Record<string, number>>({});
+  const now = useNow();
+  const minute = Math.floor(now / 60000);
+  useEffect(() => {
+    let live = true;
+    fetchOccupancy().then((o) => live && o && setInside(o));
+    return () => {
+      live = false;
+    };
+  }, [minute]);
+  return useCallback(
+    (clubId: string) => {
+      const n = inside[clubId] ?? 0;
+      const cap = clubCapacity[clubId] ?? 50;
+      return { inside: n, capacity: cap, pct: Math.min(100, Math.round((n / cap) * 100)) };
+    },
+    [inside],
+  );
 }
 
 /** The shop's categories: the built-in ones, then every other one a product carries (added by the manager). */

@@ -8,11 +8,12 @@ import { Badge, Button, Card, Chip, EmptyState, IconButton, ProgressBar, Row, Sc
 import { Colors, Spacing } from '@/constants/theme';
 import { clubById, clubHours, occupancyLabel, sessionsForDate, toISODate, trainerById, trainers } from '@/data/mock';
 import { openWhatsApp } from '@/lib/whatsapp';
-import { useApp, useI18n } from '@/store/app-context';
+import { useApp, useI18n, useOccupancy } from '@/store/app-context';
 
 const W = Dimensions.get('window').width;
 
 export default function ClubScreen() {
+  const occOf = useOccupancy();
   const { id } = useLocalSearchParams<{ id: string }>();
   const club = clubById(id);
   const { favorites, toggleFavorite, user, updateUser, content } = useApp();
@@ -28,7 +29,7 @@ export default function ClubScreen() {
     );
   }
 
-  const occ = occupancyLabel(club.occupancy);
+  const occ = occupancyLabel(occOf(club.id).pct);
   const fav = favorites.includes(club.id);
   const isHome = user?.homeClubId === club.id;
 
@@ -82,10 +83,10 @@ export default function ClubScreen() {
                 {t('occupancy_now')}
               </T>
               <T type="small" color={occ.color} style={{ fontWeight: '700' }}>
-                {club.occupancy}%
+                {occOf(club.id).pct}%
               </T>
             </Row>
-            <ProgressBar value={club.occupancy / 100} color={occ.color} />
+            <ProgressBar value={occOf(club.id).pct / 100} color={occ.color} />
           </View>
         </Card>
 

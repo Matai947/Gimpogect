@@ -12,9 +12,10 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { activePromos } from '@/data/content';
 import { goalTip, goalTitle } from '@/data/fitness';
 import { clubById, clubHours, clubs, formatDateHuman, formatPrice, news, toISODate, occupancyLabel, sessionById, sessionStart, trainerById, trainers, planLength } from '@/data/mock';
-import { useApp, useCatalog, useFitnessProfile, useI18n, useMembershipInfo, usePlans, useVisitStats } from '@/store/app-context';
+import { useApp, useCatalog, useFitnessProfile, useI18n, useMembershipInfo, usePlans, useVisitStats, useOccupancy } from '@/store/app-context';
 
 export default function HomeScreen() {
+  const occOf = useOccupancy();
   const { user, bookings, addToCart, coachPlan } = useApp();
   const membership = useMembershipInfo();
   const { t, tp, td } = useI18n();
@@ -284,7 +285,7 @@ export default function HomeScreen() {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.three, gap: Spacing.two }}>
           {clubs.map((c) => {
-            const occ = occupancyLabel(c.occupancy);
+            const occ = occupancyLabel(occOf(c.id).pct);
             return (
               <Card key={c.id} onPress={() => router.push(`/club/${c.id}`)} style={{ width: 200, gap: Spacing.two }}>
                 <Row style={{ justifyContent: 'space-between' }}>
@@ -298,10 +299,10 @@ export default function HomeScreen() {
                     {occ.label}
                   </T>
                   <T type="small" color={Colors.textSecondary}>
-                    {c.occupancy}%
+                    {occOf(c.id).pct}%
                   </T>
                 </Row>
-                <ProgressBar value={c.occupancy / 100} color={occ.color} />
+                <ProgressBar value={occOf(c.id).pct / 100} color={occ.color} />
                 <T type="small" color={Colors.textSecondary}>
                   {clubHours(c)}
                 </T>
