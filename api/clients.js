@@ -1245,7 +1245,7 @@ module.exports = async function handler(req, res) {
 
     /* ---- the owner's safe: money the owner takes out or puts in by hand; what the desks put in comes from their withdrawals ---- */
     if (req.method === 'GET' && op === 'safe') {
-      if (!isOwner(req) && !isAcc) return res.status(403).json({ error: 'owner only' });
+      if (!isOwner(req) && !isAcc && !manages()) return res.status(403).json({ error: 'owner only' });
       const rows = await pageAll('settings?select=data&key=like.safe:*&order=key.desc');
       return res.status(200).json({ entries: rows.map((r) => r.data) });
     }

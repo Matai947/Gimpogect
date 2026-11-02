@@ -46,6 +46,8 @@ export default function OwnerSafe() {
 
   const mine = useMemo(() => (lines ?? []).filter((l) => l.clubId === club), [lines, club]);
   const balance = mine.reduce((n, l) => n + (l.out ? -l.amount : l.amount), 0);
+  const put = mine.filter((l) => !l.out).reduce((n, l) => n + l.amount, 0);
+  const took = mine.filter((l) => l.out).reduce((n, l) => n + l.amount, 0);
 
   const save = async () => {
     if (!mode) return;
@@ -80,6 +82,14 @@ export default function OwnerSafe() {
           <T type="display" color={OwnerAccent} style={{ fontSize: 34, lineHeight: 40 }}>
             {lines ? formatPrice(balance) : '…'}
           </T>
+          <Row gap={Spacing.three}>
+            <T type="small" color={Colors.success} style={{ fontWeight: '700' }}>
+              {t('safe_put_total')} +{formatPrice(put)}
+            </T>
+            <T type="small" color={Colors.danger} style={{ fontWeight: '700' }}>
+              {t('safe_took_total')} −{formatPrice(took)}
+            </T>
+          </Row>
           <T type="small" color={Colors.textSecondary}>
             {t('safe_hint')}
           </T>
