@@ -298,8 +298,8 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             ) : null}
           </View>
         )}
-        {/* the desk corrects the current plan: imported passes come without dates and counts */}
-        {!member.isSelf ? (
+        {/* the manager corrects the current plan (dates, visits, a plan added by mistake); administrators do not */}
+        {!member.isSelf && canManage ? (
           editing ? (
             <View style={styles.picker}>
               <T type="small" style={{ fontWeight: '700' }}>
