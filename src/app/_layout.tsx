@@ -1,9 +1,10 @@
 import { Montserrat_400Regular, Montserrat_500Medium, Montserrat_600SemiBold, Montserrat_700Bold, Montserrat_800ExtraBold } from '@expo-google-fonts/montserrat';
 import { Raleway_700Bold, Raleway_800ExtraBold, useFonts } from '@expo-google-fonts/raleway';
-import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, router, type Href } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { DialogHost } from '@/lib/alert-web';
@@ -79,6 +80,19 @@ export default function RootLayout() {
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});
   }, [ready]);
+
+  // a tapped push message in the Android app opens the page it points to
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    let sub: { remove: () => void } | undefined;
+    void import('expo-notifications').then((N) => {
+      sub = N.addNotificationResponseReceivedListener((r) => {
+        const url = r.notification.request.content.data?.url;
+        if (typeof url === 'string' && ['/', '/shop', '/membership'].includes(url)) router.push(url as Href);
+      });
+    });
+    return () => sub?.remove();
+  }, []);
 
   if (!ready) return null;
 

@@ -393,6 +393,15 @@ module.exports = async function handler(req, res) {
     }
     if (req.method === 'POST' && op === 'push-sub') {
       const sub = body.sub || {};
+      // the Android app: an Expo push token, sent on through Expo's push service
+      if (typeof sub.expo === 'string') {
+        if (!/^Expo(nent)?PushToken\[[\w-]{10,100}\]$/.test(sub.expo)) return res.status(400).json({ error: 'bad token' });
+        const memberId = str(body.memberId, 20);
+        const member = memberId && ID.test(memberId) && tokenOwner(req) === memberId ? memberId : '';
+        const clubId = (await validClub(body.clubId)) ? body.clubId : '';
+        await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: pushKey(sub.expo), data: { expo: sub.expo, member, clubId, at: Date.now() } }) });
+        return res.status(200).json({ ok: true });
+      }
       const endpoint = String(sub.endpoint || '');
       const keys = sub.keys || {};
       // only the browsers' own push services: the server never posts to an address a visitor made up
@@ -1042,15 +1051,15 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'POST' && op === 'push-send') {
       if (!manages()) return res.status(403).json({ error: 'manager only' });
-      if (!process.env.VAPID_PUBLIC || !process.env.VAPID_PRIVATE) return res.status(503).json({ error: 'push off' });
+      const webOn = !!(process.env.VAPID_PUBLIC && process.env.VAPID_PRIVATE);
       const title = str(body.title, 60);
       const text = str(body.body, 240);
       const url = ['/', '/shop', '/membership'].includes(String(body.url)) ? body.url : '/';
       const audience = ['all', 'active', 'expired'].includes(body.audience) ? body.audience : 'all';
       const clubId = (await validClub(body.clubId)) ? body.clubId : '';
       if (title.length < 2 || /[<>]/.test(title + text)) return res.status(400).json({ error: 'bad data' });
-      const webpush = require('web-push');
-      webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:info@7gym.kz', process.env.VAPID_PUBLIC, process.env.VAPID_PRIVATE);
+      const webpush = webOn ? require('web-push') : null;
+      if (webpush) webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:info@7gym.kz', process.env.VAPID_PUBLIC, process.env.VAPID_PRIVATE);
       const subs = (await pageAll('settings?select=key,data&key=like.push:*')).map((r) => ({ key: r.key, ...r.data }));
       // who gets it: a club (by the client's club, or where the phone subscribed) and whether the pass is running
       const people = new Map((await readAll()).map((c) => [c.id, c]));
@@ -1065,9 +1074,30 @@ module.exports = async function handler(req, res) {
       const payload = JSON.stringify({ title, body: text, url });
       let sent = 0;
       let failed = 0;
-      for (let i = 0; i < pick.length; i += 20) {
+      const forget = (key) => sb(`settings?key=eq.${key}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+      // the Android app's phones: Expo's push service, 100 at a time
+      const native = pick.filter((x) => x.expo);
+      for (let i = 0; i < native.length; i += 100) {
+        const batch = native.slice(i, i + 100);
+        try {
+          const r = await fetch('https://exp.host/--/api/v2/push/send', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(batch.map((x) => ({ to: x.expo, title, body: text, data: { url }, sound: 'default', channelId: 'news', priority: 'high' }))), signal: AbortSignal.timeout(15000) });
+          const tickets = (await r.json()).data || [];
+          for (let k = 0; k < batch.length; k++) {
+            const tk = tickets[k] || {};
+            if (tk.status === 'ok') sent += 1;
+            else {
+              failed += 1;
+              if (tk.details && tk.details.error === 'DeviceNotRegistered') await forget(batch[k].key);
+            }
+          }
+        } catch {
+          failed += batch.length;
+        }
+      }
+      const web = webpush ? pick.filter((x) => x.sub) : [];
+      for (let i = 0; i < web.length; i += 20) {
         await Promise.all(
-          pick.slice(i, i + 20).map(async (x) => {
+          web.slice(i, i + 20).map(async (x) => {
             try {
               await webpush.sendNotification(x.sub, payload, { TTL: 86400, timeout: 10000 });
               sent += 1;

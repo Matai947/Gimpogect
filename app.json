@@ -56,6 +56,14 @@
           "photosPermission": "Seven Gym использует фото для карточек товаров в магазине.",
           "cameraPermission": "Seven Gym использует камеру для фото товаров."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#D4AF37",
+          "defaultChannel": "news"
+        }
       ]
     ],
     "experiments": {
