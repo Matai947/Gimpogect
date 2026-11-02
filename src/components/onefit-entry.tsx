@@ -11,6 +11,7 @@ import { Button, Card, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { onefitRemote } from '@/lib/api';
 import { useApp, useCanManage, useI18n, useMembers } from '@/store/app-context';
+import { personMatches, phoneMatches } from '@/lib/phone';
 
 /** Front desk: let in a 1Fit member without an account. Only a name (and a phone, if they give it) is needed. */
 export function OneFitEntry() {
@@ -45,7 +46,7 @@ export function OneFitEntry() {
     const d = phoneDigits.replace(/^8/, '7');
     const q = name.trim().toLowerCase();
     if (d.length < 3 && q.length < 2) return [];
-    return members.filter((m) => onefitIds.has(m.id)).filter((m) => (d.length >= 3 ? m.phone.replace(/\D/g, '').includes(d) : m.name.toLowerCase().includes(q))).slice(0, 5);
+    return members.filter((m) => onefitIds.has(m.id)).filter((m) => (d.length >= 3 ? phoneMatches(m.phone, d) : personMatches(m, q))).slice(0, 5);
   }, [members, onefitIds, phoneDigits, name]);
   const ready = name.trim().length >= 2 || phoneDigits.length >= 10;
 

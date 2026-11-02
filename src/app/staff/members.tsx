@@ -9,6 +9,7 @@ import { Avatar, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { addDays, clubs, toISODate } from '@/data/mock';
 import { useApp, useCanManage, useI18n, useMembers } from '@/store/app-context';
+import { personMatches } from '@/lib/phone';
 
 type Filter = 'all' | 'new' | 'active' | 'expiring' | 'expired' | 'frozen' | 'onefit';
 
@@ -40,7 +41,7 @@ export default function StaffMembersScreen() {
         if (filter === 'onefit') return m.onefitVisits !== undefined;
         return true;
       })
-      .filter((m) => (q ? m.name.toLowerCase().includes(q) || m.phone.replace(/\s/g, '').includes(q.replace(/\s/g, '')) || m.id.includes(q) : true))
+      .filter((m) => personMatches(m, q))
       .sort((a, b) => Number(isNew(b)) - Number(isNew(a)) || a.name.localeCompare(b.name, 'ru'));
   }, [list, query, filter, shownClub]);
 

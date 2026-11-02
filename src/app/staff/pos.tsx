@@ -18,6 +18,7 @@ import { promoByCode, promoDiscount } from '@/data/content';
 import type { PayMethod } from '@/data/owner';
 import { MEMBER_DISCOUNT } from '@/data/shop';
 import { useApp, useCanManage, useCatalog, useI18n, useMembers, usePlans, useRawSales, type MemberInfo } from '@/store/app-context';
+import { personMatches } from '@/lib/phone';
 
 type Line = { key: string; title: string; price: number; qty: number; planId?: string; productId?: string; trainerId?: string; grams?: number };
 type Receipt = { id: string; ts: number; lines: Line[]; subtotal: number; discount: number; total: number; debt?: number; method: PayMethod; client?: MemberInfo; mixCash?: number; mixOther?: PayMethod; disc?: number };
@@ -67,8 +68,7 @@ export default function StaffPosScreen() {
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
-    const digits = q.replace(/\D/g, '');
-    return members.filter((m) => m.name.toLowerCase().includes(q) || (digits.length >= 3 && m.phone.replace(/\D/g, '').includes(digits))).slice(0, 5);
+    return members.filter((m) => personMatches(m, q)).slice(0, 5);
   }, [members, query]);
 
   const categories = useMemo(() => Array.from(new Set(products.filter((p) => p.inStock).map((p) => p.category))), [products]);

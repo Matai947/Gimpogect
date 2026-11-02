@@ -8,6 +8,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { addDays, clubs, formatDateHuman, toISODate, trainerById, trainers, weekdayShort } from '@/data/mock';
 import { deleteAppt, fetchAppts, saveAppt, type Appointment } from '@/lib/api';
 import { useApp, useI18n, useMembers } from '@/store/app-context';
+import { personMatches } from '@/lib/phone';
 
 const WEEK = [1, 2, 3, 4, 5, 6, 0];
 
@@ -46,8 +47,7 @@ export function AppointmentsEditor({ accent }: { accent: string }) {
   }, [staffCode]);
 
   const q = query.trim().toLowerCase();
-  const digits = q.replace(/\D/g, '');
-  const matches = q.length >= 2 ? members.filter((m) => m.name.toLowerCase().includes(q) || (digits.length >= 3 && m.phone.replace(/\D/g, '').includes(digits))).slice(0, 5) : [];
+  const matches = q.length >= 2 ? members.filter((m) => personMatches(m, q)).slice(0, 5) : [];
 
   const validTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
   const ready = name.trim().length >= 2 && validTime && !!trainerId && (kind === 'weekly' ? weekdays.length > 0 : /^\d{4}-\d{2}-\d{2}$/.test(date));

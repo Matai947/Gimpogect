@@ -10,6 +10,7 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
 import { clubById, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
 import { useI18n, useMembers, useSales } from '@/store/app-context';
+import { personMatches } from '@/lib/phone';
 
 type Filter = 'all' | 'active' | 'expiring' | 'expired' | 'frozen' | 'onefit';
 
@@ -38,7 +39,7 @@ export default function OwnerClients() {
         if (filter === 'onefit') return m.onefitVisits !== undefined;
         return true;
       })
-      .filter((m) => (q ? m.name.toLowerCase().includes(q) || m.phone.replace(/\s/g, '').includes(q.replace(/\s/g, '')) : true))
+      .filter((m) => personMatches(m, q))
       .sort((a, b) => (paid.get(b.id) ?? 0) - (paid.get(a.id) ?? 0));
   }, [list, query, filter, paid]);
 
