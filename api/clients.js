@@ -342,11 +342,13 @@ const BUILTIN_PLANS = {
   i6: { days: 90, freezeDays: 7 }, i7: { days: 180, freezeDays: 10 }, i8: { days: 365, freezeDays: 7, freezeCount: 2 },
 };
 async function planRule(id) {
+  if (!/^[A-Za-z0-9_-]{1,24}$/.test(id)) return null;
+  const own = (o, k) => (o && Object.prototype.hasOwnProperty.call(o, k) ? o[k] : null);
   const p = (await getContent()).plans || {};
-  const c = (p.custom || []).find((x) => x.id === id);
-  const base = c || BUILTIN_PLANS[id];
+  const c = (p.custom || []).find((x) => x && x.id === id);
+  const base = c || own(BUILTIN_PLANS, id);
   if (!base || (p.hidden || []).includes(id)) return null;
-  const r = { ...base, ...((p.overrides && p.overrides[id]) || {}) };
+  const r = { ...base, ...(own(p.overrides, id) || {}) };
   const days = Math.max(1, Math.min(400, Math.round(Number(r.days) || (Number(r.months) || 1) * 30)));
   return { days, visits: Number(r.visits) > 0 ? Math.min(1000, Math.round(Number(r.visits))) : 0, freezeDays: r.trial ? 0 : Math.max(0, Math.min(365, Math.round(Number(r.freezeDays) || 0))), freezeCount: Math.max(1, Math.min(10, Math.round(Number(r.freezeCount) || 1))), dayOnly: !!r.dayOnly, staffOnly: !!r.staffOnly };
 }
