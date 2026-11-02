@@ -334,6 +334,45 @@ function withFreeze(m, rule) {
   return r ? { ...m, freezeDaysLeft: r[0] * r[1], freezesLeft: r[1], freezeMax: r[0] } : m;
 }
 
+// The plans' lengths and counts, so the server can prolong a pass itself (edited and custom plans come from the content).
+const BUILTIN_PLANS = {
+  guest: { days: 1, staffOnly: true }, i9: { days: 1, visits: 1 }, i10: { days: 1, visits: 1 },
+  i3: { days: 31, visits: 12, freezeDays: 5, dayOnly: true }, i4: { days: 31, freezeDays: 5, dayOnly: true },
+  i1: { days: 31, visits: 12, freezeDays: 5 }, i2: { days: 31, freezeDays: 5 }, i5: { days: 31, freezeDays: 5 },
+  i6: { days: 90, freezeDays: 7 }, i7: { days: 180, freezeDays: 10 }, i8: { days: 365, freezeDays: 7, freezeCount: 2 },
+};
+async function planRule(id) {
+  const p = (await getContent()).plans || {};
+  const c = (p.custom || []).find((x) => x.id === id);
+  const base = c || BUILTIN_PLANS[id];
+  if (!base || (p.hidden || []).includes(id)) return null;
+  const r = { ...base, ...((p.overrides && p.overrides[id]) || {}) };
+  const days = Math.max(1, Math.min(400, Math.round(Number(r.days) || (Number(r.months) || 1) * 30)));
+  return { days, visits: Number(r.visits) > 0 ? Math.min(1000, Math.round(Number(r.visits))) : 0, freezeDays: r.trial ? 0 : Math.max(0, Math.min(365, Math.round(Number(r.freezeDays) || 0))), freezeCount: Math.max(1, Math.min(10, Math.round(Number(r.freezeCount) || 1))), dayOnly: !!r.dayOnly, staffOnly: !!r.staffOnly };
+}
+/** A running pass prolonged by a plan, the way the desk's app does it; null for a plan the server does not know. */
+async function prolong(cur, planId) {
+  const r = await planRule(String(planId || ''));
+  if (!r) return null;
+  if (r.staffOnly) {
+    const { frozenUntil: _f, ...rest } = cur; // a guest pass on a running plan only lifts the freeze
+    return rest;
+  }
+  const plus = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+  const count = r.freezeDays ? r.freezeCount : 0;
+  return {
+    planId: String(planId),
+    startDate: cur.startDate,
+    endDate: plus(cur.endDate, r.days),
+    freezeDaysLeft: Math.min(365, (cur.freezeDaysLeft || 0) + r.freezeDays * count),
+    freezesLeft: Math.min(10, (cur.freezesLeft || 0) + count),
+    freezeMax: r.freezeDays || cur.freezeMax || 0,
+    ...(r.visits ? { visitsLeft: Math.min(1000, (cur.visitsLeft || 0) + r.visits) } : {}),
+    ...(r.dayOnly ? { dayOnly: true } : {}),
+    ...(cur.frozenUntil ? { frozenUntil: cur.frozenUntil } : {}),
+  };
+}
+
 function cleanMembership(m) {
   if (!m || typeof m !== 'object') return null;
   const out = { planId: str(m.planId, 12), startDate: str(m.startDate, 10), endDate: str(m.endDate, 10), freezeDaysLeft: Math.max(0, Math.min(365, Number(m.freezeDaysLeft) || 0)) };
@@ -751,9 +790,18 @@ module.exports = async function handler(req, res) {
       const membership = cleanMembership(body.membership);
       if (!ID.test(id) || !membership) return res.status(400).json({ error: 'bad data' });
       const prev = (await read(id)) || { id, name: str(body.name, 60) || 'Гость', phone: str(body.phone, 20), homeClubId: 'c1', since: new Date().toISOString().slice(0, 10) };
-      // an administrator's grant may only start a pass or prolong a running one, never rewrite it
+      // An administrator's grant on a running pass is a prolongation: the server works it out from the plan's rules
+      // and the stored pass, so no dates, visits or freezes sent by the desk are taken on trust.
       const was = prev.membership;
-      if (op === 'grant' && !manages() && was && was.endDate >= dayOf(Date.now()) && !(membership.startDate === was.startDate && membership.endDate > was.endDate)) return res.status(403).json({ error: 'only the manager changes a running pass' });
+      if (op === 'grant' && !manages()) {
+        // a running pass is prolonged; otherwise a new one starts today with the plan's own length and counts
+        const today = dayOf(Date.now());
+        const running = was && (!was.endDate || was.endDate >= today);
+        const next = await prolong(running ? was : { startDate: today, endDate: today, freezeDaysLeft: 0, freezesLeft: 0 }, membership.planId);
+        if (!next) return res.status(403).json({ error: 'only the manager changes a running pass' });
+        Object.keys(membership).forEach((k) => delete membership[k]);
+        Object.assign(membership, next);
+      }
       // The free trial no longer exists: no client and no old app version can be given it.
       if (membership.planId === 'trial') return res.status(410).json({ error: 'trial removed' });
       // A plan given at the desk replaces a pass that was waiting for its first entry.
