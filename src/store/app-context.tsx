@@ -9,7 +9,7 @@ import { applyContent, promoByCode, promoDiscount, type Content, type ContentSec
 import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product, shopCategories } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { trainerLoginRemote, checkinRemote, clientMove, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, fetchMemberVisits, grantRemote, planFixRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused } from '@/lib/api';
+import { trainerLoginRemote, checkinRemote, clientMove, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, fetchMemberVisits, editMembershipRemote, grantRemote, planFixRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -574,7 +574,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const neverFroze = !cur || (cur.freezesLeft === undefined && !cur.freezeDaysLeft && !cur.frozenUntil);
       const freeze = neverFroze && perFreeze && !remote?.pending?.freezeDays ? { freezeDaysLeft: perFreeze * count, freezesLeft: count, freezeMax: perFreeze } : {};
       const next: Membership = { planId, startDate: cur?.startDate ?? today, endDate: fields.endDate, freezeDaysLeft: cur?.freezeDaysLeft ?? remote?.pending?.freezeDays ?? 0, ...(cur?.frozenUntil ? { frozenUntil: cur.frozenUntil } : {}), ...(cur?.dayOnly || remote?.pending?.dayOnly || (!cur && picked?.dayOnly) ? { dayOnly: true } : {}), ...(fields.visitsLeft !== undefined ? { visitsLeft: fields.visitsLeft } : {}), ...freeze };
-      const ok = await grantRemote(state.staffCode, { id: memberId, name: isSelf ? state.user!.name : remote!.name, phone: isSelf ? state.user!.phone : remote!.phone, membership: next });
+      const ok = await editMembershipRemote(state.staffCode, { id: memberId, name: isSelf ? state.user!.name : remote!.name, phone: isSelf ? state.user!.phone : remote!.phone, membership: next });
       if (!ok) return false;
       setState((s) => (isSelf ? { ...s, membership: next } : { ...s, remote: s.remote.map((x) => (x.id === memberId ? { ...x, membership: next, pending: undefined } : x)) }));
       return true;

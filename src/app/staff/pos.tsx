@@ -559,14 +559,16 @@ export default function StaffPosScreen() {
             <View style={styles.dash} />
             {discount ? <Sum label={manualPct ? `${t('pos_discount')} ${manualPct}%` : t('pos_discount')} value={`−${formatPrice(discount)}`} /> : null}
             <Sum label={t('pos_total')} value={formatPrice(total)} big />
-            <Row gap={6} style={{ flexWrap: 'wrap', alignItems: 'center' }}>
-              <T type="small" color={Colors.textSecondary}>
-                {t('pos_manual_disc')}
-              </T>
-              {[10, 20, 30, 50, 100].map((p) => (
-                <Chip key={p} label={`${p}%`} active={manualPct === p} onPress={() => setManualPct((v) => (v === p ? 0 : p))} />
-              ))}
-            </Row>
+            {canManage ? (
+              <Row gap={6} style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+                <T type="small" color={Colors.textSecondary}>
+                  {t('pos_manual_disc')}
+                </T>
+                {[10, 20, 30, 50, 100].map((p) => (
+                  <Chip key={p} label={`${p}%`} active={manualPct === p} onPress={() => setManualPct((v) => (v === p ? 0 : p))} />
+                ))}
+              </Row>
+            ) : null}
             <Row gap={Spacing.two} style={{ alignItems: 'center' }}>
               <Ionicons name="pricetag-outline" size={16} color={StaffAccent} />
               <TextInput value={promoCode} onChangeText={setPromoCode} placeholder={t('pos_promo_ph')} placeholderTextColor={Colors.textMuted} autoCapitalize="characters" style={[styles.searchInput, { height: 38, flex: 1 }]} />

@@ -196,6 +196,8 @@ export const setTrainerPin = (code: string, trainerId: string, pin: string) => c
 export const clearTrainerPin = (code: string, trainerId: string) => call<{ ok: true }>('trainer-pin-clear', { method: 'POST', code, body: { trainerId } });
 export const fetchTrainerPins = async (code: string) => (await call<{ set: string[] }>('trainer-pins', { code }))?.set ?? null;
 
+/** The manager corrects a running pass: dates, visits left, freezes. */
+export const editMembershipRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('membership-edit', { method: 'POST', code, body: c });
 export const grantRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('grant', { method: 'POST', code, body: c });
 /** Manager or owner swaps a plan added by mistake; the server keeps who, when and why. */
 export const planFixRemote = (code: string, id: string, membership: RemoteMembership, reason: string) => call<{ ok: true }>('plan-fix', { method: 'POST', code, body: { id, membership, reason } });

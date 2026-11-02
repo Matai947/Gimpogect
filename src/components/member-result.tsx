@@ -458,7 +458,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
                 ))}
               </Row>
             ) : null}
-            {chosen && chosen.price > 0 ? (
+            {chosen && chosen.price > 0 && canManage ? (
               <Row gap={6} style={{ flexWrap: 'wrap', alignItems: 'center' }}>
                 <T type="small" color={Colors.textSecondary}>
                   {t('pos_manual_disc')}

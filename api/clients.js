@@ -725,11 +725,16 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    if (req.method === 'POST' && op === 'grant') {
+    // grant: a plan sold at the desk; membership-edit: the manager corrects a running pass (dates, visits, freezes)
+    if (req.method === 'POST' && (op === 'grant' || op === 'membership-edit')) {
+      if (op === 'membership-edit' && !manages()) return res.status(403).json({ error: 'manager only' });
       const id = str(body.id, 20);
       const membership = cleanMembership(body.membership);
       if (!ID.test(id) || !membership) return res.status(400).json({ error: 'bad data' });
       const prev = (await read(id)) || { id, name: str(body.name, 60) || 'Гость', phone: str(body.phone, 20), homeClubId: 'c1', since: new Date().toISOString().slice(0, 10) };
+      // an administrator's grant may only start a pass or prolong a running one, never rewrite it
+      const was = prev.membership;
+      if (op === 'grant' && !manages() && was && was.endDate >= dayOf(Date.now()) && !(membership.startDate === was.startDate && membership.endDate > was.endDate)) return res.status(403).json({ error: 'only the manager changes a running pass' });
       // The free trial no longer exists: no client and no old app version can be given it.
       if (membership.planId === 'trial') return res.status(410).json({ error: 'trial removed' });
       // A plan given at the desk replaces a pass that was waiting for its first entry.
@@ -767,6 +772,8 @@ module.exports = async function handler(req, res) {
       const ts = Number(body.ts) > now - 30 * 86400000 && Number(body.ts) < now + 3600000 ? Math.round(Number(body.ts)) : now;
       const sale = { id, ts, kind, title: str(body.title, 120), name: str(body.name, 60), memberId: str(body.memberId, 20), amount: int(body.amount, 10000000), clubId: body.clubId, method: METHODS.includes(body.method) ? body.method : 'cash', staff: str(body.staff, 40) };
       if (/^t\d{1,3}$/.test(String(body.trainerId))) sale.trainerId = body.trainerId;
+      // the desk discount is the manager's: an administrator's check with one is refused
+      if (body.disc != null && Number(body.disc) > 0 && !manages()) return res.status(403).json({ error: 'manager discount only' });
       if ([10, 20, 30, 50, 100].includes(Number(body.disc))) sale.disc = Number(body.disc);
       if (sale.disc && body.off != null) sale.off = int(body.off, 10000000);
       if (kind === 'debt') sale.remaining = Math.min(sale.amount, int(body.remaining ?? body.amount, 10000000));
