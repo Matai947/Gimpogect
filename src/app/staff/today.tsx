@@ -8,7 +8,6 @@ import { ExpensesPanel } from '@/components/expenses-panel';
 import { DayVisitors } from '@/components/day-visitors';
 import { PeriodSummary } from '@/components/period-summary';
 import { PushPanel } from '@/components/push-panel';
-import { SafePanel } from '@/components/safe-panel';
 import { StaffHeader } from '@/components/staff-header';
 import { Card, ProgressBar, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -40,7 +39,6 @@ export default function StaffTodayScreen() {
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         {canManage ? <DayVisitors accent={StaffAccent} /> : null}
         {canManage ? <PeriodSummary accent={StaffAccent} pick money /> : null}
-        {canManage ? <SafePanel accent={StaffAccent} /> : null}
         {canManage ? <ExpensesPanel accent={StaffAccent} /> : null}
         {canManage ? <PushPanel accent={StaffAccent} /> : null}
         <View style={styles.grid}>

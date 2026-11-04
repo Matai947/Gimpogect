@@ -11,7 +11,7 @@ import { BarcodeSheet, cleanBarcode } from '@/components/barcode-sheet';
 import { StaffAccent } from '@/components/member-result';
 import { Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { type Product, type ShopCategory } from '@/data/shop';
+import { codesOf, type Product, type ShopCategory } from '@/data/shop';
 import { clubs } from '@/data/mock';
 import { stockMove, stockSet, uploadPhoto } from '@/lib/api';
 import { clubStock, useApp, useCatalog, useI18n, useShopCategories } from '@/store/app-context';
@@ -55,7 +55,10 @@ function ProductEditForm({ id }: { id?: string }) {
   const [barcode, setBarcode] = useState(existing?.barcode ?? '');
   const [stockText, setStockText] = useState(existing?.stock === undefined ? '' : String(existing.stock));
   const [scanOpen, setScanOpen] = useState(false);
-  const barcodeOwner = barcode ? all.find((p) => p.barcode === barcode && p.id !== existing?.id) : undefined;
+  const [extra, setExtra] = useState<string[]>(existing?.barcodes ?? []);
+  const [scanExtra, setScanExtra] = useState(false);
+  const mine = [barcode, ...extra].filter(Boolean);
+  const barcodeOwner = all.find((p) => p.id !== existing?.id && codesOf(p).some((c) => mine.includes(c)));
   const [nutritionOpen, setNutritionOpen] = useState(!!existing?.nutrition);
   const [serving, setServing] = useState(existing?.nutrition?.serving ?? '');
   const [protein, setProtein] = useState(existing?.nutrition ? String(existing.nutrition.protein) : '');
@@ -112,6 +115,7 @@ function ProductEditForm({ id }: { id?: string }) {
       nutrition: nutritionOpen && (protein || carbs || fat || calories) ? { serving: serving.trim() || '—', protein: Number(protein) || 0, carbs: Number(carbs) || 0, fat: Number(fat) || 0, calories: Number(calories) || 0 } : undefined,
       inStock,
       barcode: cleanBarcode(barcode) || undefined,
+      barcodes: extra.length ? extra : undefined,
       byWeight: byWeight || undefined,
     };
     upsertProduct(product);
@@ -232,9 +236,24 @@ function ProductEditForm({ id }: { id?: string }) {
               {t('bc_taken', { name: barcodeOwner.name })}
             </T>
           ) : null}
-          <BarcodeSheet visible={scanOpen} onClose={() => setScanOpen(false)} onCode={(c) => {
-              setBarcode(c);
+          {extra.map((c) => (
+            <Row key={c} gap={Spacing.two} style={{ alignItems: 'center' }}>
+              <Ionicons name="barcode-outline" size={18} color={Colors.textSecondary} />
+              <T type="body" style={{ flex: 1 }}>
+                {c}
+              </T>
+              <Button title="" icon="close" variant="ghost" size="sm" onPress={() => setExtra((l) => l.filter((x) => x !== c))} />
+            </Row>
+          ))}
+          {barcode ? <Button title={t('bc_more')} icon="add" variant="secondary" size="sm" onPress={() => (setScanExtra(true), setScanOpen(true))} /> : null}
+          <T type="small" color={Colors.textMuted}>
+            {t('bc_more_hint')}
+          </T>
+          <BarcodeSheet visible={scanOpen} onClose={() => (setScanOpen(false), setScanExtra(false))} onCode={(c) => {
+              if (scanExtra) setExtra((l) => (l.includes(c) || c === barcode ? l : [...l, c]));
+              else setBarcode(c);
               setScanOpen(false);
+              setScanExtra(false);
             }} accent={StaffAccent} />
 
           <Label text={byWeight ? t('p_stock_g') : t('p_stock')} />

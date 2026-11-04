@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { clockTime } from '@/components/shift-bar';
-import { Chip, ChipRow, Row, T } from '@/components/ui';
+import { Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubs, formatDateHuman, formatPrice, toISODate } from '@/data/mock';
-import { fetchSafe, fetchWithdrawals, type SafeEntry } from '@/lib/api';
+import { fetchSafe, fetchWithdrawals, safeOp, type SafeEntry } from '@/lib/api';
 import { useApp, useI18n } from '@/store/app-context';
 
 // A withdrawal "to the safe" is stored with the label in the cashier's language.
@@ -36,10 +36,15 @@ export function useSafeLines(tick = 0) {
   return { lines, failed };
 }
 
-/** The manager's view of a club's safe: what is in it, what was put in and taken out, and every movement. Read only. */
+/** The manager's safe of a club: what is in it, what was put in and taken out, every movement; taking out and putting in by hand. */
 export function SafePanel({ accent }: { accent: string }) {
   const { t } = useI18n();
-  const { staff } = useApp();
+  const { staff, staffCode } = useApp();
+  const [mode, setMode] = useState<'in' | 'out' | null>(null);
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; bad: boolean } | null>(null);
   const [club, setClub] = useState(staff?.clubId ?? 'c1');
   const [tick, setTick] = useState(0);
   const [open, setOpen] = useState(false);
@@ -51,6 +56,22 @@ export function SafePanel({ accent }: { accent: string }) {
     const took = mine.filter((l) => l.out).reduce((n, l) => n + l.amount, 0);
     return { mine, put, took, balance: put - took };
   }, [lines, club]);
+
+  const purposes = [t('safe_p1'), t('safe_p2'), t('safe_p3'), t('safe_p4')];
+  const sum = Number(amount.replace(/\D/g, '')) || 0;
+  const save = async () => {
+    if (!mode) return;
+    if (mode === 'out' && sum > s.balance) return setMsg({ text: t('safe_too_much'), bad: true });
+    setBusy(true);
+    const ok = await safeOp(staffCode, { clubId: club, kind: mode, amount: sum, note: note.trim() });
+    setBusy(false);
+    if (!ok) return setMsg({ text: t('cash_fail'), bad: true });
+    setMsg({ text: mode === 'in' ? t('safe_in_done', { sum: formatPrice(sum) }) : t('safe_out_done', { sum: formatPrice(sum) }), bad: false });
+    setMode(null);
+    setAmount('');
+    setNote('');
+    setTick((n) => n + 1);
+  };
 
   return (
     <View style={styles.card}>
@@ -98,6 +119,33 @@ export function SafePanel({ accent }: { accent: string }) {
               </T>
             </View>
           </View>
+          {mode ? (
+            <View style={{ gap: Spacing.two }}>
+              <TextInput value={amount} onChangeText={(v) => setAmount(v.replace(/\D/g, ''))} placeholder={t('cash_amount_ph')} placeholderTextColor={Colors.textMuted} keyboardType="number-pad" style={styles.input} />
+              {mode === 'out' ? (
+                <ChipRow>
+                  {purposes.map((p) => (
+                    <Chip key={p} label={p} active={note === p} onPress={() => setNote(p)} />
+                  ))}
+                </ChipRow>
+              ) : null}
+              <TextInput value={note} onChangeText={setNote} placeholder={mode === 'in' ? t('safe_in_ph') : t('safe_out_ph')} placeholderTextColor={Colors.textMuted} maxLength={80} style={styles.input} />
+              <Row gap={Spacing.two}>
+                <Button title={mode === 'in' ? t('safe_in') : t('safe_out')} onPress={() => void save()} disabled={busy || !sum || note.trim().length < 2} style={{ flex: 1, backgroundColor: accent }} />
+                <Button title={t('cancel')} variant="secondary" onPress={() => setMode(null)} />
+              </Row>
+            </View>
+          ) : (
+            <Row gap={Spacing.two}>
+              <Button title={t('safe_out')} icon="arrow-up-circle-outline" size="sm" onPress={() => (setMode('out'), setNote(''), setMsg(null))} style={{ flex: 1, backgroundColor: accent }} />
+              <Button title={t('safe_in')} icon="arrow-down-circle-outline" size="sm" variant="secondary" onPress={() => (setMode('in'), setNote(''), setMsg(null))} style={{ flex: 1 }} />
+            </Row>
+          )}
+          {msg ? (
+            <T type="small" color={msg.bad ? Colors.danger : Colors.success} style={{ fontWeight: '700' }}>
+              {msg.text}
+            </T>
+          ) : null}
           {s.mine.length ? (
             <Pressable onPress={() => setOpen((v) => !v)} style={styles.toggle}>
               <T type="small" color={accent} style={{ fontWeight: '700' }}>
@@ -138,5 +186,6 @@ const styles = StyleSheet.create({
   card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   sums: { flexDirection: 'row', gap: Spacing.two, padding: Spacing.two, borderRadius: Radius.md, backgroundColor: Colors.surfaceAlt },
   toggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 4 },
+  input: { height: 46, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: Spacing.three, color: Colors.text, fontSize: 16, backgroundColor: Colors.background },
   line: { gap: Spacing.two, paddingVertical: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.border, alignItems: 'center' },
 });

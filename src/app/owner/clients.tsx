@@ -9,6 +9,8 @@ import { Avatar, Button, Chip, ChipRow, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
 import { clubById, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
+import { DeleteClient } from '@/components/delete-client';
+import { RenameClient } from '@/components/rename-client';
 import { useI18n, useMembers, useSales } from '@/store/app-context';
 import { personMatches } from '@/lib/phone';
 
@@ -108,6 +110,8 @@ export default function OwnerClients() {
                     </T>
                   ) : null}
                   <Button title={t('call')} icon="call-outline" variant="secondary" size="sm" onPress={() => Linking.openURL(`tel:${m.phone.replace(/\s/g, '')}`)} />
+                  <RenameClient id={m.id} name={m.name} />
+                  <DeleteClient id={m.id} name={m.name} onDone={() => setOpenId(null)} />
                 </View>
               ) : null}
             </View>

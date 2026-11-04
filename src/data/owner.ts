@@ -21,6 +21,8 @@ export type Sale = {
   disc?: number; // the desk's discount on this check, percent
   off?: number; // how much that discount took off this line, in tenge
   cancelled?: boolean; // a free (100%) check cancelled as a mistake
+  bonusTo?: string; // sports nutrition sold: the administrator the premium goes to
+  bonusSum?: number; // that premium, 1000 ₸ a jar or pack (worked out by the server)
   refundOf?: string; // refund / debt payment: the row it belongs to
   synced?: boolean; // reached the server
 };

@@ -112,6 +112,7 @@ export const deleteLoad = (code: string, id: string) => call<{ ok: true }>('load
 export type Shift = { id: string; staff: string; clubId: string; start: number; end: number | null; auto?: boolean };
 export const startShift = (code: string, b: { staff: string; clubId: string }) => call<{ ok: true; id: string; start: number }>('shift-start', { method: 'POST', code, body: b });
 export const endShift = (code: string, id: string) => call<{ ok: true; end: number }>('shift-end', { method: 'POST', code, body: { id } });
+export const fetchWhoami = async (code: string) => (await call<{ name: string }>('whoami', { code }))?.name ?? null;
 export const fetchShifts = async (code: string, days = 30) => (await call<{ shifts: Shift[] }>('shifts', { code, query: `&days=${days}` }))?.shifts ?? null;
 
 export type Withdrawal = { ts: number; amount: number; reason: string; note: string; staff: string; responsible: string; confirmed: boolean; confirmedBy?: string; clubId?: string; move?: string; toClubId?: string };
@@ -138,6 +139,8 @@ export const stockMove = async (code: string, b: { id: string; qty: number; from
   const r = await raw('stock-move', { method: 'POST', code, body: b });
   return r.status === 200 ? 'ok' : r.status === 400 ? 'short' : 'fail';
 };
+export const clientRename = (code: string, id: string, name: string) => call<{ ok: true }>('client-rename', { method: 'POST', code, body: { id, name } });
+export const clientDelete = (code: string, id: string) => call<{ ok: true }>('client-del', { method: 'POST', code, body: { id } });
 export const clientMove = (code: string, id: string, clubId: string) => call<{ ok: true }>('client-move', { method: 'POST', code, body: { id, clubId } });
 /** A hand-made entry in the owner's safe: taken out (to the owner, collection, expenses) or put in (opening balance, top-up). */
 export type SafeEntry = { id: string; ts: number; clubId: string; kind: 'in' | 'out'; amount: number; note: string; staff: string };

@@ -8,6 +8,8 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
 import type { PayMethod } from '@/data/owner';
 import { fetchMemberVisits, resetPasswordRemote, type MemberVisit } from '@/lib/api';
+import { DeleteClient } from '@/components/delete-client';
+import { RenameClient } from '@/components/rename-client';
 import { VisitCalendar } from '@/components/visit-calendar';
 import { DAY_ONLY_UNTIL, clubs, clubById, clubHour, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
 import { replacePlan, useApp, useCanManage, useI18n, useMembers, usePlans, usePresence, type MemberInfo } from '@/store/app-context';
@@ -255,7 +257,11 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
         ) : (
           <View style={{ gap: Spacing.two }}>
             <Row gap={Spacing.two}>
-              {decision.ok ? (
+              {!canManage ? (
+                <T type="small" color={Colors.textSecondary} style={{ flex: 1, fontWeight: '600' }}>
+                  {decision.ok ? t('entry_qr_only') : decision.reason}
+                </T>
+              ) : decision.ok ? (
                 <>
                   <Button title={t('allow_entry')} icon="log-in-outline" onPress={allow} style={{ flex: 1 }} />
                   <Button title="" icon="card-outline" variant="ghost" onPress={() => setPicking((v) => !v)} style={{ paddingHorizontal: 14 }} />
@@ -296,6 +302,8 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
                 ) : null}
               </View>
             ) : null}
+            {!member.isSelf ? <RenameClient id={member.id} name={member.name} /> : null}
+            {!member.isSelf ? <DeleteClient id={member.id} name={member.name} onDone={onDone} /> : null}
           </View>
         )}
         {/* the manager corrects the current plan (dates, visits, a plan added by mistake); administrators do not */}
@@ -404,6 +412,20 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             ) : (
               <Button title={t('freeze')} icon="snow-outline" variant="ghost" size="sm" onPress={() => setFreezing(true)} />
             )
+          ) : canManage && member.endDate ? (
+            // the freeze is used up: the manager can give one more
+            <Button
+              // used up: "one more"; a pass that never had one (a guest pass, an old import): "give"
+              title={t(member.freezesLeft === 0 ? 'freeze_add' : 'freeze_give')}
+              icon="snow-outline"
+              variant="ghost"
+              size="sm"
+              onPress={() =>
+                void editMembership(member.id, { endDate: member.endDate!, visitsLeft: member.visitsLeft, addFreeze: true }).then((ok) =>
+                  setFreezeMsg(ok ? { text: t('freeze_added'), bad: false } : { text: t('freeze_failed'), bad: true }),
+                )
+              }
+            />
           ) : null
         ) : null}
         {freezeMsg ? (

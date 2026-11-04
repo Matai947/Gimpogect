@@ -31,4 +31,6 @@ const css = `
   * { -webkit-tap-highlight-color: transparent; }
   @supports (height: 100dvh) { html, body, #root { height: 100dvh; } }
   body { overscroll-behavior-y: none; -webkit-text-size-adjust: 100%; }
+  /* an iPhone zooms the page into any field with text under 16px and does not zoom back */
+  @media (max-width: 599px) { input, textarea { font-size: 16px !important; } }
 `;

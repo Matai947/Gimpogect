@@ -17,7 +17,9 @@ function parse(s: string): string {
   if (!m) return '';
   const y = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
   const iso = `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
-  return new Date(iso + 'T00:00:00Z').toISOString().slice(0, 10) === iso ? iso : '';
+  // half-typed "41.11" or "01.13" is not a date: checked without toISOString, which throws on it
+  const d = new Date(iso + 'T00:00:00Z');
+  return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso ? iso : '';
 }
 
 /** Owner: pick any two dates and get the whole sum of that period — money in, how it came, what it was for, what went out, and the profit. */

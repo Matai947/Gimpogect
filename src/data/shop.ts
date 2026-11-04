@@ -18,6 +18,7 @@ export type Product = {
   nutrition?: { serving: string; protein: number; carbs: number; fat: number; calories: number };
   inStock: boolean;
   barcode?: string; // EAN/UPC printed on the package, read by the register's scanner
+  barcodes?: string[]; // more packages sold as this one product (bars of different makers at one price)
   byWeight?: boolean; // sold loose by the gram: price is per 100 g, the stock count is in grams
   stock?: number; // units on the shelf when the manager counts this product (from the server, not stored with the product)
 };
@@ -271,3 +272,13 @@ export function productById(id: string) {
 
 export const MEMBER_DISCOUNT = 0.1;
 export const PROMO_CODES: Record<string, number> = { GYM10: 0.1, START15: 0.15 };
+
+/** Every barcode that rings up this product. */
+export const codesOf = (p: Pick<Product, 'barcode' | 'barcodes'>) => [p.barcode, ...(p.barcodes ?? [])].filter((c): c is string => !!c);
+
+/** The administrators' premium on sports nutrition: per jar or pack sold. */
+export const BONUS_PER_PACK = 1000;
+const BONUS_CATEGORIES = ['Протеин', 'Креатин и амино', 'Бады', 'Витамины'];
+/** A jar or pack of sports nutrition earns the premium; a portion (a scoop, a shot, sold by weight) does not.
+ *  ponytail: a portion is told by its price (under 3000 ₸); a flag on the product card if a pack ever costs less. */
+export const earnsBonus = (p: Pick<Product, 'category' | 'price' | 'byWeight'>) => BONUS_CATEGORIES.includes(p.category) && !p.byWeight && p.price >= 3000;

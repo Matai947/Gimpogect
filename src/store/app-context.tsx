@@ -9,7 +9,7 @@ import { applyContent, promoByCode, promoDiscount, type Content, type ContentSec
 import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig, clubCapacity } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product, shopCategories } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { trainerLoginRemote, checkinRemote, clientMove, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, fetchMemberVisits, fetchOccupancy, editMembershipRemote, grantRemote, planFixRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused } from '@/lib/api';
+import { trainerLoginRemote, checkinRemote, clientMove, clientDelete, clientRename, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, fetchMemberVisits, fetchOccupancy, editMembershipRemote, grantRemote, planFixRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused, fetchWhoami } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -116,9 +116,11 @@ type Actions = {
   completeOnboarding: (profile: FitnessProfile) => void;
   /** Manager: the client's home club changes; they move to that club's list. */
   moveClient: (memberId: string, clubId: string) => Promise<boolean>;
+  deleteClient: (memberId: string) => Promise<boolean>;
+  renameClient: (memberId: string, name: string) => Promise<boolean>;
   grantPlan: (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[], meta?: { disc?: number; off?: number }) => void;
   /** The desk corrects a client's current plan: when it ends and how many visits are left. No sale is recorded. */
-  editMembership: (memberId: string, fields: { planId?: string; endDate: string; visitsLeft?: number }) => Promise<boolean>;
+  editMembership: (memberId: string, fields: { planId?: string; endDate: string; visitsLeft?: number; addFreeze?: boolean }) => Promise<boolean>;
   /** Manager or owner: a plan added by mistake becomes the right one (same start date, what was used stays used). No sale is recorded. */
   changePlan: (memberId: string, planId: string, fields: { endDate: string; visitsLeft?: number }, reason: string) => Promise<boolean>;
   recordSale: (sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff' | 'synced'>) => void;
@@ -348,6 +350,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const me = await fetchMyMembership(uid, token);
         const m = me?.membership;
         if (live && me && (!m || planById(m.planId))) setState((s) => (JSON.stringify(s.membership ?? null) === JSON.stringify(m ?? null) ? s : { ...s, membership: m ?? null }));
+        // a name the manager corrected reaches the client's own phone
+        if (live && me?.name && me.name !== 'Гость') setState((s) => (s.user && s.user.name !== me.name ? { ...s, user: { ...s.user, name: me.name! } } : s));
         const seen = await fetchMemberVisits(uid, { token });
         if (live && seen) {
           const visits = [...new Map(seen.map((v) => [v.d, { date: v.d, clubId: v.c }])).values()];
@@ -408,6 +412,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
     return 'ok';
   }, []);
+
+  // The staff name is remembered at sign-in; after the owner renames someone the server writes shifts and sales under the
+  // new name, and this phone would look for its open shift under the old one (the shift seemed to vanish). Take the server's.
+  const staffName = state.staff?.name;
+  useEffect(() => {
+    if (!state.hydrated || !state.staffCode || !staffName) return;
+    let live = true;
+    fetchWhoami(state.staffCode).then((name) => {
+      if (live && name && name !== 'owner' && name !== staffName) setState((s) => (s.staff ? { ...s, staff: { ...s.staff, name } } : s));
+    });
+    return () => {
+      live = false;
+    };
+  }, [state.hydrated, state.staffCode, staffName]);
 
   // A sign-in the server no longer accepts (made on the old server, or expired): sign the client out, keep staff mode and the language.
   useEffect(() => {
@@ -488,8 +506,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Only a real edit on this device sends the catalogue to the server: a fresh device must never push its empty copy over the server's.
   const catalogDirty = useRef(false);
+  // the products edited here: only these go over the server's copy, so two phones editing at once keep each other's changes
+  const touched = useRef(new Set<string>());
   const upsertProduct = useCallback((p: Product) => {
     catalogDirty.current = true;
+    touched.current.add(p.id);
     setState((s) => {
       const isBase = baseProducts.some((b) => b.id === p.id);
       if (isBase) return { ...s, productOverrides: { ...s.productOverrides, [p.id]: p }, hiddenProducts: s.hiddenProducts.filter((id) => id !== p.id) };
@@ -500,6 +521,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const deleteProduct = useCallback((id: string) => {
     catalogDirty.current = true;
+    touched.current.add(id);
     setState((s) => {
       const isBase = baseProducts.some((b) => b.id === id);
       if (isBase) return { ...s, hiddenProducts: s.hiddenProducts.includes(id) ? s.hiddenProducts : [...s.hiddenProducts, id] };
@@ -509,6 +531,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const restoreProduct = useCallback((id: string) => {
     catalogDirty.current = true;
+    touched.current.add(id);
     setState((s) => ({ ...s, hiddenProducts: s.hiddenProducts.filter((h) => h !== id) }));
   }, []);
 
@@ -557,7 +580,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   /** Staff issues a plan at the front desk: the user's own account, a client registered from another device, or a demo member. */
   const editMembership = useCallback(
-    async (memberId: string, fields: { planId?: string; endDate: string; visitsLeft?: number }) => {
+    async (memberId: string, fields: { planId?: string; endDate: string; visitsLeft?: number; addFreeze?: boolean }) => {
       const isSelf = state.user?.id === memberId;
       const remote = state.remote.find((r) => r.id === memberId);
       const cur = isSelf ? state.membership : remote?.membership;
@@ -573,7 +596,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const count = perFreeze ? (rule?.freezeCount ?? 1) : 0;
       const neverFroze = !cur || (cur.freezesLeft === undefined && !cur.freezeDaysLeft && !cur.frozenUntil);
       const freeze = neverFroze && perFreeze && !remote?.pending?.freezeDays ? { freezeDaysLeft: perFreeze * count, freezesLeft: count, freezeMax: perFreeze } : {};
-      const next: Membership = { planId, startDate: cur?.startDate ?? today, endDate: fields.endDate, freezeDaysLeft: cur?.freezeDaysLeft ?? remote?.pending?.freezeDays ?? 0, ...(cur?.frozenUntil ? { frozenUntil: cur.frozenUntil } : {}), ...(cur?.dayOnly || remote?.pending?.dayOnly || (!cur && picked?.dayOnly) ? { dayOnly: true } : {}), ...(fields.visitsLeft !== undefined ? { visitsLeft: fields.visitsLeft } : {}), ...freeze };
+      const kept = cur?.freezesLeft !== undefined ? { freezesLeft: cur.freezesLeft, ...(cur.freezeMax ? { freezeMax: cur.freezeMax } : {}) } : {};
+      const next: Membership = { planId, startDate: cur?.startDate ?? today, endDate: fields.endDate, freezeDaysLeft: cur?.freezeDaysLeft ?? remote?.pending?.freezeDays ?? 0, ...kept, ...(cur?.frozenUntil ? { frozenUntil: cur.frozenUntil } : {}), ...(cur?.dayOnly || remote?.pending?.dayOnly || (!cur && picked?.dayOnly) ? { dayOnly: true } : {}), ...(fields.visitsLeft !== undefined ? { visitsLeft: fields.visitsLeft } : {}), ...freeze };
+      if (fields.addFreeze) {
+        const days = perFreeze || 5;
+        Object.assign(next, { freezeDaysLeft: (next.freezeDaysLeft ?? 0) + days, freezesLeft: (next.freezesLeft ?? 0) + 1, freezeMax: next.freezeMax || days });
+      }
       const ok = await editMembershipRemote(state.staffCode, { id: memberId, name: isSelf ? state.user!.name : remote!.name, phone: isSelf ? state.user!.phone : remote!.phone, membership: next });
       if (!ok) return false;
       setState((s) => (isSelf ? { ...s, membership: next } : { ...s, remote: s.remote.map((x) => (x.id === memberId ? { ...x, membership: next, pending: undefined } : x)) }));
@@ -602,6 +630,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     async (memberId: string, clubId: string) => {
       if (!state.staffCode || !(await clientMove(state.staffCode, memberId, clubId))) return false;
       setState((s) => ({ ...s, remote: s.remote.map((x) => (x.id === memberId ? { ...x, homeClubId: clubId } : x)) }));
+      return true;
+    },
+    [state.staffCode],
+  );
+
+  const renameClient = useCallback(
+    async (memberId: string, name: string) => {
+      if (!state.staffCode || !(await clientRename(state.staffCode, memberId, name))) return false;
+      setState((s) => ({ ...s, remote: s.remote.map((x) => (x.id === memberId ? { ...x, name } : x)) }));
+      return true;
+    },
+    [state.staffCode],
+  );
+
+  const deleteClient = useCallback(
+    async (memberId: string) => {
+      if (!state.staffCode || !(await clientDelete(state.staffCode, memberId))) return false;
+      setState((s) => ({ ...s, remote: s.remote.filter((x) => x.id !== memberId) }));
       return true;
     },
     [state.staffCode],
@@ -693,8 +739,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!state.hydrated || !state.staffCode || !catalogDirty.current) return;
     const cur = { custom: state.customProducts, overrides: state.productOverrides, hidden: state.hiddenProducts };
     const known = state.content.catalog ?? { custom: [], overrides: {}, hidden: [] };
-    if (JSON.stringify(cur) !== JSON.stringify(known)) saveContent('catalog', cur);
-    else catalogDirty.current = false;
+    if (JSON.stringify(cur) === JSON.stringify(known)) {
+      catalogDirty.current = false;
+      return;
+    }
+    // Sending this phone's whole list would put back whatever it had before other phones' edits (a barcode added elsewhere
+    // would vanish). So the server's latest list is taken and only the products edited here are laid over it.
+    // ponytail: a few seconds' window where two phones saving the same moment can still cross; a per-product server op closes it.
+    // The edited ids are kept for the session: a second edit saved before the first reached the server still carries the first.
+    catalogDirty.current = false;
+    void fetchContent(state.staffCode).then((fresh) => {
+      const ids = [...touched.current];
+      const now = stateRef.current;
+      const cur = { custom: now.customProducts, overrides: now.productOverrides, hidden: now.hiddenProducts };
+      const base = fresh?.catalog ?? known;
+      const custom = base.custom.filter((p) => !ids.includes(p.id));
+      const overrides = { ...base.overrides };
+      let hidden = base.hidden.filter((id) => !ids.includes(id));
+      for (const id of ids) {
+        const mine = cur.custom.find((p) => p.id === id);
+        if (mine) custom.unshift(mine);
+        if (cur.overrides[id]) overrides[id] = cur.overrides[id];
+        else delete overrides[id];
+        if (cur.hidden.includes(id)) hidden = [...hidden, id];
+      }
+      const merged = { custom, overrides, hidden };
+      setState((s) => ({ ...s, customProducts: custom, productOverrides: overrides, hiddenProducts: hidden }));
+      saveContent('catalog', merged);
+    });
   }, [state.hydrated, state.staffCode, state.customProducts, state.productOverrides, state.hiddenProducts, state.content.catalog, saveContent]);
 
   const trainerLogin = useCallback(async (trainerId: string, pin: string) => {
@@ -843,6 +915,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       completeOnboarding,
       grantPlan,
       moveClient,
+      deleteClient,
+      renameClient,
       editMembership,
       changePlan,
       recordSale,
@@ -887,7 +961,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, moveClient, editMembership, changePlan, recordSale, refreshSales, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, staffFreeze, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, cancelOrder, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, moveClient, deleteClient, renameClient, editMembership, changePlan, recordSale, refreshSales, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, staffFreeze, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, cancelOrder, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

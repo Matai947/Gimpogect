@@ -2,9 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { Linking, Pressable, Share, StyleSheet, View } from 'react-native';
 
-import { Button, Row, T } from '@/components/ui';
+import { Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { formatPrice } from '@/data/mock';
+import { clubs, formatPrice } from '@/data/mock';
 import type { PayMethod, Sale } from '@/data/owner';
 import { refundRemote } from '@/lib/api';
 import { useApp, useCanManage, useI18n, useMembers, useNow, useRawSales } from '@/store/app-context';
@@ -28,9 +28,11 @@ export function ReceiptsToday({ accent }: { accent: string }) {
   const [sure, setSure] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ key: string; text: string; bad: boolean } | null>(null);
-  const clubId = staff?.clubId ?? 'c1';
-  const today = dayOf(now);
   const canManage = useCanManage();
+  // the manager looks at either club's checks (or both); the administrator at their own desk's
+  const [club, setClub] = useState<string | null>(null);
+  const clubId = (canManage && club) || staff?.clubId || 'c1';
+  const today = dayOf(now);
   const [picked, setPicked] = useState<string | null>(null);
   const day = picked && picked < today ? picked : today;
 
@@ -38,7 +40,7 @@ export function ReceiptsToday({ accent }: { accent: string }) {
   const checks = useMemo(() => {
     const refundedOf = new Map<string, number>();
     sales.filter((x) => x.kind === 'refund' && x.refundOf).forEach((x) => refundedOf.set(x.refundOf!, (refundedOf.get(x.refundOf!) ?? 0) + x.amount));
-    const rows = sales.filter((x) => ['plan', 'shop', 'personal', 'debt'].includes(x.kind) && x.clubId === clubId && dayOf(x.ts) === day).sort((a, b) => a.ts - b.ts);
+    const rows = sales.filter((x) => ['plan', 'shop', 'personal', 'debt'].includes(x.kind) && (clubId === 'all' || x.clubId === clubId) && dayOf(x.ts) === day).sort((a, b) => a.ts - b.ts);
     const out: Check[] = [];
     for (const x of rows) {
       const last = out[out.length - 1];
@@ -128,13 +130,21 @@ export function ReceiptsToday({ accent }: { accent: string }) {
           </Pressable>
         </Row>
       ) : null}
+      {open && canManage ? (
+        <ChipRow>
+          {clubs.map((c) => (
+            <Chip key={c.id} label={c.name.replace('Seven Gym ', '')} active={clubId === c.id} onPress={() => setClub(c.id)} />
+          ))}
+          <Chip label={t('all')} active={clubId === 'all'} onPress={() => setClub('all')} />
+        </ChipRow>
+      ) : null}
       {open ? (
         checks.length === 0 ? (
           <T type="small" color={Colors.textMuted}>
             {t('rt_none')}
           </T>
         ) : (
-          checks.slice(0, 40).map((c) => {
+          checks.map((c) => {
             const cancelled = c.total > 0 ? c.refunded >= c.total : paidRows(c).every((r) => r.cancelled);
             return (
               <View key={c.key} style={[styles.check, cancelled && { opacity: 0.55 }]}>
@@ -145,6 +155,8 @@ export function ReceiptsToday({ accent }: { accent: string }) {
                     </T>
                     <T type="small" color={Colors.textMuted} numberOfLines={1}>
                       {payOf(c)} • {c.staff}
+                      {clubId === 'all' ? ` • ${clubs.find((k) => k.id === c.rows[0].clubId)?.name.replace('Seven Gym ', '') ?? ''}` : ''}
+                      {c.rows.find((r) => r.bonusSum) ? ` • ${t('premium_short', { name: c.rows.find((r) => r.bonusSum)!.bonusTo ?? '' })}` : ''}
                       {c.rows.find((r) => r.disc) ? ` • ${t('pos_discount')} ${c.rows.find((r) => r.disc)!.disc}%` : ''}
                     </T>
                   </View>

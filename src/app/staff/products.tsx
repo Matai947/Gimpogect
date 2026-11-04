@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, type Href } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View, useWindowDimensions } from 'react-native';
 
 import { StaffAccent } from '@/components/member-result';
 import { StaffHeader } from '@/components/staff-header';
@@ -9,7 +9,7 @@ import { Badge, Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { ProductPhoto } from '@/components/product-photo';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice, priceLabel } from '@/data/mock';
-import { type ShopCategory } from '@/data/shop';
+import { codesOf, type ShopCategory } from '@/data/shop';
 import { useCanManage, useApp, useCatalog, useI18n, useShopCategories } from '@/store/app-context';
 
 export default function StaffProductsScreen() {
@@ -25,8 +25,11 @@ export default function StaffProductsScreen() {
     const q = query.trim().toLowerCase();
     return all
       .filter((p) => (category === 'hidden' ? hidden.includes(p.id) : category === 'Все' ? !hidden.includes(p.id) : p.category === category && !hidden.includes(p.id)))
-      .filter((p) => (q ? p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || (!!p.barcode && p.barcode.includes(q)) : true));
+      .filter((p) => (q ? p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || codesOf(p).some((c) => c.includes(q)) : true));
   }, [all, hidden, category, query]);
+
+  // on a narrow phone the header keeps only the plus, or it pushes the exit button off the screen
+  const narrow = useWindowDimensions().width < 420;
 
   return (
     <View style={styles.root}>
@@ -34,10 +37,12 @@ export default function StaffProductsScreen() {
         title={t('staff_tab_products')}
         right={
           canManage ? <Pressable onPress={() => router.push('/staff/product-edit')} style={styles.addBtn} accessibilityLabel={t('add_product')}>
-            <Ionicons name="add" size={18} color={Colors.onAccent} />
-            <T type="small" color={Colors.onAccent} style={{ fontWeight: '800' }}>
-              {t('add_product')}
-            </T>
+            <Ionicons name="add" size={narrow ? 24 : 18} color={Colors.onAccent} />
+            {narrow ? null : (
+              <T type="small" color={Colors.onAccent} style={{ fontWeight: '800' }}>
+                {t('add_product')}
+              </T>
+            )}
           </Pressable> : null
         }
       />

@@ -235,14 +235,16 @@ async function codeGate(key, limit = 3) {
   const settle = (data) => sb(`settings?key=eq.${key}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data }) });
   return { miss: () => (tries + 1 >= limit ? settle({ fails: 0, lockUntil: Date.now() + 15 * 60000 }) : Promise.resolve()), hit: () => settle({ fails: 0, lockUntil: 0 }) };
 }
-/** Every gate a guess must pass: 3 misses from one device, 3 on one account, and a ceiling of 30 across everyone, so rotating devices does not help. */
+/** Every gate a guess must pass: misses from one address, on one account, and a ceiling across everyone, so rotating devices does not help.
+ * The whole gym sits behind one Wi-Fi address: 3 misses there locked every client in the club for 15 minutes, so a client address allows 10. */
 async function guessGates(req, kind, account) {
   // Only Cloudflare's own header counts: it is set by the edge and cannot be sent by the client. Without it (local runs) the device gate is shared.
   // On Vercel the platform sets x-real-ip the same way; on either host the client cannot forge the header the host itself writes.
   // the address the proxy in front wrote itself: Vercel's or our nginx (X-Real-IP, overwritten there), else Cloudflare's
   const ip = String((process.env.VERCEL || process.env.BEHIND_NGINX ? req.headers['x-real-ip'] : req.headers['cf-connecting-ip']) || '').trim();
-  const keys = [[kind + ':ip:' + (ip ? crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16) : 'any'), 3], [kind + ':all', 30]];
-  if (account) keys.push([kind + ':' + account, 3]);
+  const client = kind === 'client';
+  const keys = [[kind + ':ip:' + (ip ? crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16) : 'any'), client ? 10 : 3], [kind + ':all', client ? 100 : 30]];
+  if (account) keys.push([kind + ':' + account, client ? 5 : 3]);
   const gates = [];
   for (const [key, limit] of keys) {
     const g = await codeGate(key, limit);
@@ -252,6 +254,7 @@ async function guessGates(req, kind, account) {
   return { miss: () => Promise.all(gates.map((g) => g.miss())), hit: () => Promise.all(gates.map((g) => g.hit())) };
 }
 
+const BONUS_CATEGORIES = ['Протеин', 'Креатин и амино', 'Бады', 'Витамины'];
 const str = (v, max) => String(v ?? '').trim().slice(0, max);
 const digitsOf = (v) => String(v ?? '').replace(/[^0-9]/g, '');
 
@@ -599,7 +602,8 @@ module.exports = async function handler(req, res) {
       }
       const given = str(body.name, 60);
       // A placeholder name must not overwrite the real one saved earlier.
-      const name = given && given !== 'Гость' && given !== 'Guest' && given !== 'Қонақ' ? given : prev.name || given || 'Гость';
+      // A name the manager corrected stays: the client's app re-sends its own copy on every launch.
+      const name = prev.nameByStaff && !authed() ? prev.name : given && given !== 'Гость' && given !== 'Guest' && given !== 'Қонақ' ? given : prev.name || given || 'Гость';
       const next = { ...prev, name, phone: str(body.phone, 20), homeClubId: str(body.homeClubId, 8) || prev.homeClubId || 'c1' };
       const profile = cleanProfile(body.profile);
       if (profile) next.profile = profile;
@@ -684,6 +688,9 @@ module.exports = async function handler(req, res) {
     const accOk = isAcc && ((req.method === 'GET' && ACC_READ.includes(op)) || (req.method === 'POST' && ACC_WRITE.includes(op)));
     if (!authed() && !accOk) return res.status(isAcc ? 403 : 401).json({ error: isAcc ? 'accountant reads only' : 'code' });
 
+    // The name the server keeps for this staff code: a phone signed in before a rename picks up the new one.
+    if (req.method === 'GET' && op === 'whoami') return res.status(200).json({ name: admin ? admin.name : 'owner' });
+
     if (req.method === 'GET' && op === 'leads') {
       const rows = await sb('leads?select=data&order=ts.desc&limit=200');
       return res.status(200).json({ leads: rows.map((r) => r.data) });
@@ -700,6 +707,8 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST' && (op === 'checkin' || op === 'checkout')) {
       const id = str(body.id, 20);
       if (!ID.test(id)) return res.status(400).json({ error: 'bad id' });
+      // An administrator lets a client in only with the QR from the client's app; letting in by hand is the manager's.
+      if (op === 'checkin' && !body.qr && !manages()) return res.status(403).json({ error: 'qr only' });
       const loaded = await read(id);
       if (!loaded) return res.status(404).json({ error: 'unknown client' });
       const now = Date.now();
@@ -782,6 +791,8 @@ module.exports = async function handler(req, res) {
       if (!prev) return res.status(404).json({ error: 'unknown client' });
       const { passHash: _p, ...rest } = prev;
       await write(id, { ...rest, passReset: true });
+      // a client locked out by wrong tries can sign in right after the desk unlocks them
+      await sb(`settings?key=eq.${enc('client:' + id)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { fails: 0, lockUntil: 0 } }) });
       return res.status(200).json({ ok: true });
     }
 
@@ -852,6 +863,20 @@ module.exports = async function handler(req, res) {
       items.length = 0;
       items.push(...merged);
       if (items.length) sale.items = items;
+      // The administrators' premium: 1000 ₸ a jar or pack of sports nutrition sold (portions under 3000 ₸ and free checks earn none).
+      // It goes to whoever rang the check; the manager may name the administrator instead.
+      if (kind === 'shop' && items.length && sale.amount >= 1) {
+        const cat = (await getContent()).catalog || {};
+        const known = new Map([...(cat.custom || []), ...Object.values(cat.overrides || {})].map((p) => [p.id, p]));
+        const packs = items.reduce((n, i) => {
+          const p = known.get(i.id);
+          return n + (p && BONUS_CATEGORIES.includes(p.category) && !p.byWeight && Number(p.price) >= 3000 ? i.qty : 0);
+        }, 0);
+        if (packs) {
+          sale.bonusSum = packs * 1000;
+          sale.bonusTo = (manages() && str(body.bonusTo, 40)) || staffName(body.staff);
+        }
+      }
       // return=representation: an empty answer means this id was already stored, so the shelf is not charged twice
       const stored = await sb('sales?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=representation' }, body: JSON.stringify({ id, ts, data: sale }) });
       // a zero-amount "sale" cannot write stock off: units leave the shelf only with money (a write-off is the manager's count on the product card)
@@ -1080,6 +1105,28 @@ module.exports = async function handler(req, res) {
       await write(id, { ...c, homeClubId: body.clubId, moves: [...(c.moves || []).slice(-19), { ts: Date.now(), from, to: body.clubId, staff: staffName('') }] });
       return res.status(200).json({ ok: true });
     }
+    // The manager corrects a client's name (a typo, a nickname typed at registration).
+    if (req.method === 'POST' && op === 'client-rename') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const id = str(body.id, 20);
+      const name = str(body.name, 60);
+      if (!/^[A-Za-z0-9_-]{2,20}$/.test(id) || name.length < 2 || /[<>�]/.test(name)) return res.status(400).json({ error: 'bad data' });
+      const c = await read(id);
+      if (!c) return res.status(404).json({ error: 'no client' });
+      await write(id, { ...c, name, nameByStaff: true });
+      return res.status(200).json({ ok: true });
+    }
+    // A client card made by mistake or twice: off the lists. The card is kept aside (deleted:<id>) so it can be brought back; the payments stay in the books.
+    if (req.method === 'POST' && op === 'client-del') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const id = str(body.id, 20);
+      if (!/^[A-Za-z0-9_-]{2,20}$/.test(id)) return res.status(400).json({ error: 'bad data' });
+      const c = await read(id);
+      if (!c) return res.status(404).json({ error: 'no client' });
+      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'deleted:' + id, data: { id, ts: Date.now(), by: staffName(''), client: c } }) });
+      await sb(`clients?id=eq.${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+      return res.status(200).json({ ok: true });
+    }
     // Cash taken to another club: out of this drawer now, waiting until the other desk counts it in and accepts it.
     if (req.method === 'POST' && op === 'cash-move') {
       const d = await cashGet(str(body.id, 20));
@@ -1252,13 +1299,13 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ entries: rows.map((r) => r.data) });
     }
     if (req.method === 'POST' && op === 'safe-op') {
-      if (!isOwner(req)) return res.status(403).json({ error: 'owner only' });
+      if (!manages()) return res.status(403).json({ error: 'owner or manager only' });
       const amount = int(body.amount, 100000000);
       const note = str(body.note, 80);
       if (!['in', 'out'].includes(body.kind) || amount < 1 || note.length < 2 || /[<>]/.test(note) || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
       const now = Date.now();
       const id = String(now) + Math.random().toString(36).slice(2, 5).padEnd(3, '0');
-      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: 'safe:' + id, data: { id, ts: now, clubId: body.clubId, kind: body.kind, amount, note, staff: 'owner' } }) });
+      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: 'safe:' + id, data: { id, ts: now, clubId: body.clubId, kind: body.kind, amount, note, staff: staffName('owner') } }) });
       return res.status(200).json({ ok: true });
     }
 

@@ -13,11 +13,12 @@ import { Button, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { mockOrders } from '@/data/members';
 import { checkinRemote } from '@/lib/api';
-import { useApp, useI18n, useMembers, usePresence, type MemberInfo } from '@/store/app-context';
+import { useApp, useI18n, useMembers, usePresence, type MemberInfo, useCanManage } from '@/store/app-context';
 
 type Result = { kind: 'member'; member: MemberInfo } | { kind: 'order'; id: string } | { kind: 'unknown' } | { kind: 'notfound'; q: string };
 
 export default function StaffScanScreen() {
+  const canManage = useCanManage();
   const { t } = useI18n();
   const { orders, staff, staffCode, logCheckin, autoAdmit, setAutoAdmit } = useApp();
   const [unverified, setUnverified] = useState(false);
@@ -80,7 +81,7 @@ export default function StaffScanScreen() {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setUnverified(false);
-    if (scanned && autoAdmit && r.kind === 'member' && entryDecision(r.member, t).ok && !present.some((p) => p.memberId === r.member.id)) {
+    if (scanned && (autoAdmit || !canManage) && r.kind === 'member' && entryDecision(r.member, t).ok && !present.some((p) => p.memberId === r.member.id)) {
       // Only a QR that carries the server's proof opens automatically; anything else (a phone number, an old or made-up QR) waits for the desk.
       let proof: string | undefined;
       try {
@@ -199,7 +200,7 @@ export default function StaffScanScreen() {
 
         {unverified ? (
           <T type="small" color={Colors.warning} style={{ fontWeight: '700', textAlign: 'center' }}>
-            {t('qr_unverified')}
+            {t(canManage ? 'qr_unverified' : 'qr_unverified_admin')}
           </T>
         ) : null}
 

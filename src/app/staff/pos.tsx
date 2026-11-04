@@ -16,7 +16,7 @@ import { formatPrice, planLength, toISODate, trainers } from '@/data/mock';
 import { refundRemote, settleRemote } from '@/lib/api';
 import { promoByCode, promoDiscount } from '@/data/content';
 import type { PayMethod } from '@/data/owner';
-import { MEMBER_DISCOUNT } from '@/data/shop';
+import { BONUS_PER_PACK, MEMBER_DISCOUNT, codesOf, earnsBonus } from '@/data/shop';
 import { useApp, useCanManage, useCatalog, useI18n, useMembers, usePlans, useRawSales, type MemberInfo } from '@/store/app-context';
 import { personMatches } from '@/lib/phone';
 
@@ -60,6 +60,8 @@ export default function StaffPosScreen() {
   const [partial, setPartial] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   const [manualPct, setManualPct] = useState(0); // the desk's own discount on the whole check
+  // the premium for sports nutrition goes to whoever rings the check; the manager may name the administrator
+  const [bonusTo, setBonusTo] = useState('');
   const [settle, setSettle] = useState('');
   const [scanOpen, setScanOpen] = useState(false);
   const [code, setCode] = useState('');
@@ -88,6 +90,8 @@ export default function StaffPosScreen() {
   // With a promo or the desk's discount every sale row carries its share; with the member discount only goods do.
   const share = whole && subtotal > 0 ? (subtotal - discount) / subtotal : 1;
   const meta = (full: number, paid: number) => (manualPct ? { disc: manualPct, off: full - paid } : {});
+  const packs = lines.reduce((n, l) => n + (l.productId && l.grams === undefined && products.some((p) => p.id === l.productId && earnsBonus(p)) ? l.qty : 0), 0);
+  const premium = manualPct === 100 ? 0 : packs * BONUS_PER_PACK;
   const total = subtotal - discount;
   const received = Number(cash.replace(/\D/g, '')) || 0;
   const change = received - total; // negative = not enough cash
@@ -129,7 +133,7 @@ export default function StaffPosScreen() {
     const c = cleanBarcode(raw);
     setCode('');
     if (!c) return;
-    const p = products.find((x) => x.barcode === c);
+    const p = products.find((x) => codesOf(x).includes(c));
     if (!p) {
       setCodeMsg(t('bc_unknown', { code: c }));
       return { ok: false, text: t('bc_unknown', { code: c }) };
@@ -181,7 +185,7 @@ export default function StaffPosScreen() {
       const goodsPaid = whole ? Math.round(goods * share) : goods - memberDisc;
       const goodsParts = parts(goodsPaid);
       // a 100% discount still writes the goods down, with a zero, so the shelf follows and the owner sees it
-      (goodsParts.length ? goodsParts : [{ method, amount: 0 }]).forEach((p, i) => recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: p.amount, method: p.method, ...(i === 0 ? { items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.grams ?? l.qty })), ...meta(goods, goodsPaid) } : {}) }));
+      (goodsParts.length ? goodsParts : [{ method, amount: 0 }]).forEach((p, i) => recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: p.amount, method: p.method, ...(i === 0 ? { items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.grams ?? l.qty })), ...meta(goods, goodsPaid), ...(premium && canManage && bonusTo.trim() ? { bonusTo: bonusTo.trim() } : {}) } : {}) }));
       // the shelf counts come back from the server once the sale has reached it
       setTimeout(() => void refreshContent(), 2500);
     }
@@ -239,6 +243,7 @@ export default function StaffPosScreen() {
     setMix(false);
     setPromoCode('');
     setManualPct(0);
+    setBonusTo('');
   };
 
   const clientSearch = (
@@ -569,6 +574,19 @@ export default function StaffPosScreen() {
                 ))}
               </Row>
             ) : null}
+            {premium ? (
+              <View style={styles.premium}>
+                <Row gap={6} style={{ alignItems: 'center' }}>
+                  <Ionicons name="gift-outline" size={16} color={Colors.success} />
+                  <T type="small" color={Colors.success} style={{ fontWeight: '700', flex: 1 }}>
+                    {t('premium_line', { sum: formatPrice(premium), n: packs, name: (canManage && bonusTo.trim()) || staff?.name || '' })}
+                  </T>
+                </Row>
+                {canManage ? (
+                  <TextInput value={bonusTo} onChangeText={setBonusTo} maxLength={40} placeholder={t('premium_to_ph')} placeholderTextColor={Colors.textMuted} style={[styles.searchInput, { height: 40, flex: 0, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: Spacing.three, backgroundColor: Colors.surface }]} />
+                ) : null}
+              </View>
+            ) : null}
             <Row gap={Spacing.two} style={{ alignItems: 'center' }}>
               <Ionicons name="pricetag-outline" size={16} color={StaffAccent} />
               <TextInput value={promoCode} onChangeText={setPromoCode} placeholder={t('pos_promo_ph')} placeholderTextColor={Colors.textMuted} autoCapitalize="characters" style={[styles.searchInput, { height: 38, flex: 1 }]} />
@@ -707,6 +725,7 @@ function Sum({ label, value, big }: { label: string; value: string; big?: boolea
 }
 
 const styles = StyleSheet.create({
+  premium: { gap: 6, padding: Spacing.two, borderRadius: Radius.md, backgroundColor: 'rgba(46,160,90,0.08)' },
   debtBox: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.md, borderWidth: 1, borderColor: 'rgba(214,59,71,0.4)', backgroundColor: 'rgba(214,59,71,0.06)' },
   root: { flex: 1, backgroundColor: Colors.background },
   body: { padding: Spacing.three, gap: Spacing.two, paddingBottom: 360 },

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import jsQR from 'jsqr';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
@@ -23,6 +23,29 @@ export function WebQrScanner({ onScan, paused, permissionText, allowText, accent
   // Why the camera is not running: no camera API in this viewer (an in-app browser, http), the person refused, no camera on the device, or it is busy.
   const [status, setStatus] = useState<'idle' | 'running' | 'denied' | 'unsupported' | 'nocamera' | 'busy'>('idle');
   const [attempt, setAttempt] = useState(0);
+  // Phones with two or three back cameras: the browser may open a depth or macro lens that cannot focus on a QR.
+  // The desk can switch through them; the choice is remembered on this phone.
+  const [cams, setCams] = useState<string[]>([]);
+  const [camId, setCamId] = useState<string | null>(() => {
+    try {
+      return typeof localStorage !== 'undefined' ? localStorage.getItem('scan-cam') : null;
+    } catch {
+      return null;
+    }
+  });
+  // the lens the browser opened by itself, before any switch
+  const [openedId, setOpenedId] = useState('');
+  const curId = camId ?? openedId;
+  const nextCam = () => {
+    if (cams.length < 2) return;
+    const id = cams[(cams.indexOf(curId) + 1) % cams.length];
+    try {
+      localStorage.setItem('scan-cam', id);
+    } catch {
+      // private mode: the switch still works until the page is closed
+    }
+    setCamId(id);
+  };
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
@@ -65,7 +88,10 @@ export function WebQrScanner({ onScan, paused, permissionText, allowText, accent
         if (!barcodes) detector = null;
       }
       if (!video || !ctx || video.readyState < 2 || pausedRef.current || busy) return;
-      if (detector) {
+      // The browser's own QR detector (cheap Androids) can answer "nothing" on every frame without failing:
+      // jsQR reads every other turn too, so the code is found either way.
+      const turn = frame++ % 4;
+      if (detector && (barcodes || turn < 2)) {
         busy = true;
         busySince = Date.now();
         detector
@@ -79,7 +105,7 @@ export function WebQrScanner({ onScan, paused, permissionText, allowText, accent
       }
       if (barcodes) return; // the barcode reader is still loading
       // jsQR: every other frame, alternating the whole picture (scaled) and its centre at full resolution.
-      if (frame++ % 2) return;
+      if (turn % 2) return;
       const w = video.videoWidth;
       const h = video.videoHeight;
       const centre = frame % 4 === 1;
@@ -97,13 +123,23 @@ export function WebQrScanner({ onScan, paused, permissionText, allowText, accent
     };
 
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
+      .getUserMedia({ video: { ...(camId ? { deviceId: { exact: camId } } : { facingMode: { ideal: 'environment' } }), width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
       .then((s) => {
         if (cancelled) {
           s.getTracks().forEach((tr) => tr.stop());
           return;
         }
         stream = s;
+        // keep refocusing (budget phones start at a fixed focus far away)
+        s.getVideoTracks().forEach((tr) => void tr.applyConstraints({ advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet] }).catch(() => {}));
+        // the back cameras, once the permission has given them names
+        void navigator.mediaDevices.enumerateDevices().then((list) => {
+          if (cancelled) return;
+          const vids = list.filter((d) => d.kind === 'videoinput');
+          const back = vids.filter((d) => !/front|user|передн|фронт/i.test(d.label));
+          setCams((back.length ? back : vids).map((d) => d.deviceId).filter(Boolean));
+          setOpenedId(s.getVideoTracks()[0]?.getSettings().deviceId ?? '');
+        });
         // the camera was taken away (another app, the phone locked): open it again by itself
         s.getVideoTracks().forEach((tr) => tr.addEventListener('ended', () => !cancelled && setAttempt((a) => a + 1)));
         const video = videoRef.current;
@@ -115,14 +151,24 @@ export function WebQrScanner({ onScan, paused, permissionText, allowText, accent
         setStatus('running');
         raf = requestAnimationFrame(tick);
       })
-      .catch((e: { name?: string }) => setStatus(e?.name === 'NotFoundError' || e?.name === 'OverconstrainedError' ? 'nocamera' : e?.name === 'NotReadableError' ? 'busy' : 'denied'));
+      .catch((e: { name?: string }) => {
+        // a remembered camera that is gone (another phone, unplugged): forget it and open the default one
+        if (camId && (e?.name === 'OverconstrainedError' || e?.name === 'NotFoundError')) {
+          try {
+            localStorage.removeItem('scan-cam');
+          } catch {}
+          setCamId(null);
+          return;
+        }
+        setStatus(e?.name === 'NotFoundError' || e?.name === 'OverconstrainedError' ? 'nocamera' : e?.name === 'NotReadableError' ? 'busy' : 'denied');
+      });
 
     return () => {
       cancelled = true;
       cancelAnimationFrame(raf);
       stream?.getTracks().forEach((tr) => tr.stop());
     };
-  }, [attempt, barcodes]);
+  }, [attempt, barcodes, camId]);
 
   if (status !== 'idle' && status !== 'running') {
     const why = status === 'unsupported' ? t('scan_unsupported') : status === 'nocamera' ? t('scan_no_cam_device') : status === 'busy' ? t('scan_busy') : t('scan_denied_how');
@@ -146,9 +192,22 @@ export function WebQrScanner({ onScan, paused, permissionText, allowText, accent
   }
 
   // Plain <video>: react-native-web renders host elements as-is.
-  return <video ref={videoRef} muted autoPlay playsInline style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />;
+  return (
+    <>
+      <video ref={videoRef} muted autoPlay playsInline style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+      {cams.length > 1 ? (
+        <Pressable onPress={nextCam} style={styles.switch} accessibilityLabel={t('scan_switch_cam')}>
+          <Ionicons name="camera-reverse-outline" size={22} color="#FFFFFF" />
+          <T type="small" color="#FFFFFF" style={{ fontWeight: '700' }}>
+            {cams.indexOf(curId) + 1}/{cams.length}
+          </T>
+        </Pressable>
+      ) : null}
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
+  switch: { position: 'absolute', right: 10, bottom: 10, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.55)' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two, padding: Spacing.three },
 });
