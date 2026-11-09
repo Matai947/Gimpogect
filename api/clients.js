@@ -878,6 +878,7 @@ module.exports = async function handler(req, res) {
       const sale = { id, ts, kind, title: str(body.title, 120), name: str(body.name, 60), memberId: str(body.memberId, 20), amount: int(body.amount, 10000000), clubId: body.clubId, method: METHODS.includes(body.method) ? body.method : 'cash', staff: str(body.staff, 40) };
       if (/^t\d{1,3}$/.test(String(body.trainerId))) sale.trainerId = body.trainerId;
       if (kind === 'plan' && /^[A-Za-z0-9_-]{1,24}$/.test(String(body.planId ?? ''))) sale.planId = String(body.planId);
+      if (kind === 'plan' && /^G[0-9a-z]{6,24}$/.test(String(body.gid ?? ''))) sale.gid = String(body.gid);
       // the desk discount is the manager's: an administrator's check with one is refused
       if (body.disc != null && Number(body.disc) > 0 && !manages()) return res.status(403).json({ error: 'manager discount only' });
       if ([10, 20, 30, 50, 100].includes(Number(body.disc))) sale.disc = Number(body.disc);
@@ -942,13 +943,16 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    // Only a plan the server really applied to this client (its grant id is on the client) is taken back, and only once:
+    // a made-up plan sale cancelled later cannot shorten anyone's pass.
     const takePlanBack = async (sale) => {
       const c = await read(sale.memberId);
-      if (!c || !c.membership) return;
+      if (!c || !c.membership || !sale.gid || !(c.grantIds || []).includes(sale.gid)) return;
       const next = await unprolong(c.membership, sale.planId);
       if (next === c.membership) return;
       const { membership: _m, ...rest } = c;
-      await write(sale.memberId, next ? { ...rest, membership: next } : rest);
+      const grantIds = c.grantIds.filter((g) => g !== sale.gid);
+      await write(sale.memberId, next ? { ...rest, grantIds, membership: next } : { ...rest, grantIds });
     };
 
     // Only the owner returns money.

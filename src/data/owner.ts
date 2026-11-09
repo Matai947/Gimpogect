@@ -8,7 +8,8 @@ export type Sale = {
   memberId?: string;
   name: string; // client
   title: string; // plan name or product
-  planId?: string; // a plan sale: which plan (a cancellation takes it back off the pass)
+  planId?: string;
+  gid?: string; // the grant this plan sale gave (a cancellation takes back that grant only) // a plan sale: which plan (a cancellation takes it back off the pass)
   kind: SaleKind;
   amount: number;
   clubId: string;
