@@ -205,7 +205,7 @@ export function ExpensesPanel({ accent, owner }: { accent: string; owner?: boole
             {t('ex_history')}
           </T>
           {/* the bills of last month paid early this month: all of them over in one go (second tap confirms) */}
-          {canAdd ? (
+          {v.pays.length > 1 ? (
             <Button
               title={sure === 'all' + month ? t('ex_move_all_sure', { n: v.pays.length, month: monthName(shiftMonth(month, -1)) }) : t('ex_move_all', { n: v.pays.length, month: monthName(shiftMonth(month, -1)) })}
               icon="arrow-undo-outline"
