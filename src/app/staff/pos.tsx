@@ -379,7 +379,7 @@ export default function StaffPosScreen() {
             <T type="small" color={cancelMsg.bad ? Colors.danger : Colors.success} style={{ fontWeight: '700' }}>
               {cancelMsg.text}
             </T>
-          ) : (
+          ) : !canManage ? null : (
             <Button title={cancelSure ? t('pos_cancel_sure') : t('pos_cancel')} icon="arrow-undo-outline" variant="danger" onPress={() => void cancelReceipt()} disabled={cancelling} />
           )}
           <Button title={t('pos_new')} icon="add" onPress={reset} style={{ backgroundColor: StaffAccent }} />

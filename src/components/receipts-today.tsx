@@ -196,7 +196,7 @@ export function ReceiptsToday({ accent }: { accent: string }) {
                 ) : null}
                 <Row gap={Spacing.two}>
                   <Button title={t('receipt_send')} icon="paper-plane-outline" size="sm" variant="secondary" onPress={() => send(c)} style={{ flex: 1, paddingHorizontal: 8 }} />
-                  {!cancelled && (day === today || canManage) ? (
+                  {!cancelled && canManage ? (
                     <Button title={sure === c.key ? t('rt_cancel_sure') : t('pos_cancel')} icon="arrow-undo-outline" size="sm" variant="danger" onPress={() => void cancel(c)} disabled={busy === c.key} style={{ flex: 1, paddingHorizontal: 8 }} />
                   ) : null}
                 </Row>

@@ -955,9 +955,9 @@ module.exports = async function handler(req, res) {
       await write(sale.memberId, next ? { ...rest, grantIds, membership: next } : { ...rest, grantIds });
     };
 
-    // Only the owner returns money.
+    // Only the manager and the owner return or cancel a check; administrators cannot.
     if (req.method === 'POST' && op === 'refund') {
-      if (!authed()) return res.status(403).json({ error: 'staff only' });
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
       const saleId = str(body.saleId, 24);
       const reason = str(body.reason, 80);
       if (reason.length < 3 || /[<>]/.test(reason)) return res.status(400).json({ error: 'reason required' });
@@ -966,8 +966,6 @@ module.exports = async function handler(req, res) {
       if (!sale || !['plan', 'shop', 'personal'].includes(sale.kind)) return res.status(400).json({ error: 'bad data' });
       // A check given free (100%) has no money to return, but a mistake is still cancelled: once, and its goods go back on the shelf.
       if (sale.disc === 100 && !sale.amount) {
-        const almaty = (ts) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10);
-        if (!manages() && almaty(sale.ts) !== almaty(Date.now())) return res.status(403).json({ error: 'only today' });
         const marked = await sb(`sales?id=eq.${encodeURIComponent(saleId)}&${encodeURIComponent('data->>cancelled')}=is.null`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { ...sale, cancelled: true } }) });
         if (!Array.isArray(marked) || marked.length !== 1) return res.status(409).json({ error: 'already changed' });
         const now = Date.now();
@@ -980,13 +978,6 @@ module.exports = async function handler(req, res) {
       const left = sale.amount - (sale.refunded || 0);
       const amount = body.amount == null ? left : int(body.amount, 10000000);
       if (amount < 1 || amount > left) return res.status(400).json({ error: 'bad amount' });
-      // An administrator cancels a mistake: only a sale rung up today (clubs' clock), only the whole of what is left.
-      // Partial refunds and older sales stay with the manager and the owner. Every cancellation carries who did it.
-      if (!manages()) {
-        const almaty = (ts) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10);
-        if (almaty(sale.ts) !== almaty(Date.now())) return res.status(403).json({ error: 'only today' });
-        if (amount !== left) return res.status(403).json({ error: 'whole check only' });
-      }
       const now = Date.now();
       const ref = { id: 'F' + now.toString(36) + Math.random().toString(36).slice(2, 5), ts: now, kind: 'refund', title: 'Возврат: ' + sale.title, name: sale.name, memberId: sale.memberId, amount, clubId: sale.clubId, method: sale.method, staff: staffName(''), reason, refundOf: saleId, ...(sale.trainerId ? { trainerId: sale.trainerId } : {}) };
       // The sale is marked first, and only while it still reads what we read: of two cancellations racing for the same check exactly one goes through.
