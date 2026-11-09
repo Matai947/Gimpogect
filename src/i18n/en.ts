@@ -80,6 +80,8 @@ export const en: Record<TKey, string> = {
   stk_no_count: 'not counted',
   ex_moved: 'Moved to {month}',
   ex_move_back: 'Move to the month before',
+  ex_move_all: 'Move all expenses ({n}) to {month}',
+  ex_move_all_sure: 'Sure? Tap again: {n} expenses go to {month}',
   pos_stock_over: 'The count says {n} on the shelf. The sale goes through; the manager should recount this product.',
   pos_stock_over_g: 'The count says {n} g left. The sale goes through; the manager should recount this product.',
   cash_report: 'Shift report {day} • {from}–{to}',

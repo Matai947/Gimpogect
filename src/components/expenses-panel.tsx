@@ -204,6 +204,26 @@ export function ExpensesPanel({ accent, owner }: { accent: string; owner?: boole
           <T type="label" color={Colors.textSecondary}>
             {t('ex_history')}
           </T>
+          {/* the bills of last month paid early this month: all of them over in one go (second tap confirms) */}
+          {canAdd ? (
+            <Button
+              title={sure === 'all' + month ? t('ex_move_all_sure', { n: v.pays.length, month: monthName(shiftMonth(month, -1)) }) : t('ex_move_all', { n: v.pays.length, month: monthName(shiftMonth(month, -1)) })}
+              icon="arrow-undo-outline"
+              size="sm"
+              variant="secondary"
+              disabled={busy}
+              onPress={() =>
+                void remove('all' + month, async () => {
+                  setBusy(true);
+                  const done = await Promise.all(v.pays.map((p) => moveExpense(staffCode, p.id, shiftMonth(month, -1))));
+                  setBusy(false);
+                  const ok = done.every(Boolean);
+                  setMsg(ok ? { text: t('ex_moved', { month: monthName(shiftMonth(month, -1)) }), bad: false } : { text: t('cash_fail'), bad: true });
+                  return true;
+                })
+              }
+            />
+          ) : null}
           {v.pays.map((p) => (
             <Row key={p.id} gap={Spacing.two} style={styles.line}>
               <View style={{ flex: 1 }}>
