@@ -136,6 +136,10 @@ export const cashMove = async (code: string, b: { id: string; to: string; amount
 export const cashAccept = async (code: string, b: { id: string; move: string; staff: string }) => (await call<{ drawer: CashDrawer }>('cash-accept', { method: 'POST', code, body: b }))?.drawer ?? null;
 export const fetchCashMoves = async (code: string, days = 30) => (await call<{ moves: CashMove[] }>('cash-moves', { code, query: `&days=${days}` }))?.moves ?? null;
 export const stockSet = (code: string, b: { clubId: string; id: string; n: number | null }) => call<{ ok: true }>('stock-set', { method: 'POST', code, body: b });
+/** The month-end count: what the books said (was, null = not counted before) and what was on the shelf (n). */
+export type Revision = { ts: number; clubId: string; staff: string; lines: { id: string; name: string; price: number; was: number | null; n: number }[] };
+export const stockRevision = (code: string, b: { clubId: string; staff: string; counts: { id: string; n: number; name: string; price: number }[] }) => call<{ ok: true }>('stock-revision', { method: 'POST', code, body: b });
+export const fetchRevisions = async (code: string) => (await call<{ revisions: Revision[] }>('revisions', { code }))?.revisions ?? null;
 /** 'short' = the sending club has fewer than that on its shelf. */
 export const stockMove = async (code: string, b: { id: string; qty: number; from: string; to: string; staff: string }) => {
   const r = await raw('stock-move', { method: 'POST', code, body: b });

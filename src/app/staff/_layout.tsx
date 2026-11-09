@@ -46,6 +46,7 @@ export default function StaffLayout() {
       <Tabs.Screen name="members" options={{ title: t('staff_tab_members'), tabBarIcon: (p: IconProps) => <TabIcon name="id-card" outline="id-card-outline" {...p} /> }} />
       <Tabs.Screen name="more" options={{ href: phone ? undefined : null, title: t('tab_more'), tabBarIcon: (p: IconProps) => <TabIcon name="grid" outline="grid-outline" {...p} />, tabBarBadge: pending > 0 ? pending : undefined }} />
       <Tabs.Screen name="bonuses" options={{ href: null }} />
+      <Tabs.Screen name="stock" options={{ href: null }} />
       <Tabs.Screen name="product-edit" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>

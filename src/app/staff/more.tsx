@@ -24,6 +24,7 @@ export default function StaffMore() {
             { href: '/staff/orders', icon: 'cube-outline', title: t('staff_tab_orders'), badge: pending },
             { href: '/staff/classes', icon: 'people-outline', title: t('staff_tab_trainers') },
             { href: '/staff/products', icon: 'pricetags-outline', title: t('staff_tab_products') },
+            { href: '/staff/stock', icon: 'clipboard-outline', title: t('stk_title'), show: canManage },
             { href: '/staff/settings', icon: 'settings-outline', title: t('tab_settings'), show: canManage },
           ]}
         />

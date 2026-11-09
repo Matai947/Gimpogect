@@ -705,7 +705,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ role: who.role === 'manager' ? 'manager' : who.role === 'accountant' ? 'accountant' : 'admin', token: adminToken(who.id, who.at), name: who.name, id: who.id });
     }
 
-    const ACC_READ = ['list', 'sales', 'visits', 'shifts', 'cash', 'cashes', 'withdrawals', 'cash-moves', 'expenses', 'safe', 'loads'];
+    const ACC_READ = ['list', 'sales', 'visits', 'shifts', 'cash', 'cashes', 'withdrawals', 'cash-moves', 'expenses', 'safe', 'loads', 'revisions'];
     const ACC_WRITE = ['exp-pay', 'exp-del', 'exp-tpl-save', 'exp-tpl-del'];
     const accOk = isAcc && ((req.method === 'GET' && ACC_READ.includes(op)) || (req.method === 'POST' && ACC_WRITE.includes(op)));
     if (!authed() && !accOk) return res.status(isAcc ? 403 : 401).json({ error: isAcc ? 'accountant reads only' : 'code' });
@@ -1118,6 +1118,33 @@ module.exports = async function handler(req, res) {
         return true;
       }, 'staff ' + staffName(''));
       return ok ? res.status(200).json({ ok: true, stock: (await getContent()).stock || {} }) : res.status(409).json({ error: 'busy' });
+    }
+    // The month-end count: every product counted is set to what is on the shelf in one write; what the books said
+    // and what was found are kept as a revision, so the shortage of the month can be looked at and exported later.
+    if (req.method === 'POST' && op === 'stock-revision') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const rows = Array.isArray(body.counts) ? body.counts.slice(0, 1000) : [];
+      const counts = rows.map((r) => ({ id: str(r && r.id, 24), n: int(r && r.n, 100000), name: str(r && r.name, 120), price: int(r && r.price, 100000000) })).filter((r) => /^[A-Za-z0-9_-]{1,24}$/.test(r.id) && !/[<>]/.test(r.name));
+      if (!counts.length || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
+      const lines = [];
+      const ok = await editStock((all) => {
+        const shelf = (all[body.clubId] = all[body.clubId] || {});
+        lines.length = 0;
+        for (const r of counts) {
+          lines.push({ id: r.id, name: r.name, price: r.price, was: r.id in shelf ? Number(shelf[r.id]) || 0 : null, n: r.n });
+          shelf[r.id] = r.n;
+        }
+        return true;
+      }, 'revision ' + staffName(''));
+      if (!ok) return res.status(409).json({ error: 'busy' });
+      const now = Date.now();
+      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: `revision:${now}${Math.random().toString(36).slice(2, 5)}`, data: { ts: now, clubId: body.clubId, staff: staffName(body.staff), lines } }) });
+      return res.status(200).json({ ok: true, stock: (await getContent()).stock || {} });
+    }
+    if (req.method === 'GET' && op === 'revisions') {
+      if (!manages() && !isAcc) return res.status(403).json({ error: 'manager only' });
+      const rows = await sb(`settings?select=data&key=like.revision:*&order=key.desc&limit=24`);
+      return res.status(200).json({ revisions: rows.map((r) => r.data) });
     }
     // Goods driven from one club to another: off one shelf and onto the other in one write, never more than is there.
     if (req.method === 'POST' && op === 'stock-move') {
