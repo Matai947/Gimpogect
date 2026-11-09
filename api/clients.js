@@ -209,7 +209,8 @@ async function validClub(id) {
   return list.length ? list.some((c) => c.id === id && c.active !== false) : ['c1', 'c2'].includes(id);
 }
 
-const logVisit = (club, member, kind) => sb('visits', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ ts: Date.now(), club, member, kind }) }).catch(() => {}); // best effort: a missing log must never block an entry
+// an entry or an exit shows in the occupancy at once: the count is worked out again on the next ask
+const logVisit = (club, member, kind) => sb('visits', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ ts: Date.now(), club, member, kind }) }).then(() => (occCache.at = 0)).catch(() => {}); // best effort: a missing log must never block an entry
 
 /** Every client, paged because PostgREST returns at most 1000 rows per request. */
 async function readAll() {
@@ -353,7 +354,7 @@ async function planRule(id) {
   if (!base || (p.hidden || []).includes(id)) return null;
   const r = { ...base, ...(own(p.overrides, id) || {}) };
   const days = Math.max(1, Math.min(400, Math.round(Number(r.days) || (Number(r.months) || 1) * 30)));
-  return { days, visits: Number(r.visits) > 0 ? Math.min(1000, Math.round(Number(r.visits))) : 0, freezeDays: r.trial ? 0 : Math.max(0, Math.min(365, Math.round(Number(r.freezeDays) || 0))), freezeCount: Math.max(1, Math.min(10, Math.round(Number(r.freezeCount) || 1))), dayOnly: !!r.dayOnly, staffOnly: !!r.staffOnly };
+  return { days, months: Number(r.days) ? 0 : Math.max(0, Math.round(Number(r.months) || 0)), visits: Number(r.visits) > 0 ? Math.min(1000, Math.round(Number(r.visits))) : 0, freezeDays: r.trial ? 0 : Math.max(0, Math.min(365, Math.round(Number(r.freezeDays) || 0))), freezeCount: Math.max(1, Math.min(10, Math.round(Number(r.freezeCount) || 1))), dayOnly: !!r.dayOnly, staffOnly: !!r.staffOnly };
 }
 /** A running pass prolonged by a plan, the way the desk's app does it; null for a plan the server does not know. */
 async function prolong(cur, planId) {
@@ -375,6 +376,25 @@ async function prolong(cur, planId) {
     ...(r.visits ? { visitsLeft: Math.min(1000, (cur.visitsLeft || 0) + r.visits) } : {}),
     ...(r.dayOnly ? { dayOnly: true } : {}),
     ...(cur.frozenUntil ? { frozenUntil: cur.frozenUntil } : {}),
+  };
+}
+
+/** A plan check cancelled: the pass loses what that plan gave (length, visits, freezes); a pass that was only this plan is gone. */
+async function unprolong(cur, planId) {
+  const r = await planRule(String(planId || ''));
+  if (!r || r.staffOnly || !cur || !cur.endDate || cur.planId !== planId) return cur;
+  const d = new Date(cur.endDate + 'T00:00:00Z');
+  if (r.months) d.setUTCMonth(d.getUTCMonth() - r.months);
+  else d.setUTCDate(d.getUTCDate() - r.days);
+  const endDate = d.toISOString().slice(0, 10);
+  if (endDate <= cur.startDate) return null;
+  const count = r.freezeDays ? r.freezeCount : 0;
+  return {
+    ...cur,
+    endDate,
+    freezeDaysLeft: Math.max(0, (cur.freezeDaysLeft || 0) - r.freezeDays * count),
+    freezesLeft: Math.max(0, (cur.freezesLeft || 0) - count),
+    ...(r.visits && cur.visitsLeft != null ? { visitsLeft: Math.max(0, cur.visitsLeft - r.visits) } : {}),
   };
 }
 
@@ -477,7 +497,7 @@ module.exports = async function handler(req, res) {
 
     // People inside each club now: an entry in the last 2 hours with no exit marked after it. Counts only.
     if (req.method === 'GET' && op === 'occupancy') {
-      if (Date.now() - occCache.at > 30000) {
+      if (Date.now() - occCache.at > 10000) {
         const rows = await sb(`visits?select=ts,club,member,kind&ts=gte.${Date.now() - 2 * 3600000}&order=ts.asc&limit=2000`);
         const last = new Map();
         for (const v of rows) {
@@ -490,7 +510,7 @@ module.exports = async function handler(req, res) {
         for (const v of last.values()) inside[v.club] = (inside[v.club] || 0) + 1;
         occCache = { at: Date.now(), inside };
       }
-      res.setHeader('Cache-Control', 'public, max-age=30');
+      res.setHeader('Cache-Control', 'no-store');
       return res.status(200).json({ inside: occCache.inside });
     }
     if (req.method === 'GET' && op === 'clubs') return res.status(200).json({ clubs: await getClubs() });
@@ -595,6 +615,8 @@ module.exports = async function handler(req, res) {
         if (tokenOwner(req) !== id && !authed()) return res.status(401).json({ error: 'auth' });
         prev = existing;
       } else {
+        // After +7 a Kazakh number begins with 7: «+7 8…» is «8 7xx» typed into the +7 field, a card nobody would find by the real number.
+        if (/^u_78\d{9}$/.test(id)) return res.status(400).json({ error: 'bad phone' });
         // A new account must set its password right away.
         const password = String(body.password ?? '');
         if (password.length < 6) return res.status(400).json({ error: 'short password' });
@@ -736,7 +758,7 @@ module.exports = async function handler(req, res) {
       // A frozen pass does not open the door: unfreeze it first (the client in the app, or the desk on the card).
       if (op === 'checkin' && prev.membership?.frozenUntil && prev.membership.frozenUntil >= day(now)) return res.status(403).json({ error: 'frozen' });
       // A daytime plan is not let in from 17:00 (Almaty time), whatever the front desk's screen says.
-      if (op === 'checkin' && prev.membership?.dayOnly && new Date(now + 5 * 3600000).getUTCHours() >= 17) return res.status(403).json({ error: 'day only' });
+      if (op === 'checkin' && prev.membership?.dayOnly && !manages() && new Date(now + 5 * 3600000).getUTCHours() >= 17) return res.status(403).json({ error: 'day only' });
       // With no visits left the next day's entry is refused here too (coming back the same day, after the last visit, is still fine).
       if (op === 'checkin' && prev.membership?.visitsLeft !== undefined && prev.membership.visitsLeft <= 0 && firstToday) return res.status(403).json({ error: 'no visits' });
       // Use up the proof atomically: the update matches only while qrUsed still has the value we read, so of two
@@ -803,6 +825,9 @@ module.exports = async function handler(req, res) {
       const membership = cleanMembership(body.membership);
       if (!ID.test(id) || !membership) return res.status(400).json({ error: 'bad data' });
       const prev = (await read(id)) || { id, name: str(body.name, 60) || 'Гость', phone: str(body.phone, 20), homeClubId: 'c1', since: new Date().toISOString().slice(0, 10) };
+      // The desk retries a grant until it hears back: a grant already applied (same id) changes nothing, so a plan is never prolonged twice.
+      const gid = /^G[0-9a-z]{6,24}$/.test(String(body.gid ?? '')) ? String(body.gid) : '';
+      if (op === 'grant' && gid && (prev.grantIds || []).includes(gid)) return res.status(200).json({ ok: true, repeat: true });
       // An administrator's grant on a running pass is a prolongation: the server works it out from the plan's rules
       // and the stored pass, so no dates, visits or freezes sent by the desk are taken on trust.
       const was = prev.membership;
@@ -819,7 +844,7 @@ module.exports = async function handler(req, res) {
       if (membership.planId === 'trial') return res.status(410).json({ error: 'trial removed' });
       // A plan given at the desk replaces a pass that was waiting for its first entry.
       const { pending: _waiting, ...current } = prev;
-      await write(id, { ...current, membership, ...(membership.planId === 'trial' ? { trialUsed: true } : {}) });
+      await write(id, { ...current, membership, ...(membership.planId === 'trial' ? { trialUsed: true } : {}), ...(gid ? { grantIds: [gid, ...(prev.grantIds || [])].slice(0, 30) } : {}) });
       return res.status(200).json({ ok: true });
     }
 
@@ -852,6 +877,7 @@ module.exports = async function handler(req, res) {
       const ts = Number(body.ts) > now - 30 * 86400000 && Number(body.ts) < now + 3600000 ? Math.round(Number(body.ts)) : now;
       const sale = { id, ts, kind, title: str(body.title, 120), name: str(body.name, 60), memberId: str(body.memberId, 20), amount: int(body.amount, 10000000), clubId: body.clubId, method: METHODS.includes(body.method) ? body.method : 'cash', staff: str(body.staff, 40) };
       if (/^t\d{1,3}$/.test(String(body.trainerId))) sale.trainerId = body.trainerId;
+      if (kind === 'plan' && /^[A-Za-z0-9_-]{1,24}$/.test(String(body.planId ?? ''))) sale.planId = String(body.planId);
       // the desk discount is the manager's: an administrator's check with one is refused
       if (body.disc != null && Number(body.disc) > 0 && !manages()) return res.status(403).json({ error: 'manager discount only' });
       if ([10, 20, 30, 50, 100].includes(Number(body.disc))) sale.disc = Number(body.disc);
@@ -864,7 +890,7 @@ module.exports = async function handler(req, res) {
       items.push(...merged);
       if (items.length) sale.items = items;
       // The administrators' premium: 1000 ₸ a jar or pack of sports nutrition sold (portions under 3000 ₸ and free checks earn none).
-      // It goes to whoever rang the check; the manager may name the administrator instead.
+      // It goes to whoever made the sale: the one who rang the check, or the person the desk names.
       if (kind === 'shop' && items.length && sale.amount >= 1) {
         const cat = (await getContent()).catalog || {};
         const known = new Map([...(cat.custom || []), ...Object.values(cat.overrides || {})].map((p) => [p.id, p]));
@@ -872,9 +898,13 @@ module.exports = async function handler(req, res) {
           const p = known.get(i.id);
           return n + (p && BONUS_CATEGORIES.includes(p.category) && !p.byWeight && Number(p.price) >= 3000 ? i.qty : 0);
         }, 0);
-        if (packs) {
-          sale.bonusSum = packs * 1000;
-          sale.bonusTo = (manages() && str(body.bonusTo, 40)) || staffName(body.staff);
+        // the premium comes out of the money taken: the check shows what is left (the client still pays the full price)
+        const cut = Math.min(packs * 1000, sale.amount - 1);
+        if (packs && cut > 0) {
+          sale.bonusSum = cut;
+          sale.paid = sale.amount;
+          sale.amount -= cut;
+          sale.bonusTo = (!/[<>]/.test(String(body.bonusTo ?? '')) && str(body.bonusTo, 40)) || staffName(body.staff);
         }
       }
       // return=representation: an empty answer means this id was already stored, so the shelf is not charged twice
@@ -912,6 +942,15 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    const takePlanBack = async (sale) => {
+      const c = await read(sale.memberId);
+      if (!c || !c.membership) return;
+      const next = await unprolong(c.membership, sale.planId);
+      if (next === c.membership) return;
+      const { membership: _m, ...rest } = c;
+      await write(sale.memberId, next ? { ...rest, membership: next } : rest);
+    };
+
     // Only the owner returns money.
     if (req.method === 'POST' && op === 'refund') {
       if (!authed()) return res.status(403).json({ error: 'staff only' });
@@ -931,6 +970,7 @@ module.exports = async function handler(req, res) {
         const rid = 'F' + now.toString(36) + Math.random().toString(36).slice(2, 5);
         await sb('sales', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: rid, ts: now, data: { id: rid, ts: now, kind: 'refund', title: 'Возврат: ' + sale.title, name: sale.name, memberId: sale.memberId, amount: 0, clubId: sale.clubId, method: sale.method, staff: staffName(''), reason, refundOf: saleId } }) });
         if (sale.kind === 'shop' && Array.isArray(sale.items)) await adjustStock(sale.items.filter((i) => (i.taken ?? 0) > 0), 1, sale.clubId);
+        if (sale.kind === 'plan' && sale.planId && ID.test(String(sale.memberId || ''))) await takePlanBack(sale);
         return res.status(200).json({ ok: true });
       }
       const left = sale.amount - (sale.refunded || 0);
@@ -952,6 +992,8 @@ module.exports = async function handler(req, res) {
       await sb('sales', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: ref.id, ts: now, data: ref }) });
       // a full refund puts back exactly what the sale took off the shelf
       if (sale.kind === 'shop' && Array.isArray(sale.items) && amount === sale.amount) await adjustStock(sale.items.filter((i) => (i.taken ?? 0) > 0), 1, sale.clubId);
+      // a plan check cancelled whole: the client's pass loses that plan too
+      if (sale.kind === 'plan' && sale.planId && amount === sale.amount && ID.test(String(sale.memberId || ''))) await takePlanBack(sale);
       return res.status(200).json({ ok: true });
     }
 
@@ -1247,6 +1289,12 @@ module.exports = async function handler(req, res) {
     /* ---- club expenses: the manager keeps the monthly must-pays (rent, utilities, salaries) and records what was paid; the owner sees it all ---- */
     const newId = () => String(Date.now()) + Math.random().toString(36).slice(2, 5).padEnd(3, '0');
     const plainText = (v) => v.length >= 2 && !/[<>]/.test(v);
+    // the day a payment counts on: its own day in its own month, else the last day of the month it is for
+    const expDay = (month, ts) => {
+      if (new Date(ts + 5 * 3600000).toISOString().slice(0, 7) === month) return '';
+      const [y, m] = month.split('-').map(Number);
+      return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+    };
     if (req.method === 'GET' && op === 'expenses') {
       if (!manages() && !isAcc) return res.status(403).json({ error: 'manager only' });
       const [tpl, pays] = await Promise.all([pageAll('settings?select=data&key=like.exptpl:*'), pageAll(`settings?select=data&key=like.expense:*&${enc('data->>ts')}=gte.${Date.now() - 400 * 86400000}`)]);
@@ -1281,8 +1329,23 @@ module.exports = async function handler(req, res) {
       const tplId = /^\d{13}[a-z0-9]{3}$/.test(String(body.tplId)) ? body.tplId : undefined;
       if (!plainText(title) || /[<>]/.test(note) || amount < 1 || !['cash', 'noncash'].includes(body.method) || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
       const id = newId();
-      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: 'expense:' + id, data: { id, ts: Date.now(), clubId: body.clubId, month, ...(tplId ? { tplId } : {}), title, amount, method: body.method, note, staff: staffName('owner') } }) });
+      const day = expDay(month, Date.now());
+      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: 'expense:' + id, data: { id, ts: Date.now(), clubId: body.clubId, month, ...(day ? { day } : {}), ...(tplId ? { tplId } : {}), title, amount, method: body.method, note, staff: staffName('owner') } }) });
       return res.status(200).json({ ok: true, id });
+    }
+    // A payment made for another month (the October bills paid in early November) is moved there, dated that month's last day.
+    if (req.method === 'POST' && op === 'exp-move') {
+      if (!manages() && !isAcc) return res.status(403).json({ error: 'manager only' });
+      const id = str(body.id, 20);
+      const month = String(body.month);
+      const thisMonth = new Date(Date.now() + 5 * 3600000).toISOString().slice(0, 7);
+      if (!/^\d{13}[a-z0-9]{3}$/.test(id) || !/^\d{4}-\d{2}$/.test(month) || month > thisMonth) return res.status(400).json({ error: 'bad data' });
+      const p = (await sb(`settings?key=eq.expense:${id}&select=data`))[0]?.data;
+      if (!p) return res.status(404).json({ error: 'no payment' });
+      const { day: _d, ...rest } = p;
+      const day = expDay(month, p.ts);
+      await sb(`settings?key=eq.expense:${id}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...rest, month, ...(day ? { day } : {}), movedBy: staffName('owner') } }) });
+      return res.status(200).json({ ok: true });
     }
     if (req.method === 'POST' && op === 'exp-del') {
       if (!manages() && !isAcc) return res.status(403).json({ error: 'manager only' });
@@ -1312,14 +1375,19 @@ module.exports = async function handler(req, res) {
     if (req.method === 'GET' && op === 'cash') {
       const clubId = str(req.query.clubId, 6);
       if (!(await validClub(clubId))) return res.status(400).json({ error: 'bad club' });
-      const d = (await cashRows(30)).find((x) => x.clubId === clubId && !x.close);
-      return res.status(200).json({ drawer: d ? { ...d, ...(await cashSummary(d)) } : null });
+      const rows = (await cashRows(30)).filter((x) => x.clubId === clubId);
+      const d = rows.find((x) => !x.close);
+      // the last closed drawer: its report stays on screen until the next one opens
+      const last = d ? null : rows.find((x) => x.close);
+      return res.status(200).json({ drawer: d ? { ...d, ...(await cashSummary(d)) } : null, last: last ? { ...last, ...(await cashSummary(last)) } : null });
     }
     if (req.method === 'POST' && op === 'cash-open') {
       const staff = staffName(body.staff);
-      const amount = int(body.amount, 100000000);
-      if (staff.length < 2 || /[<>]/.test(staff) || !(await validClub(body.clubId)) || body.amount === '' || body.amount == null) return res.status(400).json({ error: 'bad data' });
-      const have = (await cashRows(30)).find((x) => x.clubId === body.clubId && !x.close);
+      if (staff.length < 2 || /[<>]/.test(staff) || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
+      const rows = (await cashRows(30)).filter((x) => x.clubId === body.clubId);
+      const have = rows.find((x) => !x.close);
+      // no amount typed: the drawer opens with what the last shift counted at closing
+      const amount = body.amount === '' || body.amount == null ? (rows.find((x) => x.close)?.counted ?? 0) : int(body.amount, 100000000);
       if (have) return res.status(409).json({ error: 'already open', drawer: { ...have, ...(await cashSummary(have)) } });
       const now = Date.now();
       const id = String(now) + Math.random().toString(36).slice(2, 5).padEnd(3, '0');

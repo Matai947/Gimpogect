@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, Share, StyleSheet, TextInput, View } from 'react-native';
 
 import { BarcodeSheet, cleanBarcode } from '@/components/barcode-sheet';
@@ -16,7 +16,7 @@ import { formatPrice, planLength, toISODate, trainers } from '@/data/mock';
 import { refundRemote, settleRemote } from '@/lib/api';
 import { promoByCode, promoDiscount } from '@/data/content';
 import type { PayMethod } from '@/data/owner';
-import { BONUS_PER_PACK, MEMBER_DISCOUNT, codesOf, earnsBonus } from '@/data/shop';
+import { BONUS_PER_PACK, MEMBER_DISCOUNT, earnsBonus, hasCode } from '@/data/shop';
 import { useApp, useCanManage, useCatalog, useI18n, useMembers, usePlans, useRawSales, type MemberInfo } from '@/store/app-context';
 import { personMatches } from '@/lib/phone';
 
@@ -27,6 +27,34 @@ const PLANS_TAB = '__plans';
 const TRAINERS_TAB = '__trainers';
 // Kept outside the component so the compiler's purity rule does not see Date.now() in render.
 const newTs = () => Date.now();
+
+/** Plans sold here that the server has not taken yet: waiting for the connection, or refused (then the manager fixes it). */
+function GrantWarnings() {
+  const { pendingGrants, dismissGrant } = useApp();
+  const { t } = useI18n();
+  // the clock moves every 10 s so a grant that keeps waiting shows up without a tap
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const i = setInterval(() => setNow(Date.now()), 10000);
+    return () => clearInterval(i);
+  }, []);
+  // a grant usually lands within a second: only a long wait or a refusal is worth the desk's attention
+  const shown = (pendingGrants ?? []).filter((g) => g.error || now - g.ts > 30000);
+  if (!shown.length) return null;
+  return (
+    <View style={{ gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.md, borderWidth: 2, borderColor: Colors.danger, backgroundColor: Colors.surface }}>
+      {shown.map((g) => (
+        <Row key={g.gid} gap={Spacing.two} style={{ justifyContent: 'space-between' }}>
+          <View style={{ flex: 1 }}>
+            <T type="subheading" color={Colors.danger}>{g.error ? t('pos_grant_refused', { name: g.name }) : t('pos_grant_wait', { name: g.name })}</T>
+            <T type="small" color={Colors.textSecondary}>{g.phone}{g.error ? ` · ${g.error}` : ''}</T>
+          </View>
+          {g.error ? <Button title={t('pos_grant_dismiss')} variant="secondary" size="sm" onPress={() => dismissGrant(g.gid)} /> : null}
+        </Row>
+      ))}
+    </View>
+  );
+}
 
 export default function StaffPosScreen() {
   const { t, td } = useI18n();
@@ -60,7 +88,7 @@ export default function StaffPosScreen() {
   const [partial, setPartial] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   const [manualPct, setManualPct] = useState(0); // the desk's own discount on the whole check
-  // the premium for sports nutrition goes to whoever rings the check; the manager may name the administrator
+  // the premium for sports nutrition goes to whoever made the sale: the one ringing the check unless the desk names someone
   const [bonusTo, setBonusTo] = useState('');
   const [settle, setSettle] = useState('');
   const [scanOpen, setScanOpen] = useState(false);
@@ -74,7 +102,8 @@ export default function StaffPosScreen() {
   }, [members, query]);
 
   const categories = useMemo(() => Array.from(new Set(products.filter((p) => p.inStock).map((p) => p.category))), [products]);
-  const shown = useMemo(() => products.filter((p) => p.inStock && p.stock !== 0 && (cat === 'all' || p.category === cat)), [products, cat]);
+  // a product counted at 0 stays on the register: the count can be behind the shelf, and the goods in hand still sell
+  const shown = useMemo(() => products.filter((p) => p.inStock && (cat === 'all' || p.category === cat)), [products, cat]);
 
   const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
   // Member discount applies to goods only; plans are already priced for members.
@@ -110,8 +139,7 @@ export default function StaffPosScreen() {
   const addWeighed = (grams: number) => {
     if (!weighing || grams < 1) return;
     const inCheck = lines.filter((x) => x.productId === weighing.id).reduce((n, x) => n + (x.grams ?? 0), 0);
-    if (weighing.left !== undefined && inCheck + grams > weighing.left) return setStockMsg(t('pos_stock_cap_g', { n: weighing.left - inCheck }));
-    setStockMsg('');
+    setStockMsg(weighing.left !== undefined && inCheck + grams > weighing.left ? t('pos_stock_over_g', { n: Math.max(0, weighing.left - inCheck) }) : '');
     setLines((ls) => [...ls, { key: `w:${weighing.id}:${newTs()}`, title: `${weighing.name} ${grams} г`, price: Math.round((weighing.per100 * grams) / 100), qty: 1, productId: weighing.id, grams }]);
     setWeighing(null);
     setGramsText('');
@@ -125,7 +153,9 @@ export default function StaffPosScreen() {
     // a counted product: never more in the check than on the shelf
     const left = l.productId ? products.find((p) => p.id === l.productId)?.stock : undefined;
     const have = lines.find((x) => x.key === l.key)?.qty ?? 0;
-    if (left !== undefined && have + 1 > left) return setStockMsg(t('pos_stock_cap', { n: left }));
+    if (left !== undefined && have + 1 > left) setStockMsg(t('pos_stock_over', { n: left }));
+    // a client gets a plan once per check: a second tap does not sell it twice
+    if (l.planId && have) return;
     setLines((ls) => (ls.some((x) => x.key === l.key) ? ls.map((x) => (x.key === l.key ? { ...x, qty: x.qty + 1 } : x)) : [...ls, { ...l, qty: 1 }]));
   };
   /** A scanned or typed barcode puts its product into the check. */
@@ -133,12 +163,12 @@ export default function StaffPosScreen() {
     const c = cleanBarcode(raw);
     setCode('');
     if (!c) return;
-    const p = products.find((x) => codesOf(x).includes(c));
+    const p = products.find((x) => hasCode(x, c));
     if (!p) {
       setCodeMsg(t('bc_unknown', { code: c }));
       return { ok: false, text: t('bc_unknown', { code: c }) };
     }
-    if (!p.inStock || p.stock === 0) {
+    if (!p.inStock) {
       setCodeMsg(t('bc_out', { name: p.name }));
       return { ok: false, text: t('bc_out', { name: p.name }) };
     }
@@ -147,7 +177,7 @@ export default function StaffPosScreen() {
     return { ok: true, text: p.byWeight ? t('bc_added_weigh', { name: p.name }) : t('bc_added', { name: p.name, price: formatPrice(p.price) }) };
   };
   const bump = (key: string, d: number) =>
-    key.startsWith('w:') ? setLines((ls) => (d < 0 ? ls.filter((x) => x.key !== key) : ls)) : setLines((ls) => ls.map((x) => (x.key === key ? { ...x, qty: x.qty + d } : x)).filter((x) => x.qty > 0));
+    key.startsWith('w:') ? setLines((ls) => (d < 0 ? ls.filter((x) => x.key !== key) : ls)) : setLines((ls) => ls.map((x) => (x.key === key ? { ...x, qty: x.planId ? Math.min(1, x.qty + d) : x.qty + d } : x)).filter((x) => x.qty > 0));
 
   const pay = () => {
     if (lines.length === 0 || cashShort || mixBad) return;
@@ -184,10 +214,12 @@ export default function StaffPosScreen() {
       // the shelf is taken once: the goods travel on the first row only
       const goodsPaid = whole ? Math.round(goods * share) : goods - memberDisc;
       const goodsParts = parts(goodsPaid);
+      // the goods (and the premium taken out of them) go on the biggest part of a split payment, so a small cash part never caps the premium
+      const main = goodsParts.reduce((b, p, i, a) => (p.amount > a[b].amount ? i : b), 0);
       // a 100% discount still writes the goods down, with a zero, so the shelf follows and the owner sees it
-      (goodsParts.length ? goodsParts : [{ method, amount: 0 }]).forEach((p, i) => recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: p.amount, method: p.method, ...(i === 0 ? { items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.grams ?? l.qty })), ...meta(goods, goodsPaid), ...(premium && canManage && bonusTo.trim() ? { bonusTo: bonusTo.trim() } : {}) } : {}) }));
+      (goodsParts.length ? goodsParts : [{ method, amount: 0 }]).forEach((p, i) => recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: p.amount, method: p.method, ...(i === main ? { items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.grams ?? l.qty })), ...meta(goods, goodsPaid), ...(premium && bonusTo.trim() ? { bonusTo: bonusTo.trim() } : {}) } : {}) }));
       // the shelf counts come back from the server once the sale has reached it
-      setTimeout(() => void refreshContent(), 2500);
+      setTimeout(() => (void refreshContent(), void refreshSales()), 2500);
     }
     if (debtAmt > 0) recordSale({ memberId: client!.id, name: client!.name, title: t('pos_debt_title'), kind: 'debt', amount: debtAmt, remaining: debtAmt, method });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -360,6 +392,7 @@ export default function StaffPosScreen() {
     <View style={styles.root}>
       <StaffHeader title={t('staff_tab_pos')} />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <GrantWarnings />
         <CashDrawerCard />
         <TrainerCash accent={StaffAccent} />
         <ReceiptsToday accent={StaffAccent} />
@@ -579,12 +612,10 @@ export default function StaffPosScreen() {
                 <Row gap={6} style={{ alignItems: 'center' }}>
                   <Ionicons name="gift-outline" size={16} color={Colors.success} />
                   <T type="small" color={Colors.success} style={{ fontWeight: '700', flex: 1 }}>
-                    {t('premium_line', { sum: formatPrice(premium), n: packs, name: (canManage && bonusTo.trim()) || staff?.name || '' })}
+                    {t('premium_line', { sum: formatPrice(premium), n: packs, name: bonusTo.trim() || staff?.name || '' })}
                   </T>
                 </Row>
-                {canManage ? (
-                  <TextInput value={bonusTo} onChangeText={setBonusTo} maxLength={40} placeholder={t('premium_to_ph')} placeholderTextColor={Colors.textMuted} style={[styles.searchInput, { height: 40, flex: 0, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: Spacing.three, backgroundColor: Colors.surface }]} />
-                ) : null}
+                <TextInput value={bonusTo} onChangeText={setBonusTo} maxLength={40} placeholder={t('premium_to_ph')} placeholderTextColor={Colors.textMuted} style={[styles.searchInput, { height: 40, flex: 0, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: Spacing.three, backgroundColor: Colors.surface }]} />
               </View>
             ) : null}
             <Row gap={Spacing.two} style={{ alignItems: 'center' }}>

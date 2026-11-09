@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Linking, Pressable, TextInput, StyleSheet, View } from 'react-native';
 
 import { Avatar, Badge, Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
 import type { PayMethod } from '@/data/owner';
-import { fetchMemberVisits, resetPasswordRemote, type MemberVisit } from '@/lib/api';
+import { fetchMemberVisits, fetchVisits, resetPasswordRemote, type MemberVisit } from '@/lib/api';
 import { DeleteClient } from '@/components/delete-client';
 import { RenameClient } from '@/components/rename-client';
 import { VisitCalendar } from '@/components/visit-calendar';
@@ -17,6 +17,24 @@ import { replacePlan, useApp, useCanManage, useI18n, useMembers, usePlans, usePr
 export const hm = (ts: number) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
 export const StaffAccent = '#D9643A';
+
+// visits of the last 30 days per client, one request shared by every card on the screen (kept for two minutes)
+let month: { at: number; code: string; p: Promise<Map<string, number> | null> } | null = null;
+function useMonthVisits(id: string, code: string | null | undefined) {
+  const [n, setN] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    if (!code) return;
+    if (!month || month.code !== code || Date.now() - month.at > 120000) {
+      month = { at: Date.now(), code, p: fetchVisits(code, 30).then((rows) => rows && rows.filter((v) => v.kind !== 'out').reduce((m, v) => m.set(v.member, (m.get(v.member) ?? 0) + 1), new Map<string, number>())) };
+    }
+    let live = true;
+    void month.p.then((m) => live && m && setN(m.get(id) ?? 0));
+    return () => {
+      live = false;
+    };
+  }, [id, code]);
+  return n;
+}
 
 /** Decides whether a member may enter right now and why not. */
 export function entryDecision(m: MemberInfo, t: (k: any, v?: any) => string): { ok: boolean; reason?: string } {
@@ -37,6 +55,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
   const canManage = useCanManage();
   const [moveMsg, setMoveMsg] = useState('');
   const [seen, setSeen] = useState<MemberVisit[] | null>(null);
+  const monthVisits = useMonthVisits(member.id, staffCode);
   const [showVisits, setShowVisits] = useState(false);
   const openVisits = () => {
     setShowVisits((v) => !v);
@@ -211,7 +230,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             </T>
           ) : null}
           <T type="small" color={Colors.textSecondary}>
-            {t('member_visits_month', { n: member.visitsThisMonth })}
+            {t('member_visits_month', { n: monthVisits ?? member.visitsThisMonth })}
             {member.note ? ` • ${member.note}` : ''}
           </T>
           {dayBlocked ? (
@@ -268,13 +287,19 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
                 </>
               ) : (
                 <>
-                  {dayBlocked ? <View style={{ flex: 1 }} /> : null}
+                  {/* a day pass after hours: only the manager lets the client in */}
+                  {dayBlocked ? <Button title={t('allow_entry')} icon="log-in-outline" onPress={allow} style={{ flex: 1 }} /> : null}
                   {dayBlocked ? null : <Button title={t('give_access')} icon="key-outline" onPress={giveAccess} style={{ flex: 1 }} />}
                   <Button title="" icon="close" variant="danger" onPress={deny} style={{ paddingHorizontal: 14 }} />
                 </>
               )}
               <Button title="" icon="call-outline" variant="ghost" onPress={() => Linking.openURL(`tel:${member.phone.replace(/\s/g, '')}`)} style={{ paddingHorizontal: 14 }} />
             </Row>
+            {!decision.ok ? <Button title={t('sell_plan')} variant="secondary" icon="card-outline" onPress={() => setPicking((v) => !v)} /> : null}
+          </View>
+        )}
+        {/* the client's account: also while the client is in the hall */}
+        <View style={{ gap: Spacing.two }}>
             {resetDone ? (
               <T type="small" color={Colors.success} style={{ fontWeight: '700' }}>
                 {t('reset_pass_done')}
@@ -282,7 +307,6 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             ) : (
               <Button title={t('reset_pass')} variant="ghost" size="sm" icon="key-outline" onPress={() => void resetPassword()} />
             )}
-            {!decision.ok ? <Button title={t('sell_plan')} variant="secondary" icon="card-outline" onPress={() => setPicking((v) => !v)} /> : null}
             {canManage && !member.isSelf && clubs.length > 1 ? (
               <View style={{ gap: 6 }}>
                 <T type="small" color={Colors.textSecondary}>
@@ -304,8 +328,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
             ) : null}
             {!member.isSelf ? <RenameClient id={member.id} name={member.name} /> : null}
             {!member.isSelf ? <DeleteClient id={member.id} name={member.name} onDone={onDone} /> : null}
-          </View>
-        )}
+        </View>
         {/* the manager corrects the current plan (dates, visits, a plan added by mistake); administrators do not */}
         {!member.isSelf && canManage ? (
           editing ? (

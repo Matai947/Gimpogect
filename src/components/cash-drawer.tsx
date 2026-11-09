@@ -6,7 +6,7 @@ import { Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubs, formatPrice } from '@/data/mock';
 import { groupTotals } from '@/data/owner';
-import { cashAccept, cashClose, cashIn, cashMove, cashOpen, cashOut, fetchCash, fetchCashMoves, type CashDrawer, type CashMove } from '@/lib/api';
+import { cashAccept, cashClose, cashIn, cashMove, cashOpen, cashOut, fetchCashMoves, fetchCashState, type CashDrawer, type CashMove } from '@/lib/api';
 import { useApp, useCanManage, useI18n, useNow, useRawSales } from '@/store/app-context';
 
 const digits = (s: string) => Number(s.replace(/\D/g, '')) || 0;
@@ -21,6 +21,7 @@ export function CashDrawerCard() {
   const clubId = staff?.clubId ?? 'c1';
   const who = staff?.name ?? '';
   const [drawer, setDrawer] = useState<CashDrawer | null | undefined>(undefined);
+  const [last, setLast] = useState<(CashDrawer & { closedBy?: string }) | null>(null);
   const [mode, setMode] = useState<'in' | 'out' | 'close' | 'move' | null>(null);
   const [moveTo, setMoveTo] = useState(clubs.find((c) => c.id !== clubId)?.id ?? '');
   const [incoming, setIncoming] = useState<CashMove[]>([]);
@@ -39,7 +40,7 @@ export function CashDrawerCard() {
   useEffect(() => {
     if (!staffCode) return;
     let live = true;
-    fetchCash(staffCode, clubId).then((d) => live && d !== undefined && setDrawer(d));
+    fetchCashState(staffCode, clubId).then((r) => live && r && (setDrawer(r.drawer), setLast(r.last ?? null)));
     fetchCashMoves(staffCode, 14).then((m) => live && m && setIncoming(m.filter((x) => x.to === clubId && x.status === 'pending')));
     return () => {
       live = false;
@@ -51,6 +52,12 @@ export function CashDrawerCard() {
   const day = (ts: number) => new Date(ts + 5 * 3600000).toISOString().slice(0, 10);
   const openDay = drawer ? day(drawer.open) : '';
   const stale = !!drawer && openDay < day(now);
+
+  // bar and plans taken in while a drawer was open, cash and non-cash
+  const groups = (d: CashDrawer) => {
+    const g = groupTotals(sales.filter((x) => x.clubId === clubId && x.ts >= d.open && x.ts <= (d.close ?? Infinity)), (id) => sales.find((x) => x.id === id));
+    return (['bar', 'plans'] as const).map((k) => <Line key={k} label={`   ${t(k === 'bar' ? 'grp_bar' : 'grp_plans')}`} value={`${t('rep_day_cash')} ${formatPrice(g[k].cash)} • ${t('rep_day_noncash')} ${formatPrice(g[k].nonCash)}`} />);
+  };
 
   const run = async (job: () => Promise<CashDrawer | null>, then?: (d: CashDrawer) => void) => {
     setBusy(true);
@@ -66,7 +73,8 @@ export function CashDrawerCard() {
     then?.(d);
   };
 
-  const open = () => run(() => cashOpen(staffCode, { clubId, staff: who, amount: digits(amount) }), setDrawer);
+  // an empty amount opens with what the last shift counted at closing
+  const open = () => run(() => cashOpen(staffCode, { clubId, staff: who, ...(amount ? { amount: digits(amount) } : {}) }), (d) => (setDrawer(d), setLast(null)));
   const put = () => run(() => cashIn(staffCode, { id: drawer!.id, amount: digits(amount), note, staff: who }), setDrawer);
   const send = () => run(() => cashMove(staffCode, { id: drawer!.id, to: moveTo, amount: digits(amount), responsible: responsible.trim(), note, staff: who }), (d) => (setDrawer(d), setMsg({ text: t('cm_sent', { sum: formatPrice(d.outs[d.outs.length - 1]?.amount ?? 0), club: clubName(moveTo) }), bad: false })));
   const accept = (m: CashMove) => run(() => cashAccept(staffCode, { id: drawer!.id, move: m.id, staff: who }), (d) => (setDrawer(d), setIncoming((l) => l.filter((x) => x.id !== m.id)), setMsg({ text: t('cm_accepted', { sum: formatPrice(m.amount) }), bad: false })));
@@ -89,6 +97,7 @@ export function CashDrawerCard() {
       (d) => {
         const diff = (d.counted ?? 0) - d.expected;
         setDrawer(null);
+        setLast(d);
         setMsg({ text: `${t('cash_result', { exp: formatPrice(d.expected), got: formatPrice(d.counted ?? 0) })}. ${diff === 0 ? t('cash_diff_ok') : diff < 0 ? t('cash_diff_short', { sum: formatPrice(-diff) }) : t('cash_diff_over', { sum: formatPrice(diff) })}`, bad: diff !== 0 });
       },
     );
@@ -137,9 +146,15 @@ export function CashDrawerCard() {
             <Line label={t('cash_start')} value={formatPrice(drawer.openCash)} />
             {drawer.added ? <Line label={t('cash_added')} value={`+${formatPrice(drawer.added)}`} /> : null}
             <Line label={t('cash_in')} value={`+${formatPrice(drawer.cashIn)}`} />
+            {groups(drawer)}
             {(() => {
-              const g = groupTotals(sales.filter((x) => x.clubId === clubId && x.ts >= drawer.open), (id) => sales.find((x) => x.id === id));
-              return (['bar', 'plans'] as const).map((k) => <Line key={k} label={`   ${t(k === 'bar' ? 'grp_bar' : 'grp_plans')}`} value={`${t('rep_day_cash')} ${formatPrice(g[k].cash)} • ${t('rep_day_noncash')} ${formatPrice(g[k].nonCash)}`} />);
+              // the till counts from its opening; when it was opened later in the day, the whole day is shown too
+              const today = sales.filter((x) => x.clubId === clubId && day(x.ts) === day(now));
+              if (!today.some((x) => x.ts < drawer.open)) return null;
+              const g = groupTotals(today, (id) => sales.find((x) => x.id === id));
+              const cash = g.bar.cash + g.plans.cash + g.trainers.cash;
+              const non = g.bar.nonCash + g.plans.nonCash + g.trainers.nonCash;
+              return <Line label={t('cash_day_total')} value={`${t('rep_day_cash')} ${formatPrice(cash)} • ${t('rep_day_noncash')} ${formatPrice(non)}`} />;
             })()}
             {drawer.refunds ? <Line label={t('cash_refunds')} value={`−${formatPrice(drawer.refunds)}`} /> : null}
             {drawer.taken ? <Line label={t('cash_taken')} value={`−${formatPrice(drawer.taken)}`} /> : null}
@@ -210,11 +225,35 @@ export function CashDrawerCard() {
         </>
       ) : (
         <>
+          {last ? (
+            <View style={styles.report}>
+              <T type="body" style={{ fontWeight: '800' }}>
+                {t('cash_report', { from: clockTime(last.open), to: clockTime(last.close ?? last.open), day: day(last.open).slice(5).split('-').reverse().join('.') })}
+              </T>
+              <T type="small" color={Colors.textMuted}>
+                {last.staff}
+                {last.closedBy && last.closedBy !== last.staff ? ` → ${last.closedBy}` : ''}
+              </T>
+              <Line label={t('cash_start')} value={formatPrice(last.openCash)} />
+              {last.added ? <Line label={t('cash_added')} value={`+${formatPrice(last.added)}`} /> : null}
+              <Line label={t('cash_in')} value={`+${formatPrice(last.cashIn)}`} />
+              {groups(last)}
+              {last.refunds ? <Line label={t('cash_refunds')} value={`−${formatPrice(last.refunds)}`} /> : null}
+              {last.taken ? <Line label={t('cash_taken')} value={`−${formatPrice(last.taken)}`} /> : null}
+              <Line label={t('cash_expected')} value={formatPrice(last.expected)} />
+              <Line label={t('cash_counted_l')} value={formatPrice(last.counted ?? 0)} />
+              {(last.counted ?? 0) !== last.expected ? (
+                <T type="small" color={Colors.danger} style={{ fontWeight: '700' }}>
+                  {(last.counted ?? 0) < last.expected ? t('cash_diff_short', { sum: formatPrice(last.expected - (last.counted ?? 0)) }) : t('cash_diff_over', { sum: formatPrice((last.counted ?? 0) - last.expected) })}
+                </T>
+              ) : null}
+            </View>
+          ) : null}
           <T type="small" color={Colors.textSecondary}>
-            {drawer === null && !msg ? t('cash_open_hint') : t('cash_closed')}
+            {drawer === null && !msg && !last ? t('cash_open_hint') : t('cash_closed')}
           </T>
-          {input(t('cash_amount_ph'))}
-          <Button title={t('cash_open_btn')} icon="lock-open-outline" onPress={open} disabled={busy || !amount} />
+          {input(last ? t('cash_open_keep', { sum: formatPrice(last.counted ?? 0) }) : t('cash_amount_ph'))}
+          <Button title={t('cash_open_btn')} icon="lock-open-outline" onPress={open} disabled={busy || (!amount && !last)} />
         </>
       )}
       {msg ? (
@@ -241,6 +280,7 @@ function Line({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
+  report: { gap: 2, padding: Spacing.two, borderRadius: Radius.md, backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border },
   stale: { padding: Spacing.two, borderRadius: Radius.md, backgroundColor: 'rgba(214,59,71,0.08)', borderWidth: 1, borderColor: 'rgba(214,59,71,0.4)' },
   incoming: { gap: 4, padding: Spacing.two, borderRadius: Radius.md, backgroundColor: 'rgba(31,138,76,0.1)', borderWidth: 1, borderColor: Colors.success },
   out: { gap: Spacing.two, paddingVertical: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.border },

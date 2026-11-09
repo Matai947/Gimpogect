@@ -11,7 +11,7 @@ import { BarcodeSheet, cleanBarcode } from '@/components/barcode-sheet';
 import { StaffAccent } from '@/components/member-result';
 import { Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { codesOf, type Product, type ShopCategory } from '@/data/shop';
+import { hasCode, type Product, type ShopCategory } from '@/data/shop';
 import { clubs } from '@/data/mock';
 import { stockMove, stockSet, uploadPhoto } from '@/lib/api';
 import { clubStock, useApp, useCatalog, useI18n, useShopCategories } from '@/store/app-context';
@@ -27,7 +27,7 @@ export default function ProductEditScreen() {
 
 function ProductEditForm({ id }: { id?: string }) {
   const { t, td } = useI18n();
-  const { byId, isCustom, all } = useCatalog();
+  const { byId, all, hidden } = useCatalog();
   const { upsertProduct, deleteProduct, staffCode, content, staff, refreshContent } = useApp();
   const clubId = staff?.clubId ?? 'c1';
   const [moveTo, setMoveTo] = useState(clubs.find((c) => c.id !== clubId)?.id ?? '');
@@ -58,7 +58,7 @@ function ProductEditForm({ id }: { id?: string }) {
   const [extra, setExtra] = useState<string[]>(existing?.barcodes ?? []);
   const [scanExtra, setScanExtra] = useState(false);
   const mine = [barcode, ...extra].filter(Boolean);
-  const barcodeOwner = all.find((p) => p.id !== existing?.id && codesOf(p).some((c) => mine.includes(c)));
+  const barcodeOwner = all.find((p) => p.id !== existing?.id && !hidden.includes(p.id) && mine.some((c) => hasCode(p, c)));
   const [nutritionOpen, setNutritionOpen] = useState(!!existing?.nutrition);
   const [serving, setServing] = useState(existing?.nutrition?.serving ?? '');
   const [protein, setProtein] = useState(existing?.nutrition ? String(existing.nutrition.protein) : '');
@@ -128,7 +128,7 @@ function ProductEditForm({ id }: { id?: string }) {
 
   const remove = () => {
     if (!existing) return;
-    Alert.alert(t('delete_product_q', { name: existing.name }), isCustom(existing.id) ? undefined : t('delete_product_sub'), [
+    Alert.alert(t('delete_product_q', { name: existing.name }), t('delete_product_sub'), [
       { text: t('cancel'), style: 'cancel' },
       {
         text: t('delete_product'),

@@ -59,6 +59,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
+    "check": "node --check api/clients.js && tsc --noEmit && expo lint",
     "deploy:web": "npx vercel deploy --prod --yes"
   },
   "private": true

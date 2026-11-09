@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubs, formatPrice } from '@/data/mock';
-import { deleteExpense, deleteExpenseTpl, fetchExpenses, payExpense, saveExpenseTpl, type Expense, type ExpenseTpl } from '@/lib/api';
+import { deleteExpense, deleteExpenseTpl, fetchExpenses, moveExpense, payExpense, saveExpenseTpl, type Expense, type ExpenseTpl } from '@/lib/api';
 import { useApp, useI18n, useNow, useSales } from '@/store/app-context';
 
 const ALMATY = 5 * 3600000;
@@ -212,13 +212,22 @@ export function ExpensesPanel({ accent, owner }: { accent: string; owner?: boole
                   {p.note ? ` • ${p.note}` : ''}
                 </T>
                 <T type="small" color={Colors.textMuted} numberOfLines={1}>
-                  {new Date(p.ts + ALMATY).toISOString().slice(5, 10).split('-').reverse().join('.')} • {p.method === 'cash' ? t('pay_cash') : t('ex_noncash')} • {p.staff === 'owner' ? t('role_owner') : p.staff}
+                  {(p.day ?? new Date(p.ts + ALMATY).toISOString().slice(0, 10)).slice(5, 10).split('-').reverse().join('.')} • {p.method === 'cash' ? t('pay_cash') : t('ex_noncash')} • {p.staff === 'owner' ? t('role_owner') : p.staff}
                   {club === 'all' ? ` • ${clubs.find((c) => c.id === p.clubId)?.name.replace('Seven Gym ', '')}` : ''}
                 </T>
               </View>
               <T type="small" style={{ fontWeight: '700' }}>
                 −{formatPrice(p.amount)}
               </T>
+              {/* paid now for the month before (the October bills paid on 1–5 November): moved there, dated its last day */}
+              <Pressable onPress={() => void moveExpense(staffCode, p.id, shiftMonth(p.month, -1)).then((r) => (r ? (setMsg({ text: t('ex_moved', { month: monthName(shiftMonth(p.month, -1)) }), bad: false }), reload()) : setMsg({ text: t('cash_fail'), bad: true })))} hitSlop={8} accessibilityLabel={t('ex_move_back')}>
+                <Ionicons name="arrow-undo-outline" size={18} color={Colors.textMuted} />
+              </Pressable>
+              {p.day ? (
+                <Pressable onPress={() => void moveExpense(staffCode, p.id, shiftMonth(p.month, 1)).then((r) => (r ? (setMsg({ text: t('ex_moved', { month: monthName(shiftMonth(p.month, 1)) }), bad: false }), reload()) : setMsg({ text: t('cash_fail'), bad: true })))} hitSlop={8}>
+                  <Ionicons name="arrow-redo-outline" size={18} color={Colors.textMuted} />
+                </Pressable>
+              ) : null}
               <Pressable onPress={() => void remove('p' + p.id, () => deleteExpense(staffCode, p.id))} hitSlop={8}>
                 <Ionicons name={sure === 'p' + p.id ? 'trash' : 'trash-outline'} size={18} color={sure === 'p' + p.id ? Colors.danger : Colors.textMuted} />
               </Pressable>

@@ -1,6 +1,20 @@
 const digitsOf = (s: string) => s.replace(/\D/g, '');
 
 /**
+ * What the sign-in field holds after a change: the 10 digits after «+7».
+ * The field already shows «+7», so its 7 is dropped once; then a leading 8 (8 747 …) or a typed country code (7 747 …)
+ * is dropped too — otherwise «8 747 655 70 40» became +7 874 765 57 04, a different card with the client's plan going nowhere.
+ */
+export function signInDigits(typed: string) {
+  let d = digitsOf(typed);
+  if (/^\s*\+7/.test(typed)) d = d.slice(1); // the field's own +7
+  else if (d.length >= 11 && /^[78]/.test(d)) d = d.slice(1); // a whole number pasted over the field: 8 747… or 7 747…
+  if (d.startsWith('8')) d = d.slice(1); // Kazakh numbers after +7 begin with 7, never 8: an 8 is the trunk prefix
+  if (d.length > 10 && d.startsWith('7')) d = d.slice(1); // the country code typed or pasted once more
+  return d.slice(0, 10);
+}
+
+/**
  * The phone part of a search: "8 707 123 45 67", "+7 (707) 123-45-67" and "7071234567" are the same number,
  * and a piece of it (3 digits or more) finds it too.
  */

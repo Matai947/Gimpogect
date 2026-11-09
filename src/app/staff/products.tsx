@@ -9,7 +9,7 @@ import { Badge, Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { ProductPhoto } from '@/components/product-photo';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatPrice, priceLabel } from '@/data/mock';
-import { codesOf, type ShopCategory } from '@/data/shop';
+import { codesOf, sameCode, type ShopCategory } from '@/data/shop';
 import { useCanManage, useApp, useCatalog, useI18n, useShopCategories } from '@/store/app-context';
 
 export default function StaffProductsScreen() {
@@ -25,7 +25,7 @@ export default function StaffProductsScreen() {
     const q = query.trim().toLowerCase();
     return all
       .filter((p) => (category === 'hidden' ? hidden.includes(p.id) : category === 'Все' ? !hidden.includes(p.id) : p.category === category && !hidden.includes(p.id)))
-      .filter((p) => (q ? p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || codesOf(p).some((c) => c.includes(q)) : true));
+      .filter((p) => (q ? p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || codesOf(p).some((c) => c.includes(q) || sameCode(c, q)) : true));
   }, [all, hidden, category, query]);
 
   // on a narrow phone the header keeps only the plus, or it pushes the exit button off the screen

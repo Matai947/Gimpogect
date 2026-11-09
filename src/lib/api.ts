@@ -121,7 +121,9 @@ export type CashMove = { id: string; ts: number; from: string; to: string; amoun
 /** The cash drawer of a club: opened with a count, money taken out, closed with a count. */
 export type CashDrawer = { id: string; clubId: string; staff: string; open: number; openCash: number; outs: Withdrawal[]; ins?: { ts: number; amount: number; note: string; staff: string; move?: string; fromClubId?: string }[]; added?: number; close: number | null; counted?: number; expected: number; cashIn: number; refunds: number; taken?: number };
 export const fetchCash = async (code: string, clubId: string) => (await call<{ drawer: CashDrawer | null }>('cash', { code, query: `&clubId=${clubId}` }))?.drawer;
-export const cashOpen = async (code: string, b: { clubId: string; staff: string; amount: number }) => (await call<{ drawer: CashDrawer }>('cash-open', { method: 'POST', code, body: b }))?.drawer ?? null;
+/** The open drawer and, when none is open, the last closed one (its shift report). */
+export const fetchCashState = async (code: string, clubId: string) => await call<{ drawer: CashDrawer | null; last: (CashDrawer & { closedBy?: string }) | null }>('cash', { code, query: `&clubId=${clubId}` });
+export const cashOpen = async (code: string, b: { clubId: string; staff: string; amount?: number }) => (await call<{ drawer: CashDrawer }>('cash-open', { method: 'POST', code, body: b }))?.drawer ?? null;
 /** null = refused (no connection, more than in the drawer) and `wrongCode` when the owner's code did not match. */
 export const cashOut = async (code: string, b: { id: string; amount: number; reason: string; note: string; staff: string; responsible: string; ownerCode: string }) => {
   const r = await raw('cash-out', { method: 'POST', code, body: b });
@@ -149,11 +151,13 @@ export const safeOp = (code: string, b: { clubId: string; kind: 'in' | 'out'; am
 /** A must-pay of a club, every month by a day (rent, utilities, salaries). */
 export type ExpenseTpl = { id: string; clubId: string; title: string; amount: number; day: number; by: string; at?: number };
 /** An expense paid: of a must-pay for a month (tplId) or a one-off. */
-export type Expense = { id: string; ts: number; clubId: string; month: string; tplId?: string; title: string; amount: number; method: 'cash' | 'noncash'; note: string; staff: string };
+export type Expense = { id: string; ts: number; clubId: string; month: string; day?: string; tplId?: string; title: string; amount: number; method: 'cash' | 'noncash'; note: string; staff: string };
 export const fetchExpenses = async (code: string) => (await call<{ templates: ExpenseTpl[]; payments: Expense[] }>('expenses', { code })) ?? null;
 export const saveExpenseTpl = (code: string, b: { id?: string; clubId: string; title: string; amount: number; day: number }) => call<{ ok: true; id: string }>('exp-tpl-save', { method: 'POST', code, body: b });
 export const deleteExpenseTpl = (code: string, id: string) => call<{ ok: true }>('exp-tpl-del', { method: 'POST', code, body: { id } });
 export const payExpense = (code: string, b: { clubId: string; month: string; tplId?: string; title: string; amount: number; method: 'cash' | 'noncash'; note: string }) => call<{ ok: true; id: string }>('exp-pay', { method: 'POST', code, body: b });
+/** Moves a payment to another month (dated that month's last day). */
+export const moveExpense = (code: string, id: string, month: string) => call<{ ok: true }>('exp-move', { method: 'POST', code, body: { id, month } });
 export const deleteExpense = (code: string, id: string) => call<{ ok: true }>('exp-del', { method: 'POST', code, body: { id } });
 /** Push messages: the key to subscribe with, a phone's subscription, the club's news, and the manager's sending. */
 export const pushKeyRemote = async () => (await call<{ key: string }>('push-key', {}))?.key ?? null;
@@ -204,6 +208,11 @@ export const fetchTrainerPins = async (code: string) => (await call<{ set: strin
 /** The manager corrects a running pass: dates, visits left, freezes. */
 export const editMembershipRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('membership-edit', { method: 'POST', code, body: c });
 export const grantRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('grant', { method: 'POST', code, body: c });
+/** The same grant with its own id (a retry never prolongs twice) and the answer's status: 0 = no connection, 4xx = refused. */
+export const grantRemoteOnce = async (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership; gid: string }) => {
+  const r = await raw('grant', { method: 'POST', code, body: c });
+  return { status: r.status, error: (r.data as { error?: string } | null)?.error };
+};
 /** Manager or owner swaps a plan added by mistake; the server keeps who, when and why. */
 export const planFixRemote = (code: string, id: string, membership: RemoteMembership, reason: string) => call<{ ok: true }>('plan-fix', { method: 'POST', code, body: { id, membership, reason } });
 

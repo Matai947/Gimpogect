@@ -71,8 +71,9 @@ export function ReceiptsToday({ accent }: { accent: string }) {
     const text = [
       t('receipt_text_head', { n: c.key.slice(-6).toUpperCase() }),
       `${dmy(day)} ${hm(c.ts)} • ${payOf(c)}`,
-      ...paidRows(c).map((r) => `${td(r.title)} — ${formatPrice(r.amount)}`),
-      `${t('pos_total')}: ${formatPrice(c.total)}`,
+      // the client's receipt shows what the client paid (the check in the till is less the premium)
+      ...paidRows(c).map((r) => `${td(r.title)} — ${formatPrice(r.paid ?? r.amount)}`),
+      `${t('pos_total')}: ${formatPrice(paidRows(c).reduce((n, r) => n + (r.paid ?? r.amount), 0))}`,
       ...(c.debt ? [`${t('pos_debt_title')}: ${formatPrice(c.debt)}`] : []),
     ].join('\n');
     const phone = (c.memberId ? byId(c.memberId)?.phone : '')?.replace(/\D/g, '');
@@ -156,7 +157,7 @@ export function ReceiptsToday({ accent }: { accent: string }) {
                     <T type="small" color={Colors.textMuted} numberOfLines={1}>
                       {payOf(c)} • {c.staff}
                       {clubId === 'all' ? ` • ${clubs.find((k) => k.id === c.rows[0].clubId)?.name.replace('Seven Gym ', '') ?? ''}` : ''}
-                      {c.rows.find((r) => r.bonusSum) ? ` • ${t('premium_short', { name: c.rows.find((r) => r.bonusSum)!.bonusTo ?? '' })}` : ''}
+                      {c.rows.find((r) => r.bonusSum) ? ` • ${t('premium_short', { name: c.rows.find((r) => r.bonusSum)!.bonusTo ?? '', sum: formatPrice(c.rows.find((r) => r.bonusSum)!.bonusSum ?? 0) })}` : ''}
                       {c.rows.find((r) => r.disc) ? ` • ${t('pos_discount')} ${c.rows.find((r) => r.disc)!.disc}%` : ''}
                     </T>
                   </View>

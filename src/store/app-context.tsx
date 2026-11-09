@@ -9,7 +9,7 @@ import { applyContent, promoByCode, promoDiscount, type Content, type ContentSec
 import { addDays, applyClubConfig, planById, plans, sessionById, toISODate, type ClubConfig, clubCapacity } from '@/data/mock';
 import { MEMBER_DISCOUNT, PROMO_CODES, products as baseProducts, type Product, shopCategories } from '@/data/shop';
 import { pluralForm, setCurrentLang, tData, translate, type Lang, type TKey } from '@/i18n';
-import { trainerLoginRemote, checkinRemote, clientMove, clientDelete, clientRename, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, fetchMemberVisits, fetchOccupancy, editMembershipRemote, grantRemote, planFixRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused, fetchWhoami } from '@/lib/api';
+import { trainerLoginRemote, checkinRemote, clientMove, clientDelete, clientRename, type RemoteMembership, checkoutRemote, fetchClients, fetchClubs, fetchContent, saveClubs, saveContentRemote, fetchSales, postSale, fetchMyMembership, fetchMemberVisits, fetchOccupancy, editMembershipRemote, grantRemoteOnce, planFixRemote, loginClient, registerClient, type RemoteClient, serverNow, freezeRemote, onTokenRefused, fetchWhoami } from '@/lib/api';
 import { setRuntimeApiKey, type ChatMessage, type WeekPlan } from '@/lib/coach';
 
 export type Membership = {
@@ -86,6 +86,8 @@ type State = {
   content: Content; // prices, plans, trainers, rules, schedule, promotions, photos set by the administrators
   contentStatus: 'idle' | 'saving' | 'ok' | 'fail'; // last save to the server (not kept on the device)
   sales: Sale[]; // payments recorded on this device when staff issue plans
+  /** Plans issued at the desk that the server has not confirmed yet; sent again until it answers. `error` = the server refused. */
+  pendingGrants: { gid: string; memberId: string; name: string; phone: string; membership: RemoteMembership; ts: number; error?: string }[];
   staffLog: CheckinEntry[];
   attendance: Record<string, string[]>; // sessionId -> memberIds marked present
   orderStatusOverrides: Record<string, OrderStatus>;
@@ -119,6 +121,8 @@ type Actions = {
   deleteClient: (memberId: string) => Promise<boolean>;
   renameClient: (memberId: string, name: string) => Promise<boolean>;
   grantPlan: (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[], meta?: { disc?: number; off?: number }) => void;
+  /** The desk has read a refused grant (and asked the manager): it leaves the warning list. */
+  dismissGrant: (gid: string) => void;
   /** The desk corrects a client's current plan: when it ends and how many visits are left. No sale is recorded. */
   editMembership: (memberId: string, fields: { planId?: string; endDate: string; visitsLeft?: number; addFreeze?: boolean }) => Promise<boolean>;
   /** Manager or owner: a plan added by mistake becomes the right one (same start date, what was used stays used). No sale is recorded. */
@@ -198,6 +202,7 @@ const initialState: State = {
   content: {},
   contentStatus: 'idle',
   sales: [],
+  pendingGrants: [],
   staffLog: [],
   attendance: {},
   orderStatusOverrides: {},
@@ -360,8 +365,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     };
     tick();
-    // Every 5 minutes plus whenever the app comes back to the foreground: storage operations are the scarce quota on Vercel.
-    const iv = setInterval(tick, 5 * 60000);
+    // A client's phone asks every 20 seconds, so a plan bought at the desk turns the QR on almost at once;
+    // the desk (the whole registry) every minute. Plus whenever the app comes back to the foreground.
+    const iv = setInterval(tick, staffSignedIn ? 60000 : 20000);
     const sub = AppState.addEventListener('change', (st) => st === 'active' && tick());
     return () => {
       live = false;
@@ -522,11 +528,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteProduct = useCallback((id: string) => {
     catalogDirty.current = true;
     touched.current.add(id);
-    setState((s) => {
-      const isBase = baseProducts.some((b) => b.id === id);
-      if (isBase) return { ...s, hiddenProducts: s.hiddenProducts.includes(id) ? s.hiddenProducts : [...s.hiddenProducts, id] };
-      return { ...s, customProducts: s.customProducts.filter((c) => c.id !== id) };
-    });
+    // nothing is erased: a removed product goes to "Hidden", where one tap brings it back with its price and barcodes
+    setState((s) => ({ ...s, hiddenProducts: s.hiddenProducts.includes(id) ? s.hiddenProducts : [...s.hiddenProducts, id] }));
   }, []);
 
   const restoreProduct = useCallback((id: string) => {
@@ -662,13 +665,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const remote = state.remote.find((r) => r.id === memberId);
       if ((isSelf || remote) && state.staffCode) {
         const next = extendMembership(isSelf ? state.membership : (remote?.membership ?? null), planId);
-        grantRemote(state.staffCode, { id: memberId, name: isSelf ? state.user!.name : remote!.name, phone: isSelf ? state.user!.phone : remote!.phone, membership: next });
+        // not sent and forgotten: the grant waits in a queue (kept on the device) until the server confirms it
+        const grant = { gid: `G${Date.now()}${Math.random().toString(36).slice(2, 6)}`, memberId, name: isSelf ? state.user!.name : remote!.name, phone: isSelf ? state.user!.phone : remote!.phone, membership: next, ts: Date.now() };
+        setState((s) => ({ ...s, pendingGrants: [...(s.pendingGrants ?? []), grant] }));
       }
       setState((s) => {
         const price = amount ?? s.planPrices[planId]?.price ?? plan.price;
         // one row per way it was paid: a mixed payment (cash + Kaspi) is two rows, so the drawer counts only the cash
         const parts = (pays ?? [{ method: 'desk' as PayMethod, amount: price }]).filter((p, i) => p.amount > 0 || (i === 0 && meta?.disc === 100));
-        const sold = (name: string): Sale[] => [...parts.map((p, i): Sale => ({ id: `S${Date.now()}${Math.random().toString(36).slice(2, 5)}`, ts: Date.now(), memberId, name, title: plan.name, kind: 'plan', amount: p.amount, clubId: s.staff?.clubId ?? 'c1', method: p.method, staff: s.staff?.name ?? '', ...(i === 0 && meta?.disc ? { disc: meta.disc, off: meta.off } : {}) })), ...s.sales];
+        const sold = (name: string): Sale[] => [...parts.map((p, i): Sale => ({ id: `S${Date.now()}${Math.random().toString(36).slice(2, 5)}`, ts: Date.now(), memberId, name, title: plan.name, ...(i === 0 ? { planId } : {}), kind: 'plan', amount: p.amount, clubId: s.staff?.clubId ?? 'c1', method: p.method, staff: s.staff?.name ?? '', ...(i === 0 && meta?.disc ? { disc: meta.disc, off: meta.off } : {}) })), ...s.sales];
         if (s.user?.id === memberId) return { ...s, sales: sold(s.user.name), trialUsed: s.trialUsed || (!!plan.trial && !plan.staffOnly), membership: extendMembership(s.membership, planId) };
         const r = s.remote.find((x) => x.id === memberId);
         if (r) {
@@ -714,6 +719,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
       });
   }, [state.hydrated, state.staffCode, state.sales]);
+
+  // Plans issued at the desk reach the server the same way: retried until confirmed, every 20 s while some wait.
+  const granting = useRef(new Set<string>());
+  const [grantTick, setGrantTick] = useState(0);
+  useEffect(() => {
+    if (!state.hydrated || !state.staffCode) return;
+    const waiting = (state.pendingGrants ?? []).filter((g) => !g.error && !granting.current.has(g.gid));
+    waiting.forEach((g) => {
+      granting.current.add(g.gid);
+      grantRemoteOnce(state.staffCode, { id: g.memberId, name: g.name, phone: g.phone, membership: g.membership, gid: g.gid }).then((r) => {
+        granting.current.delete(g.gid);
+        if (r.status >= 200 && r.status < 300) setState((s) => ({ ...s, pendingGrants: (s.pendingGrants ?? []).filter((x) => x.gid !== g.gid) }));
+        // refused for good (not a lost connection): kept with the reason, the desk sees it and asks the manager
+        else if (r.status >= 400 && r.status < 500 && r.status !== 401 && r.status !== 429) setState((s) => ({ ...s, pendingGrants: (s.pendingGrants ?? []).map((x) => (x.gid === g.gid ? { ...x, error: r.error || String(r.status) } : x)) }));
+      });
+    });
+    if (!(state.pendingGrants ?? []).some((g) => !g.error)) return;
+    const t = setTimeout(() => setGrantTick((n) => n + 1), 20000);
+    return () => clearTimeout(t);
+  }, [state.hydrated, state.staffCode, state.pendingGrants, grantTick]);
+  const dismissGrant = useCallback((gid: string) => setState((s) => ({ ...s, pendingGrants: (s.pendingGrants ?? []).filter((x) => x.gid !== gid) })), []);
 
   const stateRef = useRef(state);
   useEffect(() => {
@@ -914,6 +940,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateUser,
       completeOnboarding,
       grantPlan,
+      dismissGrant,
       moveClient,
       deleteClient,
       renameClient,
@@ -961,7 +988,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, moveClient, deleteClient, renameClient, editMembership, changePlan, recordSale, refreshSales, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, staffFreeze, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, cancelOrder, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, dismissGrant, moveClient, deleteClient, renameClient, editMembership, changePlan, recordSale, refreshSales, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, staffFreeze, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, cancelOrder, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -1255,15 +1282,23 @@ export function useCatalog() {
 /** How full each club is now: people inside (from the server's entries and exits) over the club's lockers. */
 export function useOccupancy() {
   const [inside, setInside] = useState<Record<string, number>>({});
-  const now = useNow();
-  const minute = Math.floor(now / 60000);
+  const { staffLog } = useApp();
+  // asked every 15 seconds and right after an entry marked on this phone, so a client who came in shows at once
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 15000);
+    return () => clearInterval(id);
+  }, []);
   useEffect(() => {
     let live = true;
-    fetchOccupancy().then((o) => live && o && setInside(o));
+    const go = () => fetchOccupancy().then((o) => live && o && setInside(o));
+    void go();
+    const again = setTimeout(go, 2500); // the entry reaches the server a moment after it is marked here
     return () => {
       live = false;
+      clearTimeout(again);
     };
-  }, [minute]);
+  }, [tick, staffLog.length]);
   return useCallback(
     (clubId: string) => {
       const n = inside[clubId] ?? 0;

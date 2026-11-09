@@ -275,6 +275,11 @@ export const PROMO_CODES: Record<string, number> = { GYM10: 0.1, START15: 0.15 }
 
 /** Every barcode that rings up this product. */
 export const codesOf = (p: Pick<Product, 'barcode' | 'barcodes'>) => [p.barcode, ...(p.barcodes ?? [])].filter((c): c is string => !!c);
+/** One code however a camera reads it: a UPC comes as 12 digits or as an EAN-13 with a leading 0, so leading zeros do not count. */
+const codeKey = (c: string) => (/^\d+$/.test(c) ? c.replace(/^0+/, '') : c.toUpperCase());
+export const sameCode = (a: string, b: string) => codeKey(a) === codeKey(b);
+/** Whether the product carries this code. */
+export const hasCode = (p: Pick<Product, 'barcode' | 'barcodes'>, c: string) => codesOf(p).some((x) => sameCode(x, c));
 
 /** The administrators' premium on sports nutrition: per jar or pack sold. */
 export const BONUS_PER_PACK = 1000;

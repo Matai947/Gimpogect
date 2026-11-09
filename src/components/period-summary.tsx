@@ -79,12 +79,12 @@ export function PeriodSummary({ club: given, accent, pick, money = true }: { clu
     const nonCash = g.bar.nonCash + g.plans.nonCash + g.trainers.nonCash;
     const discRows = rows.filter((x) => x.disc && x.kind !== 'refund');
     const given = discRows.reduce((n, x) => n + (x.off ?? 0), 0);
-    const exRows = expenses.filter((e) => (club === 'all' || e.clubId === club) && dayOf(e.ts) >= from && dayOf(e.ts) <= to);
+    const exRows = expenses.filter((e) => (club === 'all' || e.clubId === club) && (e.day ?? dayOf(e.ts)) >= from && (e.day ?? dayOf(e.ts)) <= to);
     const spent = exRows.reduce((n, e) => n + e.amount, 0);
     // what the money went on in the period, biggest first
     const byTitle = [...exRows.reduce((m, e) => m.set(e.title, (m.get(e.title) ?? 0) + e.amount), new Map<string, number>()).entries()].sort((a, b) => b[1] - a[1]);
     const spentCash = exRows.filter((e) => e.method === 'cash').reduce((n, e) => n + e.amount, 0);
-    return { revenue, refunds, checks, cash, nonCash, other: revenue - cash - nonCash, kinds, spent, byTitle, spentCash, given, givenN: discRows.length, days: Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1 };
+    return { revenue, refunds, checks, cash, nonCash, kinds, spent, byTitle, spentCash, given, givenN: discRows.length, days: Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1 };
   }, [ok, daysBack, older, loaded, club, from, to, expenses]);
 
   const set = (a: string, b: string) => {
@@ -146,7 +146,6 @@ export function PeriodSummary({ club: given, accent, pick, money = true }: { clu
           </View>
           <Line label={t('rep_day_cash')} value={r.cash} />
           <Line label={t('rep_day_noncash')} value={r.nonCash} />
-          {r.other ? <Line label={t('ps_other')} value={r.other} muted /> : null}
           <View style={styles.sep} />
           <Line label={t('grp_plans')} value={r.kinds.plans} />
           <Line label={t('grp_bar')} value={r.kinds.bar} />

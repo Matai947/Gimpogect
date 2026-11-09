@@ -8,6 +8,7 @@ export type Sale = {
   memberId?: string;
   name: string; // client
   title: string; // plan name or product
+  planId?: string; // a plan sale: which plan (a cancellation takes it back off the pass)
   kind: SaleKind;
   amount: number;
   clubId: string;
@@ -22,6 +23,7 @@ export type Sale = {
   off?: number; // how much that discount took off this line, in tenge
   cancelled?: boolean; // a free (100%) check cancelled as a mistake
   bonusTo?: string; // sports nutrition sold: the administrator the premium goes to
+  paid?: number; // what the client paid when a premium came out of it (amount is what is left)
   bonusSum?: number; // that premium, 1000 ₸ a jar or pack (worked out by the server)
   refundOf?: string; // refund / debt payment: the row it belongs to
   synced?: boolean; // reached the server

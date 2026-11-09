@@ -11,6 +11,8 @@ import { Button, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useApp, useI18n } from '@/store/app-context';
 
+import { signInDigits } from '@/lib/phone';
+
 function formatPhone(digits: string) {
   const d = digits.replace(/\D/g, '').slice(0, 10);
   const parts = [d.slice(0, 3), d.slice(3, 6), d.slice(6, 8), d.slice(8, 10)].filter(Boolean);
@@ -90,7 +92,7 @@ export default function AuthScreen() {
                   <Ionicons name="call-outline" size={18} color={Colors.textSecondary} />
                   <TextInput
                     value={formatPhone(digits)}
-                    onChangeText={(v) => setDigits(v.replace(/\D/g, '').replace(/^7/, '').slice(0, 10))}
+                    onChangeText={(v) => setDigits(signInDigits(v))}
                     keyboardType="phone-pad"
                     style={styles.inputText}
                     placeholderTextColor={Colors.textMuted}
