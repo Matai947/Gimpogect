@@ -154,9 +154,9 @@ export default function StaffPosScreen() {
     const left = l.productId ? products.find((p) => p.id === l.productId)?.stock : undefined;
     const have = lines.find((x) => x.key === l.key)?.qty ?? 0;
     if (left !== undefined && have + 1 > left) setStockMsg(t('pos_stock_over', { n: left }));
-    // a client gets a plan once per check: a second tap does not sell it twice
-    if (l.planId && have) return;
-    setLines((ls) => (ls.some((x) => x.key === l.key) ? ls.map((x) => (x.key === l.key ? { ...x, qty: x.qty + 1 } : x)) : [...ls, { ...l, qty: 1 }]));
+    // a second (third…) tap or scan of what is already in the check adds nothing: more is only through the + of its line
+    if (have) return;
+    setLines((ls) => (ls.some((x) => x.key === l.key) ? ls : [...ls, { ...l, qty: 1 }]));
   };
   /** A scanned or typed barcode puts its product into the check. */
   const addByCode = (raw: string): { ok: boolean; text: string } | void => {
