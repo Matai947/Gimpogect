@@ -665,6 +665,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const remote = state.remote.find((r) => r.id === memberId);
       // the sale carries the grant's id: a cancelled check takes back only a plan the server really gave, and only once
       const gid = `G${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+      // ids and time fixed here, not inside setState: React may run an updater twice, and two runs must make the same rows
+      const stamp = Date.now();
       if ((isSelf || remote) && state.staffCode) {
         const next = extendMembership(isSelf ? state.membership : (remote?.membership ?? null), planId);
         // not sent and forgotten: the grant waits in a queue (kept on the device) until the server confirms it
@@ -675,7 +677,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const price = amount ?? s.planPrices[planId]?.price ?? plan.price;
         // one row per way it was paid: a mixed payment (cash + Kaspi) is two rows, so the drawer counts only the cash
         const parts = (pays ?? [{ method: 'desk' as PayMethod, amount: price }]).filter((p, i) => p.amount > 0 || (i === 0 && meta?.disc === 100));
-        const sold = (name: string): Sale[] => [...parts.map((p, i): Sale => ({ id: `S${Date.now()}${Math.random().toString(36).slice(2, 5)}`, ts: Date.now(), memberId, name, title: plan.name, ...(i === 0 ? { planId, gid } : {}), kind: 'plan', amount: p.amount, clubId: s.staff?.clubId ?? 'c1', method: p.method, staff: s.staff?.name ?? '', ...(i === 0 && meta?.disc ? { disc: meta.disc, off: meta.off } : {}) })), ...s.sales];
+        const sold = (name: string): Sale[] => [...parts.map((p, i): Sale => ({ id: `S${gid.slice(1)}${i}`, ts: stamp, memberId, name, title: plan.name, ...(i === 0 ? { planId, gid } : {}), kind: 'plan', amount: p.amount, clubId: s.staff?.clubId ?? 'c1', method: p.method, staff: s.staff?.name ?? '', ...(i === 0 && meta?.disc ? { disc: meta.disc, off: meta.off } : {}) })), ...s.sales];
         if (s.user?.id === memberId) return { ...s, sales: sold(s.user.name), trialUsed: s.trialUsed || (!!plan.trial && !plan.staffOnly), membership: extendMembership(s.membership, planId) };
         const r = s.remote.find((x) => x.id === memberId);
         if (r) {

@@ -908,6 +908,15 @@ module.exports = async function handler(req, res) {
           sale.bonusTo = (!/[<>]/.test(String(body.bonusTo ?? '')) && str(body.bonusTo, 40)) || staffName(body.staff);
         }
       }
+      // One plan grant is one sale: the grant's id is claimed first, so a second row of the same grant (an older phone
+      // posting the same plan twice) is dropped, even when both arrive at the same moment.
+      if (sale.gid && sale.planId) {
+        const claim = await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=representation' }, body: JSON.stringify({ key: 'gidsale:' + sale.gid, data: { id, ts } }) });
+        if (Array.isArray(claim) && !claim.length) {
+          const first = (await sb(`settings?key=eq.gidsale:${sale.gid}&select=data`))[0]?.data;
+          if (first && first.id !== id) return res.status(200).json({ ok: true, dup: true });
+        }
+      }
       // return=representation: an empty answer means this id was already stored, so the shelf is not charged twice
       const stored = await sb('sales?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=representation' }, body: JSON.stringify({ id, ts, data: sale }) });
       // a zero-amount "sale" cannot write stock off: units leave the shelf only with money (a write-off is the manager's count on the product card)
