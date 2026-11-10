@@ -1207,12 +1207,18 @@ export function usePlans() {
 }
 
 /** All payments: demo history plus those recorded on this device. Newest first. */
+/** The oldest moment the server's books (120 days) surely cover. */
+const serverWindowStart = () => Date.now() - 119 * 86400000;
+
 /** Raw payment rows: what this device recorded plus the shared books; the server copy wins. Newest first. */
 export function useRawSales() {
   const { sales, serverSales } = useApp();
   return useMemo(() => {
     const byId = new Map<string, Sale>();
-    [...sales, ...mockSales].forEach((x) => byId.set(x.id, x));
+    // a row this phone already sent but the server no longer has (removed there) is not shown from the phone's own copy
+    const onServer = serverSales ? new Set(serverSales.map((x) => x.id)) : null;
+    const since = serverWindowStart();
+    [...sales.filter((x) => !(onServer && x.synced && x.ts > since && !onServer.has(x.id))), ...mockSales].forEach((x) => byId.set(x.id, x));
     (serverSales ?? []).forEach((x) => byId.set(x.id, x));
     return [...byId.values()].sort((a, b) => b.ts - a.ts);
   }, [sales, serverSales]);
