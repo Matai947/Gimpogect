@@ -806,7 +806,7 @@ module.exports = async function handler(req, res) {
     }
 
     // The manager adds a client whose phone cannot run the app: a card by name and phone, sold a plan at the register as usual.
-    // No password: if the client later signs in from a phone, they set one (as after a reset).
+    // No password and no open reset: knowing the phone is not enough to take the card; for the app later the desk resets it in person.
     if (req.method === 'POST' && op === 'client-add') {
       if (!manages()) return res.status(403).json({ error: 'manager only' });
       const name = str(body.name, 60);
@@ -818,7 +818,7 @@ module.exports = async function handler(req, res) {
       const had = await read(id);
       if (had) return res.status(200).json({ ok: true, id, name: had.name, existed: true });
       const clubId = (await validClub(body.clubId)) ? body.clubId : 'c1';
-      await write(id, { id, name, nameByStaff: true, phone: `+7 ${d.slice(1, 4)} ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}`, homeClubId: clubId, since: dayOf(Date.now()), passReset: true, note: 'без приложения' });
+      await write(id, { id, name, nameByStaff: true, phone: `+7 ${d.slice(1, 4)} ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}`, homeClubId: clubId, since: dayOf(Date.now()), note: 'без приложения' });
       return res.status(200).json({ ok: true, id, name });
     }
 
