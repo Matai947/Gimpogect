@@ -805,6 +805,23 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, id, name: c.name });
     }
 
+    // The manager adds a client whose phone cannot run the app: a card by name and phone, sold a plan at the register as usual.
+    // No password: if the client later signs in from a phone, they set one (as after a reset).
+    if (req.method === 'POST' && op === 'client-add') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const name = str(body.name, 60);
+      let d = digitsOf(body.phone);
+      if (d.length === 10) d = '7' + d;
+      else if (d.length === 11 && d[0] === '8') d = '7' + d.slice(1);
+      if (d.length !== 11 || d[1] !== '7' || name.length < 2 || /[<>]/.test(name)) return res.status(400).json({ error: 'bad data' });
+      const id = 'u_' + d;
+      const had = await read(id);
+      if (had) return res.status(200).json({ ok: true, id, name: had.name, existed: true });
+      const clubId = (await validClub(body.clubId)) ? body.clubId : 'c1';
+      await write(id, { id, name, nameByStaff: true, phone: `+7 ${d.slice(1, 4)} ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}`, homeClubId: clubId, since: dayOf(Date.now()), passReset: true, note: 'без приложения' });
+      return res.status(200).json({ ok: true, id, name });
+    }
+
     // Front desk: drop a forgotten password; the client sets a new one at the next sign-in.
     if (req.method === 'POST' && op === 'reset-password') {
       const id = str(body.id, 20);

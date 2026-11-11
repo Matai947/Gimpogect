@@ -5,10 +5,11 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { MemberResult, StaffAccent, entryDecision } from '@/components/member-result';
 import { LeadsCard } from '@/components/leads-card';
 import { StaffHeader } from '@/components/staff-header';
-import { Avatar, Chip, ChipRow, Row, T } from '@/components/ui';
+import { Avatar, Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { addDays, clubs, toISODate } from '@/data/mock';
 import { useApp, useCanManage, useI18n, useMembers } from '@/store/app-context';
+import { clientAddRemote } from '@/lib/api';
 import { personMatches } from '@/lib/phone';
 
 type Filter = 'all' | 'new' | 'active' | 'expiring' | 'expired' | 'frozen' | 'onefit';
@@ -19,7 +20,8 @@ export default function StaffMembersScreen() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [openId, setOpenId] = useState<string | null>(null);
-  const { staff } = useApp();
+  const { staff, staffCode, refreshClients } = useApp();
+  const [add, setAdd] = useState<{ name: string; phone: string; msg?: string; busy?: boolean } | null>(null);
   const canManage = useCanManage();
   // an administrator sees the clients of the club they work at; the manager and the owner can open any club or all of them
   const [club, setClub] = useState<string>(staff?.clubId ?? 'c1');
@@ -122,6 +124,39 @@ export default function StaffMembersScreen() {
           );
         })}
         {filtered.length === 0 ? <T type="caption">{t('nothing_found')}</T> : null}
+        {/* a client whose phone cannot run the app: the manager makes the card here, then sells the plan at the register */}
+        {canManage && query.trim() && filtered.length === 0 ? (
+          add ? (
+            <View style={styles.add}>
+              <T type="small" style={{ fontWeight: '700' }}>
+                {t('ca_title')}
+              </T>
+              <TextInput value={add.name} onChangeText={(x) => setAdd({ ...add, name: x })} placeholder={t('ca_name')} placeholderTextColor={Colors.textMuted} maxLength={60} style={styles.addInput} />
+              <TextInput value={add.phone} onChangeText={(x) => setAdd({ ...add, phone: x })} placeholder="+7 7__ ___ __ __" placeholderTextColor={Colors.textMuted} keyboardType="phone-pad" style={styles.addInput} />
+              {add.msg ? (
+                <T type="small" color={Colors.danger}>
+                  {add.msg}
+                </T>
+              ) : null}
+              <Button
+                title={t('ca_save')}
+                disabled={add.busy || add.name.trim().length < 2 || add.phone.replace(/\D/g, '').length < 10}
+                onPress={async () => {
+                  setAdd({ ...add, busy: true, msg: undefined });
+                  const r = await clientAddRemote(staffCode, { name: add.name.trim(), phone: add.phone, clubId: shownClub === 'all' ? (staff?.clubId ?? 'c1') : shownClub });
+                  if (!r) return setAdd({ ...add, busy: false, msg: t('ca_fail') });
+                  await refreshClients();
+                  setAdd(null);
+                  setQuery(r.name);
+                  setOpenId(r.id);
+                }}
+                style={{ backgroundColor: StaffAccent }}
+              />
+            </View>
+          ) : (
+            <Button title={t('ca_open')} icon="person-add-outline" variant="secondary" onPress={() => setAdd(/\d{6,}/.test(query.replace(/\D/g, '')) ? { name: '', phone: query } : { name: query.trim(), phone: '' })} />
+          )
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -134,4 +169,6 @@ const styles = StyleSheet.create({
   body: { padding: Spacing.three, paddingTop: Spacing.two, gap: Spacing.two, paddingBottom: Spacing.six },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: 10, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   dot: { width: 8, height: 8, borderRadius: 4 },
+  add: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface },
+  addInput: { height: 46, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: Spacing.three, color: Colors.text, fontSize: 16, backgroundColor: Colors.background },
 });

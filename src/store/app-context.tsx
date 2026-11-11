@@ -129,6 +129,7 @@ type Actions = {
   changePlan: (memberId: string, planId: string, fields: { endDate: string; visitsLeft?: number }, reason: string) => Promise<boolean>;
   recordSale: (sale: Omit<Sale, 'id' | 'ts' | 'clubId' | 'staff' | 'synced'>) => void;
   refreshSales: () => Promise<void>;
+  refreshClients: () => Promise<void>;
   /** Re-reads the content (prices, stock counts) from the server. */
   refreshContent: () => Promise<void>;
   saveClubConfig: (list: ClubConfig[]) => Promise<boolean>;
@@ -704,6 +705,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, content: c, ...(c.catalog ? { customProducts: c.catalog.custom, productOverrides: c.catalog.overrides, hiddenProducts: c.catalog.hidden } : {}) }));
   }, [state.staffCode]);
 
+  const refreshClients = useCallback(async () => {
+    if (!state.staffCode) return;
+    const clients = await fetchClients(state.staffCode);
+    if (clients) setState((s) => ({ ...s, remote: clients }));
+  }, [state.staffCode]);
+
   const refreshSales = useCallback(async () => {
     if (!state.staffCode) return;
     const books = await fetchSales(state.staffCode);
@@ -956,6 +963,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       changePlan,
       recordSale,
       refreshSales,
+      refreshClients,
       refreshContent,
       saveClubConfig,
       saveContent,
@@ -996,7 +1004,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       restoreProduct,
     }),
-    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, dismissGrant, moveClient, deleteClient, renameClient, editMembership, changePlan, recordSale, refreshSales, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, staffFreeze, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, cancelOrder, upsertProduct, deleteProduct, restoreProduct]
+    [state, login, restore, logout, updateUser, completeOnboarding, grantPlan, dismissGrant, moveClient, deleteClient, renameClient, editMembership, changePlan, recordSale, refreshSales, refreshClients, refreshContent, saveClubConfig, saveContent, trainerLogin, trainerLogout, setAutoAdmit, setPlanPrice, freezeMembership, unfreezeMembership, staffFreeze, book, cancelBooking, toggleFavorite, checkIn, logWeight, addToCart, setCartQty, removeFromCart, clearCart, placeOrder, addCoachMessage, clearCoachChat, setCoachPlan, setCoachApiKey, setLang, staffLogin, staffLogout, ownerLogin, ownerLogout, setStaffClub, logCheckin, checkoutMember, toggleAttendance, setOrderStatus, cancelOrder, upsertProduct, deleteProduct, restoreProduct]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
