@@ -11,7 +11,7 @@ import { goalTitle } from '@/data/fitness';
 import { clubById, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
 import { DeleteClient } from '@/components/delete-client';
 import { RenameClient } from '@/components/rename-client';
-import { useI18n, useMembers, useSales } from '@/store/app-context';
+import { useI18n, useMembers, useRefetchOnMiss, useSales } from '@/store/app-context';
 import { personMatches } from '@/lib/phone';
 
 type Filter = 'all' | 'active' | 'expiring' | 'expired' | 'frozen' | 'onefit';
@@ -44,6 +44,7 @@ export default function OwnerClients() {
       .filter((m) => personMatches(m, q))
       .sort((a, b) => (paid.get(b.id) ?? 0) - (paid.get(a.id) ?? 0));
   }, [list, query, filter, paid]);
+  useRefetchOnMiss(query, filtered.length);
 
   const filters: { key: Filter; label: string }[] = [
     { key: 'all', label: t('all') },

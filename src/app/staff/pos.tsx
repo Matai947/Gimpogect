@@ -17,7 +17,7 @@ import { refundRemote, settleRemote } from '@/lib/api';
 import { promoByCode, promoDiscount } from '@/data/content';
 import type { PayMethod } from '@/data/owner';
 import { BONUS_PER_PACK, MEMBER_DISCOUNT, earnsBonus, hasCode } from '@/data/shop';
-import { useApp, useCanManage, useCatalog, useI18n, useMembers, usePlans, useRawSales, type MemberInfo } from '@/store/app-context';
+import { useApp, useCanManage, useCatalog, useI18n, useMembers, usePlans, useRawSales, useRefetchOnMiss, type MemberInfo } from '@/store/app-context';
 import { personMatches } from '@/lib/phone';
 
 type Line = { key: string; title: string; price: number; qty: number; planId?: string; productId?: string; trainerId?: string; grams?: number };
@@ -100,6 +100,7 @@ export default function StaffPosScreen() {
     if (q.length < 2) return [];
     return members.filter((m) => personMatches(m, q)).slice(0, 5);
   }, [members, query]);
+  useRefetchOnMiss(query, matches.length);
 
   const categories = useMemo(() => Array.from(new Set(products.filter((p) => p.inStock).map((p) => p.category))), [products]);
   // a product counted at 0 stays on the register: the count can be behind the shelf, and the goods in hand still sell

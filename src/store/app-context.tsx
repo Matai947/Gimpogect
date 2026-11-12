@@ -1215,6 +1215,23 @@ export function usePlans() {
 }
 
 /** All payments: demo history plus those recorded on this device. Newest first. */
+/** A search that finds nobody reloads the client list at once: a client who signed up a minute ago is found without leaving the app. */
+let lastRefetch = 0;
+export function useRefetchOnMiss(query: string, found: number) {
+  const { refreshClients } = useApp();
+  const q = query.trim();
+  useEffect(() => {
+    if (q.length < 3 || found > 0) return;
+    const id = setTimeout(() => {
+      // ponytail: one reload per 5 s across all screens, the whole registry is one request
+      if (Date.now() - lastRefetch < 5000) return;
+      lastRefetch = Date.now();
+      void refreshClients();
+    }, 600);
+    return () => clearTimeout(id);
+  }, [q, found, refreshClients]);
+}
+
 /** The oldest moment the server's books (120 days) surely cover. */
 const serverWindowStart = () => Date.now() - 119 * 86400000;
 

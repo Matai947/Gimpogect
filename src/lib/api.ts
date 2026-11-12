@@ -86,9 +86,9 @@ export const fetchLeads = async (code: string) => (await call<{ leads: Lead[] }>
 
 export const fetchClients = async (code: string) => (await call<{ clients: RemoteClient[] }>('list', { code }))?.clients ?? null;
 
-/** Front desk: a 1Fit member walks in. Creates the card if needed and records one 1Fit visit for the day. */
 /** The manager adds a client without the app (an old phone): name and phone. */
 export const clientAddRemote = (code: string, b: { name: string; phone: string; clubId: string }) => call<{ ok: true; id: string; name: string; existed?: boolean }>('client-add', { method: 'POST', code, body: b });
+/** Front desk: a 1Fit member walks in. Creates the card if needed and records one 1Fit visit for the day. */
 export const onefitRemote = (code: string, b: { name: string; phone: string; clubId: string }) => call<{ ok: true; id: string; name: string; duplicate?: boolean }>('onefit', { method: 'POST', code, body: b });
 
 /** Register payments, kept on the server so every device and the owner see the same books. */

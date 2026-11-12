@@ -8,7 +8,7 @@ import { StaffHeader } from '@/components/staff-header';
 import { Avatar, Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { addDays, clubs, toISODate } from '@/data/mock';
-import { useApp, useCanManage, useI18n, useMembers } from '@/store/app-context';
+import { useApp, useCanManage, useI18n, useMembers, useRefetchOnMiss } from '@/store/app-context';
 import { clientAddRemote } from '@/lib/api';
 import { personMatches } from '@/lib/phone';
 
@@ -46,6 +46,7 @@ export default function StaffMembersScreen() {
       .filter((m) => personMatches(m, q))
       .sort((a, b) => Number(isNew(b)) - Number(isNew(a)) || a.name.localeCompare(b.name, 'ru'));
   }, [list, query, filter, shownClub]);
+  useRefetchOnMiss(query, filtered.length);
 
   const filters: { key: Filter; label: string }[] = [
     { key: 'all', label: t('all') },
