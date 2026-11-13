@@ -17,8 +17,12 @@ function shoot(): Promise<string | null> {
     input.type = 'file';
     input.accept = 'image/*';
     input.setAttribute('capture', 'environment');
+    // in the page while it is open: Safari on iPhone may drop the answer of a picker that is not in the page
+    input.style.display = 'none';
+    document.body.appendChild(input);
     input.onchange = () => {
       const file = input.files?.[0];
+      input.remove();
       if (!file) return done(null);
       const img = new window.Image();
       img.onload = () => {
