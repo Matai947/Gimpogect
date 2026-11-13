@@ -145,19 +145,20 @@ export default function StaffPosScreen() {
     setWeighing(null);
     setGramsText('');
   };
-  const pick = (p: { id: string; name: string; price: number; byWeight?: boolean; stock?: number }) =>
-    p.byWeight ? (setWeighing({ id: p.id, name: p.name, per100: p.price, left: p.stock }), setGramsText('')) : add({ key: `p:${p.id}`, title: p.name, price: p.price, productId: p.id });
+  const pick = (p: { id: string; name: string; price: number; byWeight?: boolean; stock?: number }, scanned = false) =>
+    p.byWeight ? (setWeighing({ id: p.id, name: p.name, per100: p.price, left: p.stock }), setGramsText('')) : add({ key: `p:${p.id}`, title: p.name, price: p.price, productId: p.id }, scanned);
 
-  const add = (l: Omit<Line, 'qty'>) => {
+  const add = (l: Omit<Line, 'qty'>, scanned = false) => {
     setError(null);
     setStockMsg('');
     // a counted product: never more in the check than on the shelf
     const left = l.productId ? products.find((p) => p.id === l.productId)?.stock : undefined;
     const have = lines.find((x) => x.key === l.key)?.qty ?? 0;
     if (left !== undefined && have + 1 > left) setStockMsg(t('pos_stock_over', { n: left }));
-    // a second (third…) tap or scan of what is already in the check adds nothing: more is only through the + of its line
-    if (have) return;
-    setLines((ls) => (ls.some((x) => x.key === l.key) ? ls : [...ls, { ...l, qty: 1 }]));
+    // a second tap of what is already in the check adds nothing (more is through the + of its line);
+    // a barcode scanned again is the next unit in hand: +1 (plans never come from a scan)
+    if (have && !scanned) return;
+    setLines((ls) => (ls.some((x) => x.key === l.key) ? (scanned ? ls.map((x) => (x.key === l.key ? { ...x, qty: x.qty + 1 } : x)) : ls) : [...ls, { ...l, qty: 1 }]));
   };
   /** A scanned or typed barcode puts its product into the check. */
   const addByCode = (raw: string): { ok: boolean; text: string } | void => {
@@ -174,7 +175,7 @@ export default function StaffPosScreen() {
       return { ok: false, text: t('bc_out', { name: p.name }) };
     }
     setCodeMsg('');
-    pick(p);
+    pick(p, true);
     return { ok: true, text: p.byWeight ? t('bc_added_weigh', { name: p.name }) : t('bc_added', { name: p.name, price: formatPrice(p.price) }) };
   };
   const bump = (key: string, d: number) =>

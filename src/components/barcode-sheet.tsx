@@ -22,7 +22,8 @@ export function BarcodeSheet({ visible, onClose, onCode, accent }: { visible: bo
   const [permission, requestPermission] = useCameraPermissions();
   const web = Platform.OS === 'web';
 
-  // the camera reads the same label many times a second: one code counts once, and again only after 2.5 s or another code
+  // the camera reads the same label many times a second: a label held in view counts once; the same code counts again
+  // only after it has been out of view for 2.5 s (the next unit shown) or another code came between
   const last = useRef({ code: '', ts: 0 });
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [count, setCount] = useState(0);
@@ -37,8 +38,9 @@ export function BarcodeSheet({ visible, onClose, onCode, accent }: { visible: bo
     const code = cleanBarcode(raw);
     if (!code) return;
     const now = Date.now();
-    if (code === last.current.code && now - last.current.ts < 2500) return;
+    const seen = code === last.current.code && now - last.current.ts < 2500;
     last.current = { code, ts: now };
+    if (seen) return;
     const r = onCode(code);
     Haptics.notificationAsync(r && !r.ok ? Haptics.NotificationFeedbackType.Error : Haptics.NotificationFeedbackType.Success).catch(() => {});
     if (r) setNote(r);

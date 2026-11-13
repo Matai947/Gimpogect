@@ -11,6 +11,7 @@ import { addDays, clubs, toISODate } from '@/data/mock';
 import { useApp, useCanManage, useI18n, useMembers, useRefetchOnMiss } from '@/store/app-context';
 import { clientAddRemote } from '@/lib/api';
 import { personMatches } from '@/lib/phone';
+import { openWhatsApp } from '@/lib/whatsapp';
 
 type Filter = 'all' | 'new' | 'active' | 'expiring' | 'expired' | 'frozen' | 'onefit';
 
@@ -44,7 +45,8 @@ export default function StaffMembersScreen() {
         return true;
       })
       .filter((m) => personMatches(m, q))
-      .sort((a, b) => Number(isNew(b)) - Number(isNew(a)) || a.name.localeCompare(b.name, 'ru'));
+      // ending soon: the nearest end first, so the desk writes to those who are about to run out
+      .sort((a, b) => (filter === 'expiring' ? a.daysLeft - b.daysLeft : 0) || Number(isNew(b)) - Number(isNew(a)) || a.name.localeCompare(b.name, 'ru'));
   }, [list, query, filter, shownClub]);
   useRefetchOnMiss(query, filtered.length);
 
@@ -120,6 +122,16 @@ export default function StaffMembersScreen() {
                   {m.phone} • {m.planName ? `${td(m.planName)}${m.active ? `, ${t('member_days_left', { n: m.daysLeft })}` : ''}` : m.onefitVisits !== undefined ? t('member_onefit', { n: m.onefitVisits, date: m.onefitLast ? m.onefitLast.split('-').reverse().join('.') : '—' }) : t('member_no_plan')}
                 </T>
               </View>
+              {/* a pass about to end: a ready message to the client in WhatsApp */}
+              {m.active && m.daysLeft <= 7 && m.phone && !m.isSelf ? (
+                <Pressable
+                  onPress={() => void openWhatsApp(m.phone, t('exp_wa_msg', { name: m.name.split(' ')[0], date: (m.endDate ?? '').split('-').reverse().join('.') }))}
+                  hitSlop={8}
+                  accessibilityLabel="WhatsApp"
+                  style={styles.wa}>
+                  <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
+                </Pressable>
+              ) : null}
               <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
             </Pressable>
           );
@@ -170,6 +182,7 @@ const styles = StyleSheet.create({
   body: { padding: Spacing.three, paddingTop: Spacing.two, gap: Spacing.two, paddingBottom: Spacing.six },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: 10, borderRadius: Radius.md, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   dot: { width: 8, height: 8, borderRadius: 4 },
+  wa: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(37,211,102,0.14)' },
   add: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface },
   addInput: { height: 46, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: Spacing.three, color: Colors.text, fontSize: 16, backgroundColor: Colors.background },
 });
