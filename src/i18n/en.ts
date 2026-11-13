@@ -56,6 +56,7 @@ export const en: Record<TKey, string> = {
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
   trainer_quals: 'Qualifications',
+  upd_ready: 'An update is out — tap to refresh',
   ph_take: 'Photo',
   ph_retake: 'Retake',
   ph_fail: 'Not saved',

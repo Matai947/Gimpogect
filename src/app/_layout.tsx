@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { DialogHost } from '@/lib/alert-web';
 import { BackButton } from '@/components/back-button';
+import { UpdateWatcher } from '@/components/update-watcher';
 import { Colors } from '@/constants/theme';
 import { AppProvider, useI18n } from '@/store/app-context';
 
@@ -103,6 +104,7 @@ export default function RootLayout() {
           <StatusBar style="dark" />
           <RootStack />
           <DialogHost />
+          <UpdateWatcher />
         </ThemeProvider>
       </AppProvider>
     </GestureHandlerRootView>
