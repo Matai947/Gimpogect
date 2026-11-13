@@ -3,11 +3,12 @@ import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, TextInput, StyleSheet, View } from 'react-native';
 
-import { Avatar, Badge, Button, Chip, Row, T } from '@/components/ui';
+import { Badge, Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { goalTitle } from '@/data/fitness';
 import type { PayMethod } from '@/data/owner';
 import { fetchMemberVisits, fetchVisits, resetPasswordRemote, type MemberVisit } from '@/lib/api';
+import { ClientPhoto } from '@/components/client-photo';
 import { DeleteClient } from '@/components/delete-client';
 import { RenameClient } from '@/components/rename-client';
 import { VisitCalendar } from '@/components/visit-calendar';
@@ -187,7 +188,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
       <View style={[styles.stripe, { backgroundColor: decision.ok ? Colors.success : Colors.danger }]} />
       <View style={{ flex: 1, minWidth: 0, padding: Spacing.three, gap: Spacing.two }}>
         <Row gap={Spacing.three}>
-          <Avatar name={member.name} size={compact ? 44 : 56} />
+          <ClientPhoto id={member.id} name={member.name} size={compact ? 52 : 72} hasPhoto={!!remote.find((r) => r.id === member.id)?.photoAt} />
           <View style={{ flex: 1 }}>
             <Row gap={6}>
               <T type={compact ? 'subheading' : 'heading'} style={{ flexShrink: 1 }} numberOfLines={1}>

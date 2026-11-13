@@ -11,7 +11,7 @@ export type RemoteMembership = { planId: string; startDate: string; endDate: str
 export type RemoteProfile = { age?: number; goal?: string; heightCm?: number; weightKg?: number; targetWeightKg?: number; gender?: string; level?: string; daysPerWeek?: number };
 export type RemoteSession = { clubId: string; inTs: number; outTs?: number };
 export type OneFitVisit = { d: string; c: string; ts: number };
-export type RemoteClient = { id: string; onefit?: OneFitVisit[]; name: string; phone: string; homeClubId: string; since: string; note?: string; trialUsed?: boolean; pending?: { planId: string; days: number; freezeDays?: number; visitsLeft?: number; dayOnly?: boolean }; membership?: RemoteMembership; profile?: RemoteProfile; session?: RemoteSession };
+export type RemoteClient = { id: string; photoAt?: number; onefit?: OneFitVisit[]; name: string; phone: string; homeClubId: string; since: string; note?: string; trialUsed?: boolean; pending?: { planId: string; days: number; freezeDays?: number; visitsLeft?: number; dayOnly?: boolean }; membership?: RemoteMembership; profile?: RemoteProfile; session?: RemoteSession };
 export type RemoteMe = { membership: RemoteMembership | null; name: string | null; homeClubId: string | null; profile: RemoteProfile | null };
 export type Lead = { name: string; phone: string; clubId: string; lang: string; ts: number };
 
@@ -86,6 +86,9 @@ export const fetchLeads = async (code: string) => (await call<{ leads: Lead[] }>
 
 export const fetchClients = async (code: string) => (await call<{ clients: RemoteClient[] }>('list', { code }))?.clients ?? null;
 
+/** The client's photo (taken at the desk): a small JPEG as a data URL, or null. */
+export const fetchPhoto = async (code: string, id: string) => (await call<{ photo: string | null }>('photo', { code, query: `&id=${encodeURIComponent(id)}` }))?.photo ?? null;
+export const setPhotoRemote = (code: string, id: string, photo: string) => call<{ ok: true }>('photo-set', { method: 'POST', code, body: { id, photo } });
 /** The manager adds a client without the app (an old phone): name and phone. */
 export const clientAddRemote = (code: string, b: { name: string; phone: string; clubId: string }) => call<{ ok: true; id: string; name: string; existed?: boolean }>('client-add', { method: 'POST', code, body: b });
 /** Front desk: a 1Fit member walks in. Creates the card if needed and records one 1Fit visit for the day. */

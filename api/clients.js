@@ -822,6 +822,29 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, id, name });
     }
 
+    // The client's photo, taken at the desk only (a small JPEG made on the phone, ~20 KB): kept apart from the card,
+    // so the client list stays light; the card only carries when it was taken. A new photo over an old one is the manager's.
+    if (req.method === 'POST' && op === 'photo-set') {
+      if (!authed()) return res.status(403).json({ error: 'staff only' });
+      const id = str(body.id, 20);
+      const photo = String(body.photo ?? '');
+      if (!ID.test(id) || photo.length > 80000 || !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(photo)) return res.status(400).json({ error: 'bad photo' });
+      const c = await read(id);
+      if (!c) return res.status(404).json({ error: 'unknown client' });
+      if (c.photoAt && !manages()) return res.status(403).json({ error: 'manager replaces a photo' });
+      const now = Date.now();
+      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'photo:' + id, data: { photo, at: now, by: staffName('') } }) });
+      await write(id, { ...c, photoAt: now });
+      return res.status(200).json({ ok: true });
+    }
+    if (req.method === 'GET' && op === 'photo') {
+      if (!authed()) return res.status(403).json({ error: 'staff only' });
+      const id = str(req.query.id, 20);
+      if (!ID.test(id)) return res.status(400).json({ error: 'bad id' });
+      const row = (await sb(`settings?key=eq.${enc('photo:' + id)}&select=data`))[0];
+      return res.status(200).json({ photo: row?.data?.photo ?? null });
+    }
+
     // Front desk: drop a forgotten password; the client sets a new one at the next sign-in.
     if (req.method === 'POST' && op === 'reset-password') {
       const id = str(body.id, 20);
@@ -1215,6 +1238,7 @@ module.exports = async function handler(req, res) {
       if (!c) return res.status(404).json({ error: 'no client' });
       await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'deleted:' + id, data: { id, ts: Date.now(), by: staffName(''), client: c } }) });
       await sb(`clients?id=eq.${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+      await sb(`settings?key=eq.${enc('photo:' + id)}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
       return res.status(200).json({ ok: true });
     }
     // Cash taken to another club: out of this drawer now, waiting until the other desk counts it in and accepts it.
