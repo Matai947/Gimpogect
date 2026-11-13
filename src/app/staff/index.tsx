@@ -28,6 +28,22 @@ export default function StaffScanScreen() {
   const [result, setResult] = useState<Result | null>(null);
   const [manual, setManual] = useState('');
   const [paused, setPaused] = useState(false);
+  // the desk can switch the camera off (it heats the phone and eats the battery); the choice stays on this phone
+  const [camOn, setCamOn] = useState(() => {
+    try {
+      return typeof localStorage === 'undefined' || localStorage.getItem('scanCam') !== 'off';
+    } catch {
+      return true;
+    }
+  });
+  const switchCam = () => {
+    setCamOn((on) => {
+      try {
+        localStorage.setItem('scanCam', on ? 'off' : 'on');
+      } catch {}
+      return !on;
+    });
+  };
   const [scanN, setScanN] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   // The camera never stops: the next client's QR is read straight away. Only the same code held in view is ignored for a few seconds.
@@ -116,7 +132,15 @@ export default function StaffScanScreen() {
       <ScrollView ref={scrollRef} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* Camera */}
         <View style={[styles.cameraWrap, result ? styles.cameraFolded : null]}>
-          {!canCamera ? (
+          {!camOn ? (
+            <View style={styles.noCamera}>
+              <Ionicons name="videocam-off-outline" size={34} color={Colors.textMuted} />
+              <T type="small" color={Colors.textSecondary} style={{ textAlign: 'center' }}>
+                {t('scan_cam_off')}
+              </T>
+              <Button title={t('scan_cam_on')} icon="videocam-outline" size="sm" onPress={switchCam} style={{ backgroundColor: StaffAccent }} />
+            </View>
+          ) : !canCamera ? (
             <WebQrScanner onScan={(d) => { if (fresh(d)) handle(d, true); }} paused={false} permissionText={t('scan_permission')} allowText={t('scan_allow')} accent={StaffAccent} />
           ) : permission?.granted ? (
             <CameraView style={StyleSheet.absoluteFill} facing="back" barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={onScan} />
@@ -130,11 +154,18 @@ export default function StaffScanScreen() {
             </View>
           )}
           {/* Viewfinder corners */}
-          <View pointerEvents="none" style={styles.frame}>
-            {(['tl', 'tr', 'bl', 'br'] as const).map((c) => (
-              <View key={c} style={[styles.corner, styles[c]]} />
-            ))}
-          </View>
+          {camOn ? (
+            <View pointerEvents="none" style={styles.frame}>
+              {(['tl', 'tr', 'bl', 'br'] as const).map((c) => (
+                <View key={c} style={[styles.corner, styles[c]]} />
+              ))}
+            </View>
+          ) : null}
+          {camOn ? (
+            <Pressable onPress={switchCam} hitSlop={8} accessibilityLabel={t('scan_cam_off_btn')} style={styles.camSwitch}>
+              <Ionicons name="videocam-off-outline" size={20} color="#fff" />
+            </Pressable>
+          ) : null}
           {paused ? (
             <Pressable onPress={reset} style={styles.resume}>
               <Ionicons name="refresh" size={16} color={Colors.onAccent} />
@@ -222,6 +253,7 @@ const styles = StyleSheet.create({
   tr: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 8 },
   bl: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 8 },
   br: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 8 },
+  camSwitch: { position: 'absolute', top: 10, right: 10, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.55)' },
   resume: { position: 'absolute', bottom: 12, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 34, borderRadius: Radius.pill, backgroundColor: StaffAccent },
   manual: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, paddingLeft: Spacing.three, paddingRight: 6, height: 52 },
   manualInput: { flex: 1, color: Colors.text, fontSize: 16 },
