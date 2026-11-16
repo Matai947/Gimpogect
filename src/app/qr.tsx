@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { Badge, Button, Card, Row, Screen, T } from '@/components/ui';
@@ -16,34 +16,47 @@ export default function QrScreen() {
   const { user, visits, token } = useApp();
   const { t, td } = useI18n();
   const membership = useMembershipInfo();
-  const [tick, setTick] = useState(0);
-  const [proof, setProof] = useState('');
-  const [left, setLeft] = useState(REFRESH_SEC);
+  const [proof, setProof] = useState<{ code: string; at: number } | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const club = clubById(user?.homeClubId ?? 'c1');
   const visitedToday = visits.some((v) => v.date === toISODate(new Date()));
 
+  // A fresh server-signed proof (valid 90 s) so the scanner can let the client in. Phones (Android above all) freeze a page
+  // in the background, so a QR opened again could carry a dead proof: the age is counted by this phone's own clock since
+  // the proof arrived (a phone set an hour off does not matter), it is renewed every 30 s, at once when the app comes back,
+  // and every 3 s while the network fails. A stale proof is never shown.
   useEffect(() => {
-    const timer = setInterval(() => {
-      setLeft((l) => {
-        if (l <= 1) {
-          setTick((x) => x + 1);
-          return REFRESH_SEC;
-        }
-        return l - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // A fresh server-signed proof with every refresh: the scanner can then let the client in automatically, and a screenshot or a made-up QR cannot.
-  useEffect(() => {
+    if (!user || !token) return;
     let live = true;
-    if (user && token) fetchQrProof(user.id, token).then((c) => live && setProof(c ?? ''));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = async () => {
+      clearTimeout(timer);
+      const c = await fetchQrProof(user.id, token);
+      if (!live) return;
+      if (c) setProof({ code: c, at: Date.now() });
+      timer = setTimeout(load, c ? REFRESH_SEC * 1000 : 3000);
+    };
+    void load();
+    const onBack = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') void load();
+    };
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && onBack());
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onBack);
     return () => {
       live = false;
+      clearTimeout(timer);
+      sub.remove();
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onBack);
     };
-  }, [tick, user, token]);
-  const payload = JSON.stringify({ uid: user?.id ?? 'guest', ...(proof ? { c: proof } : {}) });
+  }, [user, token]);
+  useEffect(() => {
+    const iv = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, []);
+  const age = proof ? Math.max(0, Math.round((now - proof.at) / 1000)) : 999;
+  const fresh = age < 75;
+  const left = Math.max(0, REFRESH_SEC - age);
+  const payload = JSON.stringify({ uid: user?.id ?? 'guest', ...(proof && fresh ? { c: proof.code } : {}) });
 
   const dayClosed = !!membership.plan?.dayOnly && clubHour() >= DAY_ONLY_UNTIL;
 
@@ -54,7 +67,14 @@ export default function QrScreen() {
       </T>
 
       <View style={styles.qrCard}>
-        {membership.active && !membership.frozen && !dayClosed ? (
+        {membership.active && !membership.frozen && !dayClosed && !fresh ? (
+          <View style={{ width: 250, height: 250, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <ActivityIndicator size="large" color="#5B6673" />
+            <T type="small" color="#5B6673" style={{ textAlign: 'center' }}>
+              {t('qr_loading')}
+            </T>
+          </View>
+        ) : membership.active && !membership.frozen && !dayClosed ? (
           <QRCode value={payload} size={250} quietZone={24} ecl="M" backgroundColor="#FFFFFF" color="#000000" />
         ) : (
           <View style={{ width: 230, height: 230, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -64,7 +84,7 @@ export default function QrScreen() {
             </T>
           </View>
         )}
-        {membership.active && !membership.frozen ? (
+        {membership.active && !membership.frozen && fresh ? (
           <Row gap={6} style={{ marginTop: Spacing.three }}>
             <Ionicons name="refresh" size={14} color="#5B6673" />
             <T type="small" color="#5B6673">
