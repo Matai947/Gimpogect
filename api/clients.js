@@ -26,12 +26,60 @@ const sb = async (path, init = {}) => {
   return text ? JSON.parse(text) : null;
 };
 
-async function read(id) {
+/*
+ * A client card is read, changed and written back by many ops at once (a sale's grant, a check-in, a photo, a freeze).
+ * Written whole, the later write would put back what the earlier one changed (a paid plan lost under a photo).
+ * So each request remembers the card as it first read it, and a write lays only the fields this request changed
+ * onto the card as it is now; writes to one client go one at a time (one server process, so an in-memory queue).
+ * ponytail: per-process lock; a second server process would need a row version (updated_at) check instead.
+ */
+const { AsyncLocalStorage } = require('async_hooks');
+const firstRead = new AsyncLocalStorage();
+const locks = new Map();
+function withLock(id, fn) {
+  const run = (locks.get(id) || Promise.resolve()).then(fn, fn);
+  const tail = run.catch(() => {});
+  locks.set(id, tail);
+  tail.then(() => locks.get(id) === tail && locks.delete(id));
+  return run;
+}
+/** The fields this request changed (against the card it read), laid over the card as it is now. */
+function mergeOnto(cur, was, data) {
+  if (!cur) return data;
+  if (!was) return { ...cur, ...data };
+  const next = { ...cur };
+  for (const k of new Set([...Object.keys(was), ...Object.keys(data)])) {
+    if (JSON.stringify(data[k]) === JSON.stringify(was[k])) continue;
+    if (data[k] === undefined) delete next[k];
+    else next[k] = data[k];
+  }
+  return next;
+}
+
+async function readRaw(id) {
   const rows = await sb(`clients?id=eq.${id}&select=data`);
   return rows[0]?.data ?? null;
 }
-
-const write = (id, data) => sb('clients?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ id, data, updated_at: new Date().toISOString() }) });
+async function read(id) {
+  const data = await readRaw(id);
+  const seen = firstRead.getStore();
+  if (seen && !seen.has(id)) seen.set(id, JSON.stringify(data));
+  return data;
+}
+const put = (id, data) => sb('clients?on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ id, data, updated_at: new Date().toISOString() }) });
+function write(id, data) {
+  return withLock(id, async () => {
+    const seen = firstRead.getStore();
+    let next = data;
+    if (seen && seen.has(id)) {
+      const base = seen.get(id);
+      const cur = await readRaw(id);
+      if (JSON.stringify(cur) !== base) next = mergeOnto(cur, JSON.parse(base), data);
+    }
+    await put(id, next);
+    if (seen) seen.set(id, JSON.stringify(next));
+  });
+}
 
 /** Pages through any REST query: PostgREST returns at most 1000 rows per request. */
 async function pageAll(query, cap = 30000) {
@@ -419,7 +467,10 @@ function cleanProfile(p) {
   return { age: num(p.age, 10, 100), goal, heightCm: num(p.heightCm, 100, 250), weightKg: num(p.weightKg, 30, 300), targetWeightKg: num(p.targetWeightKg, 30, 300), gender, level, daysPerWeek: num(p.daysPerWeek, 1, 7) };
 }
 
-module.exports = async function handler(req, res) {
+// every request keeps its own first reads of client cards (see write)
+module.exports = (req, res) => firstRead.run(new Map(), () => handler(req, res));
+
+async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'content-type, x-code, x-token');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -765,8 +816,12 @@ module.exports = async function handler(req, res) {
       // scans racing with the same code exactly one gets through.
       if (proofExp) {
         const seen = loaded.qrUsed === undefined ? 'is.null' : `eq.${loaded.qrUsed}`;
-        const claimed = await sb(`clients?id=eq.${id}&${encodeURIComponent('data->>qrUsed')}=${seen}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { ...loaded, qrUsed: proofExp } }) });
-        if (claimed.length !== 1) return res.status(403).json({ error: 'qr used' });
+        // in the client's queue, onto the card as it is now: the claim changes qrUsed and nothing else
+        const claimed = await withLock(id, async () => {
+          const cur = (await readRaw(id)) || loaded;
+          return sb(`clients?id=eq.${id}&${encodeURIComponent('data->>qrUsed')}=${seen}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify({ data: { ...cur, qrUsed: proofExp } }) });
+        });
+        if (!Array.isArray(claimed) || claimed.length !== 1) return res.status(403).json({ error: 'qr used' });
       }
       const session = op === 'checkin' ? { clubId: str(body.clubId, 8) || 'c1', inTs: now } : prev.session ? { ...prev.session, outTs: now } : undefined;
       let membership = prev.membership;
@@ -1664,4 +1719,4 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     return res.status(500).json({ error: 'server' });
   }
-};
+}
