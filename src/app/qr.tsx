@@ -34,19 +34,23 @@ export default function QrScreen() {
       const c = await fetchQrProof(user.id, token);
       if (!live) return;
       if (c) setProof({ code: c, at: Date.now() });
+      // two loads may overlap (open + return): only one timer chain survives
+      clearTimeout(timer);
       timer = setTimeout(load, c ? REFRESH_SEC * 1000 : 3000);
     };
     void load();
     const onBack = () => {
       if (typeof document === 'undefined' || document.visibilityState === 'visible') void load();
     };
-    const sub = AppState.addEventListener('change', (st) => st === 'active' && onBack());
-    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onBack);
+    // the web page hears its own visibility; AppState is for the native app (on the web it is the same event, twice)
+    const web = typeof document !== 'undefined';
+    const sub = web ? null : AppState.addEventListener('change', (st) => st === 'active' && onBack());
+    if (web) document.addEventListener('visibilitychange', onBack);
     return () => {
       live = false;
       clearTimeout(timer);
-      sub.remove();
-      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onBack);
+      sub?.remove();
+      if (web) document.removeEventListener('visibilitychange', onBack);
     };
   }, [user, token]);
   useEffect(() => {

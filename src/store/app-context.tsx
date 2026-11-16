@@ -1241,9 +1241,11 @@ export function useRawSales() {
   return useMemo(() => {
     const byId = new Map<string, Sale>();
     // a row this phone already sent but the server no longer has (removed there) is not shown from the phone's own copy
+    // (only rows clearly older than the server's newest one: a sale sent a moment ago may simply not be in a list fetched before it)
     const onServer = serverSales ? new Set(serverSales.map((x) => x.id)) : null;
+    const newest = (serverSales ?? []).reduce((m, x) => Math.max(m, x.ts), 0);
     const since = serverWindowStart();
-    [...sales.filter((x) => !(onServer && x.synced && x.ts > since && !onServer.has(x.id))), ...mockSales].forEach((x) => byId.set(x.id, x));
+    [...sales.filter((x) => !(onServer && x.synced && x.ts > since && x.ts < newest - 300000 && !onServer.has(x.id))), ...mockSales].forEach((x) => byId.set(x.id, x));
     (serverSales ?? []).forEach((x) => byId.set(x.id, x));
     return [...byId.values()].sort((a, b) => b.ts - a.ts);
   }, [sales, serverSales]);

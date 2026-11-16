@@ -1236,7 +1236,7 @@ module.exports = async function handler(req, res) {
       if (!/^[A-Za-z0-9_-]{2,20}$/.test(id)) return res.status(400).json({ error: 'bad data' });
       const c = await read(id);
       if (!c) return res.status(404).json({ error: 'no client' });
-      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'deleted:' + id, data: { id, ts: Date.now(), by: staffName(''), client: c } }) });
+      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'deleted:' + id, data: { id, ts: Date.now(), by: staffName(''), client: { ...c, photoAt: undefined } } }) });
       await sb(`clients?id=eq.${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
       await sb(`settings?key=eq.${enc('photo:' + id)}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
       return res.status(200).json({ ok: true });

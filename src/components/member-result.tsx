@@ -188,7 +188,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
       <View style={[styles.stripe, { backgroundColor: decision.ok ? Colors.success : Colors.danger }]} />
       <View style={{ flex: 1, minWidth: 0, padding: Spacing.three, gap: Spacing.two }}>
         <Row gap={Spacing.three}>
-          <ClientPhoto id={member.id} name={member.name} size={compact ? 52 : 72} hasPhoto={!!remote.find((r) => r.id === member.id)?.photoAt} />
+          <ClientPhoto id={member.id} name={member.name} size={compact ? 52 : 72} photoAt={remote.find((r) => r.id === member.id)?.photoAt} />
           <View style={{ flex: 1 }}>
             <Row gap={6}>
               <T type={compact ? 'subheading' : 'heading'} style={{ flexShrink: 1 }} numberOfLines={1}>

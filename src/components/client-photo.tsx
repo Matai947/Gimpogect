@@ -20,6 +20,11 @@ function shoot(): Promise<string | null> {
     // in the page while it is open: Safari on iPhone may drop the answer of a picker that is not in the page
     input.style.display = 'none';
     document.body.appendChild(input);
+    // the camera closed without a picture: nothing to wait for
+    input.addEventListener('cancel', () => {
+      input.remove();
+      done(null);
+    });
     input.onchange = () => {
       const file = input.files?.[0];
       input.remove();
@@ -44,26 +49,31 @@ function shoot(): Promise<string | null> {
  * The client's face on the card, so the desk sees the pass is used by its owner.
  * Only the staff take it (never the client); the first photo by anyone at the desk, a new one only by the manager.
  */
-export function ClientPhoto({ id, name, size, hasPhoto }: { id: string; name: string; size: number; hasPhoto: boolean }) {
+export function ClientPhoto({ id, name, size, photoAt }: { id: string; name: string; size: number; photoAt?: number }) {
   const { t } = useI18n();
   const { staffCode, refreshClients } = useApp();
   const canManage = useCanManage();
-  const [photo, setPhoto] = useState<string | null>(cache.get(id) ?? null);
+  // keyed by when it was taken: a photo retaken on another phone is fetched again
+  const key = `${id}:${photoAt ?? 0}`;
+  const [taken, setTaken] = useState<string | null>(null); // a photo just taken on this phone
+  const [, setLoaded] = useState(0); // bumps when a fetched photo lands in the cache
+  const hasPhoto = !!photoAt || !!taken;
+  const photo = taken ?? cache.get(key) ?? null;
   const [big, setBig] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(false);
 
   useEffect(() => {
-    if (!hasPhoto || cache.has(id) || !staffCode) return;
+    if (!photoAt || !staffCode || cache.has(key)) return;
     let live = true;
     fetchPhoto(staffCode, id).then((p) => {
-      cache.set(id, p);
-      if (live) setPhoto(p);
+      cache.set(key, p);
+      if (live) setLoaded((n) => n + 1);
     });
     return () => {
       live = false;
     };
-  }, [id, hasPhoto, staffCode]);
+  }, [id, key, photoAt, staffCode]);
 
   const take = async () => {
     const p = await shoot();
@@ -73,8 +83,7 @@ export function ClientPhoto({ id, name, size, hasPhoto }: { id: string; name: st
     setBusy(false);
     setErr(!ok);
     if (!ok) return;
-    cache.set(id, p);
-    setPhoto(p);
+    setTaken(p);
     void refreshClients();
   };
 

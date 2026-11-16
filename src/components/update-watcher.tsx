@@ -34,7 +34,8 @@ export function UpdateWatcher() {
     let hiddenAt = 0;
     const check = async (back: boolean) => {
       if (!(await newer())) return;
-      if (back) window.location.reload();
+      // never on the register: a check half rung up (the cashier went to Kaspi and back) would be lost
+      if (back && !window.location.pathname.startsWith('/staff/pos')) window.location.reload();
       else setReady(true);
     };
     const onVis = () => {

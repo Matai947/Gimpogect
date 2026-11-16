@@ -154,10 +154,10 @@ export default function StaffPosScreen() {
     // a counted product: never more in the check than on the shelf
     const left = l.productId ? products.find((p) => p.id === l.productId)?.stock : undefined;
     const have = lines.find((x) => x.key === l.key)?.qty ?? 0;
-    if (left !== undefined && have + 1 > left) setStockMsg(t('pos_stock_over', { n: left }));
     // a second tap of what is already in the check adds nothing (more is through the + of its line);
     // a barcode scanned again is the next unit in hand: +1 (plans never come from a scan)
     if (have && !scanned) return;
+    if (left !== undefined && have + 1 > left) setStockMsg(t('pos_stock_over', { n: left }));
     setLines((ls) => (ls.some((x) => x.key === l.key) ? (scanned ? ls.map((x) => (x.key === l.key ? { ...x, qty: x.qty + 1 } : x)) : ls) : [...ls, { ...l, qty: 1 }]));
   };
   /** A scanned or typed barcode puts its product into the check. */
