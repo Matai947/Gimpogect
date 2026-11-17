@@ -175,6 +175,11 @@ export function ReceiptsToday({ accent }: { accent: string }) {
                     </T>
                   </Row>
                 ))}
+                {c.rows.find((r) => r.note) ? (
+                  <T type="small" color={Colors.textSecondary} style={{ fontStyle: 'italic' }}>
+                    💬 {c.rows.find((r) => r.note)!.note}
+                  </T>
+                ) : null}
                 {c.debt ? (
                   <T type="small" color={Colors.danger}>
                     {t('pos_debt_title')}: {formatPrice(c.debt)}

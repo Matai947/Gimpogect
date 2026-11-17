@@ -985,6 +985,9 @@ async function handler(req, res) {
       items.length = 0;
       items.push(...merged);
       if (items.length) sale.items = items;
+      // the desk's comment on a check (who advised the client, what was agreed): any staff member, plain text
+      const note = str(body.note, 120);
+      if (kind === 'shop' && note && !/[<>]/.test(note)) sale.note = note;
       // The administrators' premium: 1000 ₸ a jar or pack of sports nutrition sold (portions under 3000 ₸ and free checks earn none).
       // It goes to whoever made the sale: the one who rang the check, or the person the desk names.
       if (kind === 'shop' && items.length && sale.amount >= 1) {

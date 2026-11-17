@@ -101,6 +101,11 @@ export default function StaffBonuses() {
               <T type="small" color={Colors.textSecondary}>
                 {s.title}
               </T>
+              {s.note ? (
+                <T type="small" color={Colors.textSecondary} style={{ fontStyle: 'italic' }}>
+                  💬 {s.note}
+                </T>
+              ) : null}
               <T type="small" color={Colors.textMuted}>
                 {local(s.ts).slice(8, 10)}.{local(s.ts).slice(5, 7)} {local(s.ts).slice(11, 16)} • {clubs.find((c) => c.id === s.clubId)?.name.replace('Seven Gym ', '') ?? ''} • {t('bonuses_by', { name: s.staff })}
               </T>

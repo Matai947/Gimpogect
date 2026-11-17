@@ -90,6 +90,8 @@ export default function StaffPosScreen() {
   const [manualPct, setManualPct] = useState(0); // the desk's own discount on the whole check
   // the premium for sports nutrition goes to whoever made the sale: the one ringing the check unless the desk names someone
   const [bonusTo, setBonusTo] = useState('');
+  // a comment on the check, for anyone at the desk (sports nutrition: who advised, what was agreed)
+  const [saleNote, setSaleNote] = useState('');
   const [settle, setSettle] = useState('');
   const [scanOpen, setScanOpen] = useState(false);
   const [code, setCode] = useState('');
@@ -219,7 +221,7 @@ export default function StaffPosScreen() {
       // the goods (and the premium taken out of them) go on the biggest part of a split payment, so a small cash part never caps the premium
       const main = goodsParts.reduce((b, p, i, a) => (p.amount > a[b].amount ? i : b), 0);
       // a 100% discount still writes the goods down, with a zero, so the shelf follows and the owner sees it
-      (goodsParts.length ? goodsParts : [{ method, amount: 0 }]).forEach((p, i) => recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: p.amount, method: p.method, ...(i === main ? { items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.grams ?? l.qty })), ...meta(goods, goodsPaid), ...(premium && bonusTo.trim() ? { bonusTo: bonusTo.trim() } : {}) } : {}) }));
+      (goodsParts.length ? goodsParts : [{ method, amount: 0 }]).forEach((p, i) => recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: p.amount, method: p.method, ...(i === main ? { items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.grams ?? l.qty })), ...meta(goods, goodsPaid), ...(premium && bonusTo.trim() ? { bonusTo: bonusTo.trim() } : {}), ...(saleNote.trim() ? { note: saleNote.trim() } : {}) } : {}) }));
       // the shelf counts come back from the server once the sale has reached it
       setTimeout(() => (void refreshContent(), void refreshSales()), 2500);
     }
@@ -278,6 +280,7 @@ export default function StaffPosScreen() {
     setPromoCode('');
     setManualPct(0);
     setBonusTo('');
+    setSaleNote('');
   };
 
   const clientSearch = (
@@ -618,6 +621,7 @@ export default function StaffPosScreen() {
                   </T>
                 </Row>
                 <TextInput value={bonusTo} onChangeText={setBonusTo} maxLength={40} placeholder={t('premium_to_ph')} placeholderTextColor={Colors.textMuted} style={[styles.searchInput, { height: 40, flex: 0, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: Spacing.three, backgroundColor: Colors.surface }]} />
+                <TextInput value={saleNote} onChangeText={(x) => setSaleNote(x.replace(/[<>]/g, ''))} maxLength={120} placeholder={t('pos_note_ph')} placeholderTextColor={Colors.textMuted} style={[styles.searchInput, { height: 40, flex: 0, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: Spacing.three, backgroundColor: Colors.surface }]} />
               </View>
             ) : null}
             <Row gap={Spacing.two} style={{ alignItems: 'center' }}>
