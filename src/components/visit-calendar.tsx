@@ -26,7 +26,8 @@ export function VisitCalendar({ days, accent, oneFit }: { days: string[]; accent
   const earliest = days.length ? days.reduce((a, b) => (a < b ? a : b)).slice(0, 7) : month;
 
   return (
-    <View style={{ gap: Spacing.two }}>
+    // full width of its row: inside the card's two-column facts grid it would otherwise grow past the screen
+    <View style={{ gap: Spacing.two, width: '100%' }}>
       <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <Pressable onPress={() => shift(-1)} disabled={month <= earliest} hitSlop={8} style={[styles.arrow, month <= earliest && { opacity: 0.3 }]}>
           <Ionicons name="chevron-back" size={18} color={accent} />
