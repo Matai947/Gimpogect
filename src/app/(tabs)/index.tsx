@@ -7,6 +7,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MemberPass } from '@/components/member-pass';
 import { ProductCard } from '@/components/product-card';
+import { PushPrompt } from '@/components/push-prompt';
 import { Badge, Button, Card, ProgressBar, Row, Screen, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { activePromos } from '@/data/content';
@@ -65,6 +66,10 @@ export default function HomeScreen() {
       {/* Membership pass */}
       <View style={styles.section}>
         <MemberPass />
+      </View>
+
+      <View style={styles.section}>
+        <PushPrompt />
       </View>
 
       {/* Renewal reminder in the last 7 days */}
