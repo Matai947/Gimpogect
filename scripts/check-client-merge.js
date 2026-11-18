@@ -52,11 +52,12 @@ global.fetch = async (url, init = {}) => {
 };
 
 const handler = require('../api/clients.js');
-const call = (op, body) =>
+const send = (method, op, body, headers, query = {}) =>
   new Promise((done) => {
     const res = { headers: {}, setHeader() {}, status(c) { this.code = c; return this; }, json(d) { done({ code: this.code, d }); }, end() { done({ code: this.code }); } };
-    handler({ method: 'POST', query: { op }, headers: { 'x-code': 'owner-test' }, body: JSON.stringify(body) }, res);
+    handler({ method, query: { op, ...query }, headers, body: JSON.stringify(body ?? {}) }, res);
   });
+const call = (op, body) => send('POST', op, body, { 'x-code': 'owner-test' });
 
 (async () => {
   const membership = { planId: 'i2', startDate: '2026-11-16', endDate: '2026-12-16', freezeDaysLeft: 5, freezesLeft: 1 };
@@ -86,6 +87,19 @@ const call = (op, body) =>
   const taken = await call('client-rephone', { id: 'u_77051112233', phone: '+7 705 111 22 33' });
   assert.equal(taken.code, 400, 'the same number must be refused');
   console.log('ok: phone change moves the card with everything');
+
+  // the old number's token stops working after the move (a phone kept by someone else cannot open its next owner)
+  const reg = await send('POST', 'register', { id: 'u_77030000000', name: 'Старый', phone: '+7 703 000 00 00', homeClubId: 'c1', password: 'secret1' }, {});
+  assert.ok(reg.d?.token, JSON.stringify(reg));
+  assert.equal((await send('GET', 'qr', null, { 'x-token': reg.d.token }, { id: 'u_77030000000' })).code, 200, 'the token should work before the move');
+  assert.equal((await call('client-rephone', { id: 'u_77030000000', phone: '8 705 999 88 77' })).code, 200);
+  assert.equal((await send('GET', 'qr', null, { 'x-token': reg.d.token }, { id: 'u_77030000000' })).code, 401, 'the old token still works');
+  // two moves to one free number at the same moment: one wins, the other is refused
+  clients.set('u_77040000000', { id: 'u_77040000000', name: 'A', phone: '' });
+  clients.set('u_77050000000', { id: 'u_77050000000', name: 'B', phone: '' });
+  const both = await Promise.all([call('client-rephone', { id: 'u_77040000000', phone: '8 777 123 45 67' }), call('client-rephone', { id: 'u_77050000000', phone: '8 777 123 45 67' })]);
+  assert.deepEqual(both.map((r) => r.code).sort(), [200, 409], JSON.stringify(both));
+  console.log('ok: old token revoked, one number cannot be taken twice');
 })().catch((e) => {
   console.error(e.message);
   process.exit(1);

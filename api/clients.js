@@ -320,11 +320,23 @@ const issueToken = (id) => {
   const payload = id + '.' + (Date.now() + TOKEN_DAYS * 86400000);
   return payload + '.' + sign(payload);
 };
+/* A number a card moved away from (a new phone number): tokens issued to it before the move stop working, so an old
+   phone cannot open whoever gets that number later. Kept in memory (one server process), loaded once from settings. */
+const retired = new Map();
+let retiredLoad = null;
+const loadRetired = () =>
+  (retiredLoad ||= pageAll('settings?select=key,data&key=like.retired:*')
+    .then((rows) => rows.forEach((r) => retired.set(r.key.slice(8), Number(r.data?.at) || 0)))
+    .catch(() => {
+      retiredLoad = null;
+    }));
 /** Returns the client id the token belongs to, or null. */
 const tokenOwner = (req) => {
   const t = String(req.headers['x-token'] || '');
   const [id, exp, sig] = t.split('.');
   if (!id || !exp || !sig || !ID.test(id) || Number(exp) < Date.now()) return null;
+  const gone = retired.get(id);
+  if (gone && Number(exp) - TOKEN_DAYS * 86400000 <= gone) return null;
   const expect = sign(id + '.' + exp);
   return sig.length === expect.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect)) ? id : null;
 };
@@ -476,6 +488,7 @@ async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(204).end();
+  await loadRetired();
 
   if (!OWNER_CODE || !TOKEN_SECRET || !REST || (!process.env.DB_REST_URL && !SUPABASE_KEY)) return res.status(503).json({ error: 'not configured' });
   const op = String(req.query.op || '');
@@ -1291,10 +1304,21 @@ async function handler(req, res) {
       if (to === from) return res.status(400).json({ error: 'same number' });
       const c = await read(from);
       if (!c) return res.status(404).json({ error: 'no client' });
-      if (await read(to)) return res.status(409).json({ error: 'number taken' });
       const phone = `+7 ${d.slice(1, 4)} ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}`;
-      // the new card first: if anything below fails, the client is never left without one
-      await write(to, { ...c, id: to, phone, phoneWas: [...(c.phoneWas || []), { phone: c.phone || '', at: Date.now(), by: staffName('') }].slice(-5) });
+      // the new card first (if anything below fails, the client is never left without one), made only while the number
+      // is free: checked and written in that number's queue, so two changes or a sign-up at the same moment cannot collide
+      const made = await withLock(to, async () => {
+        if (await readRaw(to)) return false;
+        await put(to, { ...c, id: to, phone, phoneWas: [...(c.phoneWas || []), { phone: c.phone || '', at: Date.now(), by: staffName('') }].slice(-5) });
+        return true;
+      });
+      if (!made) return res.status(409).json({ error: 'number taken' });
+      // the old number's tokens stop now; its push subscriptions follow the card
+      const at = Date.now();
+      retired.set(from, at);
+      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'retired:' + from, data: { at, to } }) });
+      const subs = await pageAll(`settings?select=key,data&key=like.push:*&${enc('data->>member')}=eq.${from}`);
+      for (const r of subs) await sb(`settings?key=eq.${enc(r.key)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...r.data, member: to } }) });
       const rows = await pageAll(`sales?select=id,data&${enc('data->>memberId')}=eq.${from}`);
       for (const r of rows) await sb(`sales?id=eq.${enc(r.id)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...r.data, memberId: to } }) });
       await sb(`visits?member=eq.${from}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ member: to }) });
