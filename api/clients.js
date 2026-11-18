@@ -323,6 +323,7 @@ const issueToken = (id) => {
 /* A number a card moved away from (a new phone number): tokens issued to it before the move stop working, so an old
    phone cannot open whoever gets that number later. Kept in memory (one server process), loaded once from settings. */
 const retired = new Map();
+const RETIRED_ALL = 9e15; // a number being moved: all its tokens refused until the move finishes
 let retiredLoad = null;
 const loadRetired = () =>
   (retiredLoad ||= pageAll('settings?select=key,data&key=like.retired:*')
@@ -1335,12 +1336,16 @@ async function handler(req, res) {
         await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'photo:' + to, data: photo }) });
         await sb(`settings?key=eq.${enc('photo:' + from)}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
       }
+      // The old number's tokens stop, failing closed: before its card goes, every token of it is refused (saved, so a
+      // restart keeps it); once the card is gone the stamp becomes this moment, so whoever signs up to the number later
+      // gets working tokens. If that last step fails, the number stays fully closed rather than open.
+      const retire = async (at) => {
+        retired.set(from, at);
+        await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'retired:' + from, data: { at, to } }) });
+      };
+      await retire(RETIRED_ALL);
       await sb(`clients?id=eq.${from}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
-      // the old number's tokens stop from now: stamped after its card is gone, so no sign-in to it can come later and
-      // still count; saved first, so a restart keeps it
-      const at = Date.now();
-      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'retired:' + from, data: { at, to } }) });
-      retired.set(from, at);
+      await retire(Date.now());
       return res.status(200).json({ ok: true, id: to, phone, sales: rows.length });
     }
 
