@@ -87,7 +87,11 @@ export const fetchLeads = async (code: string) => (await call<{ leads: Lead[] }>
 export const fetchClients = async (code: string) => (await call<{ clients: RemoteClient[] }>('list', { code }))?.clients ?? null;
 
 /** The client's photo (taken at the desk): a small JPEG as a data URL, or null. */
-export const fetchPhoto = async (code: string, id: string) => (await call<{ photo: string | null }>('photo', { code, query: `&id=${encodeURIComponent(id)}` }))?.photo ?? null;
+/** undefined = not reached (try again), null = no photo. */
+export const fetchPhoto = async (code: string, id: string) => {
+  const r = await call<{ photo: string | null }>('photo', { code, query: `&id=${encodeURIComponent(id)}` });
+  return r ? r.photo : undefined;
+};
 export const setPhotoRemote = (code: string, id: string, photo: string) => call<{ ok: true }>('photo-set', { method: 'POST', code, body: { id, photo } });
 /** The manager adds a client without the app (an old phone): name and phone. */
 export const clientAddRemote = (code: string, b: { name: string; phone: string; clubId: string }) => call<{ ok: true; id: string; name: string; existed?: boolean }>('client-add', { method: 'POST', code, body: b });
