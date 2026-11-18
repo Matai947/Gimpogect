@@ -100,6 +100,18 @@ const call = (op, body) => send('POST', op, body, { 'x-code': 'owner-test' });
   const both = await Promise.all([call('client-rephone', { id: 'u_77040000000', phone: '8 777 123 45 67' }), call('client-rephone', { id: 'u_77050000000', phone: '8 777 123 45 67' })]);
   assert.deepEqual(both.map((r) => r.code).sort(), [200, 409], JSON.stringify(both));
   console.log('ok: old token revoked, one number cannot be taken twice');
+
+  // a sign-up and a card moved to the same number at the same moment: one wins, and the moved card is never taken over
+  clients.set('u_77060000000', { id: 'u_77060000000', name: 'Владелец абонемента', phone: '', membership: { planId: 'i2', endDate: '2026-12-31' } });
+  const [moveRes, signUp] = await Promise.all([
+    call('client-rephone', { id: 'u_77060000000', phone: '8 701 555 66 77' }),
+    send('POST', 'register', { id: 'u_77015556677', name: 'Чужой', phone: '+7 701 555 66 77', homeClubId: 'c1', password: 'secret2' }, {}),
+  ]);
+  assert.deepEqual([moveRes.code, signUp.code].sort(), [200, 409], JSON.stringify([moveRes, signUp]));
+  const won = clients.get('u_77015556677');
+  if (moveRes.code === 200) assert.equal(won.name, 'Владелец абонемента', 'the sign-up took over the moved card');
+  else assert.ok(!won.membership, 'the moved pass landed on the stranger');
+  console.log('ok: a sign-up never takes over a card moved to its number');
 })().catch((e) => {
   console.error(e.message);
   process.exit(1);

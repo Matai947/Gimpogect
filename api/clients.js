@@ -326,9 +326,10 @@ const retired = new Map();
 let retiredLoad = null;
 const loadRetired = () =>
   (retiredLoad ||= pageAll('settings?select=key,data&key=like.retired:*')
-    .then((rows) => rows.forEach((r) => retired.set(r.key.slice(8), Number(r.data?.at) || 0)))
+    .then((rows) => (rows.forEach((r) => retired.set(r.key.slice(8), Number(r.data?.at) || 0)), true))
     .catch(() => {
       retiredLoad = null;
+      return false;
     }));
 /** Returns the client id the token belongs to, or null. */
 const tokenOwner = (req) => {
@@ -488,7 +489,8 @@ async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(204).end();
-  await loadRetired();
+  // fail closed: without the list of moved numbers a client token cannot be trusted
+  if (!(await loadRetired()) && req.headers['x-token']) return res.status(503).json({ error: 'try again' });
 
   if (!OWNER_CODE || !TOKEN_SECRET || !REST || (!process.env.DB_REST_URL && !SUPABASE_KEY)) return res.status(503).json({ error: 'not configured' });
   const op = String(req.query.op || '');
@@ -694,7 +696,16 @@ async function handler(req, res) {
       const profile = cleanProfile(body.profile);
       if (profile) next.profile = profile;
       // Blob writes are the scarce quota: skip the write when nothing changed (the app re-sends on every launch).
-      if (!existing || JSON.stringify(next) !== JSON.stringify(existing)) await write(id, next);
+      if (!existing) {
+        // a new account only while the number is free: checked and made in that number's queue, so a card moved to this
+        // number (or another sign-up) at the same moment is never taken over
+        const made = await withLock(id, async () => {
+          if (await readRaw(id)) return false;
+          await put(id, next);
+          return true;
+        });
+        if (!made) return res.status(409).json({ error: 'taken' });
+      } else if (JSON.stringify(next) !== JSON.stringify(existing)) await write(id, next);
       return res.status(200).json({ ok: true, membership: next.membership ? withFreeze(next.membership, await freezeRules()) : null, token: existing ? undefined : issueToken(id) });
     }
 
@@ -1313,10 +1324,7 @@ async function handler(req, res) {
         return true;
       });
       if (!made) return res.status(409).json({ error: 'number taken' });
-      // the old number's tokens stop now; its push subscriptions follow the card
-      const at = Date.now();
-      retired.set(from, at);
-      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'retired:' + from, data: { at, to } }) });
+      // its push subscriptions follow the card
       const subs = await pageAll(`settings?select=key,data&key=like.push:*&${enc('data->>member')}=eq.${from}`);
       for (const r of subs) await sb(`settings?key=eq.${enc(r.key)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...r.data, member: to } }) });
       const rows = await pageAll(`sales?select=id,data&${enc('data->>memberId')}=eq.${from}`);
@@ -1328,6 +1336,11 @@ async function handler(req, res) {
         await sb(`settings?key=eq.${enc('photo:' + from)}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
       }
       await sb(`clients?id=eq.${from}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+      // the old number's tokens stop from now: stamped after its card is gone, so no sign-in to it can come later and
+      // still count; saved first, so a restart keeps it
+      const at = Date.now();
+      await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'retired:' + from, data: { at, to } }) });
+      retired.set(from, at);
       return res.status(200).json({ ok: true, id: to, phone, sales: rows.length });
     }
 
