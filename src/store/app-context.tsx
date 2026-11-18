@@ -62,6 +62,7 @@ export type CheckinEntry = { ts: number; memberId: string; name: string; ok: boo
 type State = {
   user: User | null;
   membership: Membership | null;
+  freeEntry?: boolean; // the manager lets this client in without a pass
   bookings: string[]; // sessionIds
   favorites: string[]; // clubIds
   visits: Visit[];
@@ -355,6 +356,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (uid && token) {
         const me = await fetchMyMembership(uid, token);
         const m = me?.membership;
+        if (live && me) setState((s) => (!!s.freeEntry === !!me.freeEntry ? s : { ...s, freeEntry: !!me.freeEntry }));
         if (live && me && (!m || planById(m.planId))) setState((s) => (JSON.stringify(s.membership ?? null) === JSON.stringify(m ?? null) ? s : { ...s, membership: m ?? null }));
         // a name the manager corrected reaches the client's own phone
         if (live && me?.name && me.name !== 'Гость') setState((s) => (s.user && s.user.name !== me.name ? { ...s, user: { ...s.user, name: me.name! } } : s));
@@ -1106,6 +1108,7 @@ export type MemberInfo = {
   onefitVisits?: number; // came through 1Fit this many times
   onefitLast?: string; // the last 1Fit visit, a day
   isSelf: boolean;
+  freeEntry?: string;
   since: string;
   lastVisit?: string;
   visitsTotal: number;
@@ -1148,6 +1151,7 @@ export function useMembers() {
         onefitVisits: m.onefitVisits,
         onefitLast: m.onefitLast,
         isSelf,
+        freeEntry: m.freeEntry,
         since: m.since,
         lastVisit: m.lastVisit,
         visitsTotal: m.visitsTotal,
@@ -1172,7 +1176,7 @@ export function useMembers() {
     const fresh = remote
       .filter((r) => r.id !== user?.id && !members.some((m) => m.id === r.id))
       .map((r) => {
-        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId ?? r.pending?.planId, endDate: r.membership?.endDate ?? (r.pending ? toISODate(addDays(today, r.pending.days)) : undefined), pendingActivation: !!r.pending && !r.membership, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, note: r.note, onefitVisits: r.onefit?.length || (r.note === '1Fit' ? 0 : undefined), onefitLast: r.onefit?.length ? r.onefit[r.onefit.length - 1].d : undefined, trialUsed: r.trialUsed, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0, freezesLeft: r.membership?.freezesLeft, freezeMax: r.membership?.freezeMax, visitsLeft: r.membership?.visitsLeft ?? r.pending?.visitsLeft }, false);
+        const info = build({ id: r.id, name: r.name, phone: r.phone, planId: r.membership?.planId ?? r.pending?.planId, endDate: r.membership?.endDate ?? (r.pending ? toISODate(addDays(today, r.pending.days)) : undefined), pendingActivation: !!r.pending && !r.membership, freeEntry: r.freeEntry?.by, frozenUntil: r.membership?.frozenUntil, homeClubId: r.homeClubId, visitsThisMonth: 0, note: r.note, onefitVisits: r.onefit?.length || (r.note === '1Fit' ? 0 : undefined), onefitLast: r.onefit?.length ? r.onefit[r.onefit.length - 1].d : undefined, trialUsed: r.trialUsed, since: r.since, visitsTotal: 0, age: r.profile?.age ?? 0, goal: r.profile?.goal as Goal | undefined, freezeDaysLeft: r.membership?.freezeDaysLeft ?? 0, freezesLeft: r.membership?.freezesLeft, freezeMax: r.membership?.freezeMax, visitsLeft: r.membership?.visitsLeft ?? r.pending?.visitsLeft }, false);
         info.params = r.profile?.heightCm ? `${r.profile.heightCm} см • ${r.profile.weightKg} кг` : undefined;
         return info;
       });

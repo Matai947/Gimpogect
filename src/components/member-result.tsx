@@ -12,6 +12,7 @@ import { ClientPhoto } from '@/components/client-photo';
 import { DeleteClient } from '@/components/delete-client';
 import { RenameClient } from '@/components/rename-client';
 import { RephoneClient } from '@/components/rephone-client';
+import { FreeEntry } from '@/components/free-entry';
 import { VisitCalendar } from '@/components/visit-calendar';
 import { DAY_ONLY_UNTIL, clubs, clubById, clubHour, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
 import { replacePlan, useApp, useCanManage, useI18n, useMembers, usePlans, usePresence, type MemberInfo } from '@/store/app-context';
@@ -40,6 +41,8 @@ function useMonthVisits(id: string, code: string | null | undefined) {
 
 /** Decides whether a member may enter right now and why not. */
 export function entryDecision(m: MemberInfo, t: (k: any, v?: any) => string): { ok: boolean; reason?: string } {
+  // no running pass, but the manager allowed entry without one
+  if (m.freeEntry && !(m.planId && m.endDate && m.active)) return { ok: true };
   if (!m.planId || !m.endDate) return { ok: false, reason: t('member_no_plan') };
   if (!m.active) return { ok: false, reason: t('member_expired') };
   if (m.frozen) return { ok: false, reason: t('member_frozen') };
@@ -240,6 +243,11 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
               {t('day_only_hint')}
             </T>
           ) : null}
+          {member.freeEntry && !member.active ? (
+            <T type="small" color={Colors.warning} style={{ fontWeight: '700' }}>
+              {t('fe_badge', { by: member.freeEntry === 'owner' ? t('role_owner') : member.freeEntry })}
+            </T>
+          ) : null}
           {!decision.ok ? (
             <Row gap={6} style={{ marginTop: 4 }}>
               <Ionicons name="alert-circle" size={14} color={Colors.danger} />
@@ -329,6 +337,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
               </View>
             ) : null}
             {!member.isSelf ? <RenameClient id={member.id} name={member.name} /> : null}
+            {!member.isSelf ? <FreeEntry id={member.id} on={!!member.freeEntry} /> : null}
             {!member.isSelf ? <RephoneClient id={member.id} phone={member.phone} onMoved={onDone} /> : null}
             {!member.isSelf ? <DeleteClient id={member.id} name={member.name} onDone={onDone} /> : null}
         </View>

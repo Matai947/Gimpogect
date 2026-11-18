@@ -14,7 +14,7 @@ const dayOf = (ts: number) => new Date(ts + ALMATY).toISOString().slice(0, 10);
 const shiftDay = (iso: string, d: number) => new Date(Date.parse(iso + 'T00:00:00Z') + d * 86400000).toISOString().slice(0, 10);
 const dmy = (iso: string) => iso.split('-').reverse().join('.');
 
-type Person = { member: string; inTs: number; outTs?: number; auto: boolean; onefit: boolean };
+type Person = { member: string; inTs: number; outTs?: number; auto: boolean; onefit: boolean; free?: boolean };
 
 /** Manager: how many people came and left on a day, by club, and who — with the time they came and went. */
 export function DayVisitors({ accent }: { accent: string }) {
@@ -47,7 +47,7 @@ export function DayVisitors({ accent }: { accent: string }) {
         const p = people.get(v.member);
         if (p) people.set(v.member, { ...p, outTs: v.ts, auto: false });
       } else if (!people.has(v.member)) {
-        people.set(v.member, { member: v.member, inTs: v.ts, auto: true, onefit: v.kind === 'onefit' });
+        people.set(v.member, { member: v.member, inTs: v.ts, auto: true, onefit: v.kind === 'onefit', free: v.kind === 'free' });
       }
     }
     // with no exit marked, a visit ends by itself after the usual session
@@ -126,6 +126,7 @@ export function DayVisitors({ accent }: { accent: string }) {
               <T type="small" style={{ flex: 1, fontWeight: '600' }} numberOfLines={1}>
                 {byId(p.member)?.name ?? p.member}
                 {p.onefit ? ' • 1Fit' : ''}
+                {p.free ? ` • ${t('fe_short')}` : ''}
               </T>
               <T type="small" color={Colors.textSecondary}>
                 {clockTime(p.inTs)} → {p.outTs ? `${clockTime(p.outTs)}${p.auto ? ' ≈' : ''}` : t('dv_here')}

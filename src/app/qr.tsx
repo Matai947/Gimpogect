@@ -13,7 +13,7 @@ import { useApp, useI18n, useMembershipInfo } from '@/store/app-context';
 const REFRESH_SEC = 30;
 
 export default function QrScreen() {
-  const { user, visits, token } = useApp();
+  const { user, visits, token, freeEntry } = useApp();
   const { t, td } = useI18n();
   const membership = useMembershipInfo();
   const [proof, setProof] = useState<{ code: string; at: number } | null>(null);
@@ -63,6 +63,8 @@ export default function QrScreen() {
   const payload = JSON.stringify({ uid: user?.id ?? 'guest', ...(proof && fresh ? { c: proof.code } : {}) });
 
   const dayClosed = !!membership.plan?.dayOnly && clubHour() >= DAY_ONLY_UNTIL;
+  // no running pass, but the manager allowed entry without one: the QR is shown as usual
+  const open = (membership.active && !membership.frozen && !dayClosed) || (!!freeEntry && !membership.active);
 
   return (
     <Screen scroll={false} edges={[]} contentStyle={{ padding: Spacing.three, gap: Spacing.three, alignItems: 'center', justifyContent: 'center' }}>
@@ -71,14 +73,14 @@ export default function QrScreen() {
       </T>
 
       <View style={styles.qrCard}>
-        {membership.active && !membership.frozen && !dayClosed && !fresh ? (
+        {open && !fresh ? (
           <View style={{ width: 250, height: 250, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
             <ActivityIndicator size="large" color="#5B6673" />
             <T type="small" color="#5B6673" style={{ textAlign: 'center' }}>
               {t('qr_loading')}
             </T>
           </View>
-        ) : membership.active && !membership.frozen && !dayClosed ? (
+        ) : open ? (
           <QRCode value={payload} size={250} quietZone={24} ecl="M" backgroundColor="#FFFFFF" color="#000000" />
         ) : (
           <View style={{ width: 230, height: 230, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -88,7 +90,7 @@ export default function QrScreen() {
             </T>
           </View>
         )}
-        {membership.active && !membership.frozen && fresh ? (
+        {open && fresh ? (
           <Row gap={6} style={{ marginTop: Spacing.three }}>
             <Ionicons name="refresh" size={14} color="#5B6673" />
             <T type="small" color="#5B6673">
@@ -111,7 +113,7 @@ export default function QrScreen() {
         </T>
       </Card>
 
-      {membership.active && !membership.frozen ? (
+      {open ? (
         visitedToday ? <Badge label={t('qr_visited')} color={Colors.success} /> : null
       ) : (
         <Button title={t('to_plans')} icon="card-outline" onPress={() => router.replace('/membership')} style={{ alignSelf: 'stretch' }} />

@@ -11,8 +11,8 @@ export type RemoteMembership = { planId: string; startDate: string; endDate: str
 export type RemoteProfile = { age?: number; goal?: string; heightCm?: number; weightKg?: number; targetWeightKg?: number; gender?: string; level?: string; daysPerWeek?: number };
 export type RemoteSession = { clubId: string; inTs: number; outTs?: number };
 export type OneFitVisit = { d: string; c: string; ts: number };
-export type RemoteClient = { id: string; photoAt?: number; onefit?: OneFitVisit[]; name: string; phone: string; homeClubId: string; since: string; note?: string; trialUsed?: boolean; pending?: { planId: string; days: number; freezeDays?: number; visitsLeft?: number; dayOnly?: boolean }; membership?: RemoteMembership; profile?: RemoteProfile; session?: RemoteSession };
-export type RemoteMe = { membership: RemoteMembership | null; name: string | null; homeClubId: string | null; profile: RemoteProfile | null };
+export type RemoteClient = { id: string; freeEntry?: { by: string; at: number }; photoAt?: number; onefit?: OneFitVisit[]; name: string; phone: string; homeClubId: string; since: string; note?: string; trialUsed?: boolean; pending?: { planId: string; days: number; freezeDays?: number; visitsLeft?: number; dayOnly?: boolean }; membership?: RemoteMembership; profile?: RemoteProfile; session?: RemoteSession };
+export type RemoteMe = { freeEntry?: boolean; membership: RemoteMembership | null; name: string | null; homeClubId: string | null; profile: RemoteProfile | null };
 export type Lead = { name: string; phone: string; clubId: string; lang: string; ts: number };
 
 type Init = { method?: 'POST'; body?: unknown; code?: string; token?: string; trainerToken?: string; query?: string };
@@ -158,6 +158,7 @@ export const clientRephone = async (code: string, id: string, phone: string) => 
   const r = await raw('client-rephone', { method: 'POST', code, body: { id, phone } });
   return { status: r.status, data: r.status === 200 ? (r.data as { id: string; phone: string }) : null };
 };
+export const freeEntryRemote = async (code: string, id: string, on: boolean) => !!(await call<{ ok: true }>('free-entry', { method: 'POST', code, body: { id, on } }));
 export const clientRename = (code: string, id: string, name: string) => call<{ ok: true }>('client-rename', { method: 'POST', code, body: { id, name } });
 export const clientDelete = (code: string, id: string) => call<{ ok: true }>('client-del', { method: 'POST', code, body: { id } });
 export const clientMove = (code: string, id: string, clubId: string) => call<{ ok: true }>('client-move', { method: 'POST', code, body: { id, clubId } });

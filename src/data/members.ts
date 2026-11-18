@@ -2,6 +2,7 @@ import { type Goal } from '@/data/fitness';
 
 /** Members of the club as the reception sees them. The signed-in device user is merged in at runtime. */
 export type Member = {
+  freeEntry?: string; // the manager let this client in without a pass: who allowed it
   onefitVisits?: number; // came through 1Fit this many times
   onefitLast?: string; // the last 1Fit visit, a day
   id: string; // matches the QR payload uid: u_<phone digits>

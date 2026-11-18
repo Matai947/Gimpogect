@@ -376,7 +376,7 @@ const trainerFrom = async (req) => {
   return rec && String(rec.at) === version ? who.slice(1) : null;
 };
 
-const account = (c) => (c ? { membership: c.membership ?? null, name: c.name ?? null, homeClubId: c.homeClubId ?? null, profile: c.profile ?? null } : null);
+const account = (c) => (c ? { freeEntry: !!c.freeEntry, membership: c.membership ?? null, name: c.name ?? null, homeClubId: c.homeClubId ?? null, profile: c.profile ?? null } : null);
 const publicClient = ({ passHash: _p, passReset: _r, ...c }) => c;
 
 // Freeze rule of the built-in plans (days in one freeze, freezes per pass); edited and custom plans come from the content.
@@ -850,7 +850,9 @@ async function handler(req, res) {
       }
       const session = op === 'checkin' ? { clubId: str(body.clubId, 8) || 'c1', inTs: now } : prev.session ? { ...prev.session, outTs: now } : undefined;
       let membership = prev.membership;
-      if (op === 'checkin' && firstToday) await logVisit(session.clubId, id, 'qr');
+      // an entry let in without a running pass (the manager allowed it on the card) is logged as such
+      const free = !!prev.freeEntry && !(prev.membership && prev.membership.endDate >= day(now));
+      if (op === 'checkin' && firstToday) await logVisit(session.clubId, id, free ? 'free' : 'qr');
       if (op === 'checkout' && session) await logVisit(session.clubId, id, 'out');
       // A plan with a visit counter loses one visit per calendar day on the first check-in of that day.
       if (op === 'checkin' && membership && membership.visitsLeft > 0 && firstToday) membership = { ...membership, visitsLeft: membership.visitsLeft - 1 };
@@ -1347,6 +1349,18 @@ async function handler(req, res) {
       await sb(`clients?id=eq.${from}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
       await retire(Date.now());
       return res.status(200).json({ ok: true, id: to, phone, sales: rows.length });
+    }
+
+    // Entry without a pass: only the manager or the owner allows it (or takes it back); the client then shows the QR as usual
+    // and every such entry is logged as 'free'.
+    if (req.method === 'POST' && op === 'free-entry') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const id = str(body.id, 20);
+      if (!ID.test(id)) return res.status(400).json({ error: 'bad data' });
+      const c = await read(id);
+      if (!c) return res.status(404).json({ error: 'no client' });
+      await write(id, { ...c, freeEntry: body.on ? { by: staffName('owner'), at: Date.now() } : undefined });
+      return res.status(200).json({ ok: true });
     }
 
     if (req.method === 'POST' && op === 'client-rename') {

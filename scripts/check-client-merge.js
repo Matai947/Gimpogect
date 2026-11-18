@@ -31,6 +31,7 @@ global.fetch = async (url, init = {}) => {
   }
   if (path === 'visits') {
     const who = (q.get('member') || '').replace(/^eq\./, '');
+    if (init.method === 'POST') visits.push(JSON.parse(init.body));
     if (init.method === 'PATCH') visits.filter((v) => v.member === who).forEach((v) => (v.member = JSON.parse(init.body).member));
     return ok();
   }
@@ -112,6 +113,17 @@ const call = (op, body) => send('POST', op, body, { 'x-code': 'owner-test' });
   if (moveRes.code === 200) assert.equal(won.name, 'Владелец абонемента', 'the sign-up took over the moved card');
   else assert.ok(!won.membership, 'the moved pass landed on the stranger');
   console.log('ok: a sign-up never takes over a card moved to its number');
+
+  // entry without a pass: only the manager or the owner allows it, and the entry is logged as 'free'
+  clients.set('u_77070000000', { id: 'u_77070000000', name: 'Без абонемента', phone: '' });
+  assert.notEqual((await send('POST', 'free-entry', { id: 'u_77070000000', on: true }, {})).code, 200, 'anyone may allow free entry');
+  assert.equal((await call('free-entry', { id: 'u_77070000000', on: true })).code, 200);
+  assert.ok(clients.get('u_77070000000').freeEntry, 'free entry not saved');
+  assert.equal((await call('checkin', { id: 'u_77070000000', clubId: 'c1' })).code, 200);
+  assert.equal(visits[visits.length - 1].kind, 'free', 'the entry was not logged as free');
+  assert.equal((await call('free-entry', { id: 'u_77070000000', on: false })).code, 200);
+  assert.ok(!clients.get('u_77070000000').freeEntry, 'free entry not taken back');
+  console.log('ok: entry without a pass is allowed by the manager only and logged');
 })().catch((e) => {
   console.error(e.message);
   process.exit(1);

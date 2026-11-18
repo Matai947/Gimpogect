@@ -6,7 +6,7 @@ import Svg, { Path } from 'react-native-svg';
 import { T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatDateLong } from '@/data/mock';
-import { useI18n, useMembershipInfo } from '@/store/app-context';
+import { useApp, useI18n, useMembershipInfo } from '@/store/app-context';
 
 /** Alatau ridge line: two layered silhouettes, drawn in a 360×90 box and stretched to fit. */
 function Ridge({ color, back }: { color: string; back: string }) {
@@ -28,13 +28,14 @@ function Ridge({ color, back }: { color: string; back: string }) {
 export function MemberPass() {
   const { t, tp, td } = useI18n();
   const m = useMembershipInfo();
+  const { freeEntry } = useApp();
   const active = m.active && !m.frozen;
   const bg = !m.active ? '#E9E4E6' : m.frozen ? '#DCE8F2' : Colors.accent;
   const ink = active ? Colors.onAccent : Colors.text;
   const inkSoft = active ? 'rgba(11,11,11,0.7)' : Colors.textSecondary;
 
   return (
-    <Pressable onPress={() => router.push(m.active ? '/qr' : '/membership')} style={({ pressed }) => [styles.pass, { backgroundColor: bg }, pressed && { transform: [{ scale: 0.985 }] }]}>
+    <Pressable onPress={() => router.push(m.active || freeEntry ? '/qr' : '/membership')} style={({ pressed }) => [styles.pass, { backgroundColor: bg }, pressed && { transform: [{ scale: 0.985 }] }]}>
       <View style={styles.top}>
         <View style={{ flex: 1 }}>
           <T type="small" color={inkSoft} style={{ fontWeight: '600' }}>
