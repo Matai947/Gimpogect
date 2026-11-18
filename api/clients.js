@@ -1277,6 +1277,36 @@ async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
     // The manager corrects a client's name (a typo, a nickname typed at registration).
+    // A client's new phone number (the manager, the client in front of them). The card's id is the number, so the card
+    // moves to the new id with everything that points at it: the pass and password, the checks, the visits, the photo.
+    // The client signs in again with the new number and the same password.
+    if (req.method === 'POST' && op === 'client-rephone') {
+      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      const from = str(body.id, 20);
+      let d = digitsOf(body.phone);
+      if (d.length === 10) d = '7' + d;
+      else if (d.length === 11 && d[0] === '8') d = '7' + d.slice(1);
+      if (!ID.test(from) || d.length !== 11 || d[1] !== '7') return res.status(400).json({ error: 'bad data' });
+      const to = 'u_' + d;
+      if (to === from) return res.status(400).json({ error: 'same number' });
+      const c = await read(from);
+      if (!c) return res.status(404).json({ error: 'no client' });
+      if (await read(to)) return res.status(409).json({ error: 'number taken' });
+      const phone = `+7 ${d.slice(1, 4)} ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}`;
+      // the new card first: if anything below fails, the client is never left without one
+      await write(to, { ...c, id: to, phone, phoneWas: [...(c.phoneWas || []), { phone: c.phone || '', at: Date.now(), by: staffName('') }].slice(-5) });
+      const rows = await pageAll(`sales?select=id,data&${enc('data->>memberId')}=eq.${from}`);
+      for (const r of rows) await sb(`sales?id=eq.${enc(r.id)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...r.data, memberId: to } }) });
+      await sb(`visits?member=eq.${from}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ member: to }) });
+      const photo = (await sb(`settings?key=eq.${enc('photo:' + from)}&select=data`))[0]?.data;
+      if (photo) {
+        await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'photo:' + to, data: photo }) });
+        await sb(`settings?key=eq.${enc('photo:' + from)}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+      }
+      await sb(`clients?id=eq.${from}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+      return res.status(200).json({ ok: true, id: to, phone, sales: rows.length });
+    }
+
     if (req.method === 'POST' && op === 'client-rename') {
       if (!manages()) return res.status(403).json({ error: 'manager only' });
       const id = str(body.id, 20);

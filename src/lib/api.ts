@@ -150,6 +150,10 @@ export const stockMove = async (code: string, b: { id: string; qty: number; from
   const r = await raw('stock-move', { method: 'POST', code, body: b });
   return r.status === 200 ? 'ok' : r.status === 400 ? 'short' : 'fail';
 };
+export const clientRephone = async (code: string, id: string, phone: string) => {
+  const r = await raw('client-rephone', { method: 'POST', code, body: { id, phone } });
+  return { status: r.status, data: r.status === 200 ? (r.data as { id: string; phone: string }) : null };
+};
 export const clientRename = (code: string, id: string, name: string) => call<{ ok: true }>('client-rename', { method: 'POST', code, body: { id, name } });
 export const clientDelete = (code: string, id: string) => call<{ ok: true }>('client-del', { method: 'POST', code, body: { id } });
 export const clientMove = (code: string, id: string, clubId: string) => call<{ ok: true }>('client-move', { method: 'POST', code, body: { id, clubId } });

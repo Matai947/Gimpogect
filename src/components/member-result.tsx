@@ -11,6 +11,7 @@ import { fetchMemberVisits, fetchVisits, resetPasswordRemote, type MemberVisit }
 import { ClientPhoto } from '@/components/client-photo';
 import { DeleteClient } from '@/components/delete-client';
 import { RenameClient } from '@/components/rename-client';
+import { RephoneClient } from '@/components/rephone-client';
 import { VisitCalendar } from '@/components/visit-calendar';
 import { DAY_ONLY_UNTIL, clubs, clubById, clubHour, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
 import { replacePlan, useApp, useCanManage, useI18n, useMembers, usePlans, usePresence, type MemberInfo } from '@/store/app-context';
@@ -328,6 +329,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
               </View>
             ) : null}
             {!member.isSelf ? <RenameClient id={member.id} name={member.name} /> : null}
+            {!member.isSelf ? <RephoneClient id={member.id} phone={member.phone} onMoved={onDone} /> : null}
             {!member.isSelf ? <DeleteClient id={member.id} name={member.name} onDone={onDone} /> : null}
         </View>
         {/* the manager corrects the current plan (dates, visits, a plan added by mistake); administrators do not */}
