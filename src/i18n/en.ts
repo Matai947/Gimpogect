@@ -56,6 +56,8 @@ export const en: Record<TKey, string> = {
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
   trainer_quals: 'Qualifications',
+  pos_price_was: '({now} instead of {was})',
+  pos_price_ph: 'price each',
   fe_on: 'Allow entry without a pass',
   fe_sure: 'Allow it? Tap again',
   fe_off: 'Remove entry without a pass',

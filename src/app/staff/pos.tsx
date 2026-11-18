@@ -20,13 +20,15 @@ import { BONUS_PER_PACK, MEMBER_DISCOUNT, earnsBonus, hasCode } from '@/data/sho
 import { useApp, useCanManage, useCatalog, useI18n, useMembers, usePlans, useRawSales, useRefetchOnMiss, type MemberInfo } from '@/store/app-context';
 import { personMatches } from '@/lib/phone';
 
-type Line = { key: string; title: string; price: number; qty: number; planId?: string; productId?: string; trainerId?: string; grams?: number };
+type Line = { key: string; title: string; price: number; was?: number; qty: number; planId?: string; productId?: string; trainerId?: string; grams?: number };
 type Receipt = { id: string; ts: number; lines: Line[]; subtotal: number; discount: number; total: number; debt?: number; method: PayMethod; client?: MemberInfo; mixCash?: number; mixOther?: PayMethod; disc?: number };
 
 const PLANS_TAB = '__plans';
 const TRAINERS_TAB = '__trainers';
 // Kept outside the component so the compiler's purity rule does not see Date.now() in render.
 const newTs = () => Date.now();
+// a price the manager changed at the till stays visible in the books: "(700 ₸ вместо 800 ₸)"
+const lineTitle = (l: Line, t: (k: any, v?: any) => string) => (l.was !== undefined ? `${l.title} ${t('pos_price_was', { now: formatPrice(l.price), was: formatPrice(l.was) })}` : l.title);
 
 /** Plans sold here that the server has not taken yet: waiting for the connection, or refused (then the manager fixes it). */
 function GrantWarnings() {
@@ -92,6 +94,14 @@ export default function StaffPosScreen() {
   const [bonusTo, setBonusTo] = useState('');
   // a comment on the check, for anyone at the desk (sports nutrition: who advised, what was agreed)
   const [saleNote, setSaleNote] = useState('');
+  // the manager changes a line's price right in the check (not the catalog): tap the sum
+  const [priceEdit, setPriceEdit] = useState<{ key: string; text: string } | null>(null);
+  const applyPrice = () => {
+    if (!priceEdit) return;
+    const v = parseInt(priceEdit.text.replace(/\D/g, ''), 10);
+    if (v >= 0) setLines((ls) => ls.map((x) => (x.key === priceEdit.key && v !== x.price ? { ...x, price: v, was: x.was ?? x.price } : x)));
+    setPriceEdit(null);
+  };
   const [settle, setSettle] = useState('');
   const [scanOpen, setScanOpen] = useState(false);
   const [code, setCode] = useState('');
@@ -210,7 +220,7 @@ export default function StaffPosScreen() {
     trainerLines.forEach((l) => {
       for (let i = 0; i < l.qty; i++) {
         const amount = whole ? Math.round(l.price * share) : l.price;
-        parts(amount).forEach((p, k) => recordSale({ memberId: client!.id, name: client!.name, title: l.title, kind: 'personal', amount: p.amount, method: p.method, trainerId: l.trainerId, ...(k === 0 ? meta(l.price, amount) : {}) }));
+        parts(amount).forEach((p, k) => recordSale({ memberId: client!.id, name: client!.name, title: lineTitle(l, t), kind: 'personal', amount: p.amount, method: p.method, trainerId: l.trainerId, ...(k === 0 ? meta(l.price, amount) : {}) }));
       }
     });
     const goodLines = lines.filter((l) => !l.planId && !l.trainerId);
@@ -221,7 +231,7 @@ export default function StaffPosScreen() {
       // the goods (and the premium taken out of them) go on the biggest part of a split payment, so a small cash part never caps the premium
       const main = goodsParts.reduce((b, p, i, a) => (p.amount > a[b].amount ? i : b), 0);
       // a 100% discount still writes the goods down, with a zero, so the shelf follows and the owner sees it
-      (goodsParts.length ? goodsParts : [{ method, amount: 0 }]).forEach((p, i) => recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${l.title} ×${l.qty}`).join(', '), kind: 'shop', amount: p.amount, method: p.method, ...(i === main ? { items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.grams ?? l.qty })), ...meta(goods, goodsPaid), ...(premium && bonusTo.trim() ? { bonusTo: bonusTo.trim() } : {}), ...(saleNote.trim() ? { note: saleNote.trim() } : {}) } : {}) }));
+      (goodsParts.length ? goodsParts : [{ method, amount: 0 }]).forEach((p, i) => recordSale({ memberId: client?.id, name: client?.name ?? t('pos_walkin'), title: goodLines.map((l) => `${lineTitle(l, t)} ×${l.qty}`).join(', '), kind: 'shop', amount: p.amount, method: p.method, ...(i === main ? { items: goodLines.filter((l) => l.productId).map((l) => ({ id: l.productId!, qty: l.grams ?? l.qty })), ...meta(goods, goodsPaid), ...(premium && bonusTo.trim() ? { bonusTo: bonusTo.trim() } : {}), ...(saleNote.trim() ? { note: saleNote.trim() } : {}) } : {}) }));
       // the shelf counts come back from the server once the sale has reached it
       setTimeout(() => (void refreshContent(), void refreshSales()), 2500);
     }
@@ -593,9 +603,21 @@ export default function StaffPosScreen() {
                   <Pressable onPress={() => bump(l.key, 1)} style={styles.qtyBtn} hitSlop={6}>
                     <Ionicons name="add" size={16} color={Colors.text} />
                   </Pressable>
-                  <T type="small" style={{ fontWeight: '700', minWidth: 78, textAlign: 'right' }}>
-                    {formatPrice(l.price * l.qty)}
-                  </T>
+                  {priceEdit?.key === l.key ? (
+                    <TextInput value={priceEdit.text} onChangeText={(x) => setPriceEdit({ key: l.key, text: x.replace(/\D/g, '').slice(0, 7) })} onSubmitEditing={applyPrice} onBlur={applyPrice} keyboardType="number-pad" autoFocus selectTextOnFocus placeholder={t('pos_price_ph')} placeholderTextColor={Colors.textMuted}
+                      style={{ width: 90, height: 34, borderRadius: Radius.md, borderWidth: 1.5, borderColor: StaffAccent, paddingHorizontal: 8, color: Colors.text, fontSize: 15, fontWeight: '700', textAlign: 'right', backgroundColor: Colors.surface }} />
+                  ) : (
+                    <Pressable disabled={!canManage || !!l.planId} onPress={() => setPriceEdit({ key: l.key, text: String(l.price) })} hitSlop={6} style={{ minWidth: 78, alignItems: 'flex-end' }}>
+                      <T type="small" style={{ fontWeight: '700', textAlign: 'right', textDecorationLine: canManage && !l.planId ? 'underline' : 'none' }} color={l.was !== undefined ? StaffAccent : Colors.text}>
+                        {formatPrice(l.price * l.qty)}
+                      </T>
+                      {l.was !== undefined ? (
+                        <T type="small" color={Colors.textMuted} style={{ fontSize: 11, textDecorationLine: 'line-through' }}>
+                          {formatPrice(l.was * l.qty)}
+                        </T>
+                      ) : null}
+                    </Pressable>
+                  )}
                 </Row>
               ))}
             </ScrollView>
