@@ -56,6 +56,8 @@ export const kk: Record<TKey, string> = {
   auth_terms: 'Жалғастыра отырып, мүшелік шарттарымен және құпиялылық саясатымен келісесіз',
   rules_title: 'Клуб ережесі',
   trainer_quals: 'Біліктілігі',
+  cs_title: 'Клиенттің сатып алулары — болдырмау',
+  cs_cancel: 'Болдырмау',
   pos_price_was: '({was} орнына {now})',
   pos_price_ph: '1 дана бағасы',
   fe_on: 'Абонементсіз кіруге рұқсат беру',

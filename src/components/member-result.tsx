@@ -13,6 +13,7 @@ import { DeleteClient } from '@/components/delete-client';
 import { RenameClient } from '@/components/rename-client';
 import { RephoneClient } from '@/components/rephone-client';
 import { FreeEntry } from '@/components/free-entry';
+import { ClientSales } from '@/components/client-sales';
 import { VisitCalendar } from '@/components/visit-calendar';
 import { DAY_ONLY_UNTIL, clubs, clubById, clubHour, formatDateHuman, formatDateLong, formatPrice, trainerById } from '@/data/mock';
 import { replacePlan, useApp, useCanManage, useI18n, useMembers, usePlans, usePresence, type MemberInfo } from '@/store/app-context';
@@ -337,6 +338,7 @@ export function MemberResult({ member: snapshot, onDone, compact }: { member: Me
               </View>
             ) : null}
             {!member.isSelf ? <RenameClient id={member.id} name={member.name} /> : null}
+            {!member.isSelf ? <ClientSales id={member.id} /> : null}
             {!member.isSelf ? <FreeEntry id={member.id} on={!!member.freeEntry} /> : null}
             {!member.isSelf ? <RephoneClient id={member.id} phone={member.phone} onMoved={onDone} /> : null}
             {!member.isSelf ? <DeleteClient id={member.id} name={member.name} onDone={onDone} /> : null}
