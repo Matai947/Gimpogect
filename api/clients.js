@@ -1246,11 +1246,21 @@ async function handler(req, res) {
     }
     // The month-end count: every product counted is set to what is on the shelf in one write; what the books said
     // and what was found are kept as a revision, so the shortage of the month can be looked at and exported later.
+    // A count or a delivery carries the product's name and price as the server's catalog has them (a product the staff
+    // edited or added), so a shortage is never valued at a price typed on the phone.
+    const withCatalog = async (list) => {
+      const cat = (await getContent()).catalog || {};
+      const known = new Map([...(cat.custom || []), ...Object.entries(cat.overrides || {}).map(([id, p]) => ({ id, ...p }))].map((p) => [p.id, p]));
+      return list.map((r) => {
+        const p = known.get(r.id);
+        return p ? { ...r, name: p.name ? str(p.name, 120) : r.name, price: Number.isFinite(Number(p.price)) ? int(p.price, 100000000) : r.price } : r;
+      });
+    };
     // Any administrator counts the shelf after the shift; who counted and the shortage stay in the revision.
     if (req.method === 'POST' && op === 'stock-revision') {
       if (!authed()) return res.status(403).json({ error: 'staff only' });
       const rows = Array.isArray(body.counts) ? body.counts.slice(0, 1000) : [];
-      const counts = rows.map((r) => ({ id: str(r && r.id, 24), n: int(r && r.n, 100000), name: str(r && r.name, 120), price: int(r && r.price, 100000000) })).filter((r) => /^[A-Za-z0-9_-]{1,24}$/.test(r.id) && !/[<>]/.test(r.name));
+      const counts = (await withCatalog(rows.map((r) => ({ id: str(r && r.id, 24), n: int(r && r.n, 100000), name: str(r && r.name, 120), price: int(r && r.price, 100000000) })))).filter((r) => /^[A-Za-z0-9_-]{1,24}$/.test(r.id) && !/[<>]/.test(r.name));
       if (!counts.length || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
       const lines = [];
       const ok = await editStock((all) => {
@@ -1277,7 +1287,7 @@ async function handler(req, res) {
     if (req.method === 'POST' && op === 'stock-receive') {
       if (!authed()) return res.status(403).json({ error: 'staff only' });
       const rows = Array.isArray(body.counts) ? body.counts.slice(0, 1000) : [];
-      const counts = rows.map((r) => ({ id: str(r && r.id, 24), n: int(r && r.n, 100000), name: str(r && r.name, 120), price: int(r && r.price, 100000000) })).filter((r) => /^[A-Za-z0-9_-]{1,24}$/.test(r.id) && r.n > 0 && !/[<>]/.test(r.name));
+      const counts = (await withCatalog(rows.map((r) => ({ id: str(r && r.id, 24), n: int(r && r.n, 100000), name: str(r && r.name, 120), price: int(r && r.price, 100000000) })))).filter((r) => /^[A-Za-z0-9_-]{1,24}$/.test(r.id) && r.n > 0 && !/[<>]/.test(r.name));
       if (!counts.length || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
       const lines = [];
       const ok = await editStock((all) => {
