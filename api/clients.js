@@ -1246,8 +1246,9 @@ async function handler(req, res) {
     }
     // The month-end count: every product counted is set to what is on the shelf in one write; what the books said
     // and what was found are kept as a revision, so the shortage of the month can be looked at and exported later.
+    // Any administrator counts the shelf after the shift; who counted and the shortage stay in the revision.
     if (req.method === 'POST' && op === 'stock-revision') {
-      if (!manages()) return res.status(403).json({ error: 'manager only' });
+      if (!authed()) return res.status(403).json({ error: 'staff only' });
       const rows = Array.isArray(body.counts) ? body.counts.slice(0, 1000) : [];
       const counts = rows.map((r) => ({ id: str(r && r.id, 24), n: int(r && r.n, 100000), name: str(r && r.name, 120), price: int(r && r.price, 100000000) })).filter((r) => /^[A-Za-z0-9_-]{1,24}$/.test(r.id) && !/[<>]/.test(r.name));
       if (!counts.length || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
@@ -1263,13 +1264,42 @@ async function handler(req, res) {
       }, 'revision ' + staffName(''));
       if (!ok) return res.status(409).json({ error: 'busy' });
       const now = Date.now();
-      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: `revision:${now}${Math.random().toString(36).slice(2, 5)}`, data: { ts: now, clubId: body.clubId, staff: staffName(body.staff), lines } }) });
-      return res.status(200).json({ ok: true, stock: (await getContent()).stock || {} });
+      const rev = { ts: now, clubId: body.clubId, staff: staffName(body.staff), lines };
+      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: `revision:${now}${Math.random().toString(36).slice(2, 5)}`, data: rev }) });
+      return res.status(200).json({ ok: true, revision: rev, stock: (await getContent()).stock || {} });
     }
     if (req.method === 'GET' && op === 'revisions') {
-      if (!manages() && !isAcc) return res.status(403).json({ error: 'manager only' });
-      const rows = await sb(`settings?select=data&key=like.revision:*&order=key.desc&limit=24`);
+      if (!authed() && !isAcc) return res.status(403).json({ error: 'staff only' });
+      const rows = await sb(`settings?select=data&key=like.revision:*&order=key.desc&limit=40`);
       return res.status(200).json({ revisions: rows.map((r) => r.data) });
+    }
+    // Goods received at the desk: any administrator adds what came to this club's shelf; the delivery is kept with who took it.
+    if (req.method === 'POST' && op === 'stock-receive') {
+      if (!authed()) return res.status(403).json({ error: 'staff only' });
+      const rows = Array.isArray(body.counts) ? body.counts.slice(0, 1000) : [];
+      const counts = rows.map((r) => ({ id: str(r && r.id, 24), n: int(r && r.n, 100000), name: str(r && r.name, 120), price: int(r && r.price, 100000000) })).filter((r) => /^[A-Za-z0-9_-]{1,24}$/.test(r.id) && r.n > 0 && !/[<>]/.test(r.name));
+      if (!counts.length || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
+      const lines = [];
+      const ok = await editStock((all) => {
+        const shelf = (all[body.clubId] = all[body.clubId] || {});
+        lines.length = 0;
+        for (const r of counts) {
+          const was = Number(shelf[r.id]) || 0;
+          if (was + r.n > 100000) return null;
+          lines.push({ id: r.id, name: r.name, price: r.price, was, n: r.n });
+          shelf[r.id] = was + r.n;
+        }
+        return true;
+      }, 'receive ' + staffName(''));
+      if (!ok) return res.status(409).json({ error: 'busy' });
+      const now = Date.now();
+      await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: `stockin:${now}${Math.random().toString(36).slice(2, 5)}`, data: { ts: now, clubId: body.clubId, staff: staffName(body.staff), lines } }) });
+      return res.status(200).json({ ok: true, stock: (await getContent()).stock || {} });
+    }
+    if (req.method === 'GET' && op === 'stock-ins') {
+      if (!authed() && !isAcc) return res.status(403).json({ error: 'staff only' });
+      const rows = await sb(`settings?select=data&key=like.stockin:*&order=key.desc&limit=40`);
+      return res.status(200).json({ ins: rows.map((r) => r.data) });
     }
     // Goods driven from one club to another: off one shelf and onto the other in one write, never more than is there.
     if (req.method === 'POST' && op === 'stock-move') {

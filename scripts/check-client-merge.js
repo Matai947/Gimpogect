@@ -47,6 +47,11 @@ global.fetch = async (url, init = {}) => {
       settings.set(row.key, row.data);
       return ok(/representation/.test(init.headers?.prefer || '') ? [row] : undefined);
     }
+    if (init.method === 'PATCH') {
+      const data = JSON.parse(init.body).data;
+      settings.set(key, data);
+      return ok([{ key, data }]);
+    }
     return ok([]);
   }
   return ok([]);
@@ -124,6 +129,18 @@ const call = (op, body) => send('POST', op, body, { 'x-code': 'owner-test' });
   assert.equal((await call('free-entry', { id: 'u_77070000000', on: false })).code, 200);
   assert.ok(!clients.get('u_77070000000').freeEntry, 'free entry not taken back');
   console.log('ok: entry without a pass is allowed by the manager only and logged');
+
+  // goods received at the desk are added to the shelf; the count after the shift works out the shortage
+  const line = { id: 'p1', name: 'Батончик', price: 800 };
+  assert.equal((await call('stock-receive', { clubId: 'c1', staff: 'Тест', counts: [{ ...line, n: 10 }] })).code, 200);
+  assert.equal(settings.get('content:stock').v.c1.p1, 10, 'the delivery was not added');
+  assert.equal((await call('stock-receive', { clubId: 'c1', staff: 'Тест', counts: [{ ...line, n: 5 }] })).code, 200);
+  assert.equal(settings.get('content:stock').v.c1.p1, 15, 'the second delivery was not added');
+  const counted = await call('stock-revision', { clubId: 'c1', staff: 'Тест', counts: [{ ...line, n: 12 }] });
+  assert.equal(counted.code, 200);
+  assert.deepEqual([counted.d.revision.lines[0].was, counted.d.revision.lines[0].n], [15, 12], 'the shortage was not worked out');
+  assert.equal(settings.get('content:stock').v.c1.p1, 12, 'the shelf was not set to the count');
+  console.log('ok: receiving adds to the shelf, the count shows the shortage');
 })().catch((e) => {
   console.error(e.message);
   process.exit(1);
