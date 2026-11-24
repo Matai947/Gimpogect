@@ -23,13 +23,13 @@ function load(code: string, id: string, key: string) {
   return p;
 }
 
-/** Takes a picture with the phone's camera and makes it a 300×300 JPEG (~20 KB) right on the phone. */
+/** Takes a picture with the camera or picks one from the gallery, and makes it a 300×300 JPEG (~20 KB) right on the phone. */
 function shoot(): Promise<string | null> {
   return new Promise((done) => {
     const input = document.createElement('input');
     input.type = 'file';
+    // no `capture`: the phone offers both the camera and the gallery / files
     input.accept = 'image/*';
-    input.setAttribute('capture', 'environment');
     // in the page while it is open: Safari on iPhone may drop the answer of a picker that is not in the page
     input.style.display = 'none';
     document.body.appendChild(input);
