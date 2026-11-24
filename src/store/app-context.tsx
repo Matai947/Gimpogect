@@ -88,7 +88,7 @@ type State = {
   contentStatus: 'idle' | 'saving' | 'ok' | 'fail'; // last save to the server (not kept on the device)
   sales: Sale[]; // payments recorded on this device when staff issue plans
   /** Plans issued at the desk that the server has not confirmed yet; sent again until it answers. `error` = the server refused. */
-  pendingGrants: { gid: string; memberId: string; name: string; phone: string; membership: RemoteMembership; ts: number; error?: string }[];
+  pendingGrants: { gid: string; memberId: string; name: string; phone: string; membership: RemoteMembership; ts: number; error?: string; keep?: boolean }[];
   staffLog: CheckinEntry[];
   attendance: Record<string, string[]>; // sessionId -> memberIds marked present
   orderStatusOverrides: Record<string, OrderStatus>;
@@ -121,7 +121,7 @@ type Actions = {
   moveClient: (memberId: string, clubId: string) => Promise<boolean>;
   deleteClient: (memberId: string) => Promise<boolean>;
   renameClient: (memberId: string, name: string) => Promise<boolean>;
-  grantPlan: (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[], meta?: { disc?: number; off?: number }) => void;
+  grantPlan: (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[], meta?: { disc?: number; off?: number }, keep?: boolean) => void;
   /** The desk has read a refused grant (and asked the manager): it leaves the warning list. */
   dismissGrant: (gid: string) => void;
   /** The desk corrects a client's current plan: when it ends and how many visits are left. No sale is recorded. */
@@ -217,7 +217,7 @@ const initialState: State = {
 };
 
 /** Adds a plan to the current membership: extends if still active, otherwise starts today. Trial = 3 days. */
-function extendMembership(cur: Membership | null, planId: string): Membership {
+function extendMembership(cur: Membership | null, planId: string, keep = false): Membership {
   const plan = planById(planId)!;
   const today = toISODate(new Date());
   const stillActive = !!cur && cur.endDate >= today;
@@ -230,7 +230,8 @@ function extendMembership(cur: Membership | null, planId: string): Membership {
   const count = perFreeze ? (plan.freezeCount ?? 1) : 0;
   const freezeDays = perFreeze * count;
   const freezesLeft = (stillActive ? (cur!.freezesLeft ?? 0) : 0) + count;
-  const visitsLeft = plan.visits ? (stillActive && cur!.visitsLeft !== undefined ? cur!.visitsLeft : 0) + plan.visits : undefined;
+  // visits left on a running pass always carry over; on an ended one only when the desk chose to keep them
+  const visitsLeft = plan.visits ? ((stillActive || keep) && cur?.visitsLeft ? cur.visitsLeft : 0) + plan.visits : undefined;
   return { planId, startDate: stillActive ? cur!.startDate : today, endDate: toISODate(end), freezeDaysLeft: (stillActive ? cur!.freezeDaysLeft : 0) + freezeDays, freezesLeft, freezeMax: perFreeze || (stillActive ? cur!.freezeMax : 0) || 0, ...(visitsLeft !== undefined ? { visitsLeft } : {}), ...(plan.dayOnly ? { dayOnly: true } : {}) };
 }
 
@@ -660,7 +661,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const grantPlan = useCallback(
-    (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[], meta?: { disc?: number; off?: number }) => {
+    (memberId: string, planId: string, amount?: number, pays?: { method: PayMethod; amount: number }[], meta?: { disc?: number; off?: number }, keep = false) => {
       const plan = planById(planId);
       if (!plan) return;
       // Clients that exist on the server get the new plan there too, so their own phone picks it up.
@@ -671,9 +672,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // ids and time fixed here, not inside setState: React may run an updater twice, and two runs must make the same rows
       const stamp = Date.now();
       if ((isSelf || remote) && state.staffCode) {
-        const next = extendMembership(isSelf ? state.membership : (remote?.membership ?? null), planId);
+        const next = extendMembership(isSelf ? state.membership : (remote?.membership ?? null), planId, keep);
         // not sent and forgotten: the grant waits in a queue (kept on the device) until the server confirms it
-        const grant = { gid, memberId, name: isSelf ? state.user!.name : remote!.name, phone: isSelf ? state.user!.phone : remote!.phone, membership: next, ts: Date.now() };
+        const grant = { gid, memberId, name: isSelf ? state.user!.name : remote!.name, phone: isSelf ? state.user!.phone : remote!.phone, membership: next, ts: Date.now(), ...(keep ? { keep } : {}) };
         setState((s) => ({ ...s, pendingGrants: [...(s.pendingGrants ?? []), grant] }));
       }
       setState((s) => {
@@ -682,10 +683,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const parts = (pays ?? [{ method: 'desk' as PayMethod, amount: price }]).filter((p, i) => p.amount > 0 || (i === 0 && meta?.disc === 100));
         if (s.sales.some((x) => x.gid === gid)) return s;
         const sold = (name: string): Sale[] => [...parts.map((p, i): Sale => ({ id: `S${gid.slice(1)}${i}`, ts: stamp, memberId, name, title: plan.name, ...(i === 0 ? { planId, gid } : {}), kind: 'plan', amount: p.amount, clubId: s.staff?.clubId ?? 'c1', method: p.method, staff: s.staff?.name ?? '', ...(i === 0 && meta?.disc ? { disc: meta.disc, off: meta.off } : {}) })), ...s.sales];
-        if (s.user?.id === memberId) return { ...s, sales: sold(s.user.name), trialUsed: s.trialUsed || (!!plan.trial && !plan.staffOnly), membership: extendMembership(s.membership, planId) };
+        if (s.user?.id === memberId) return { ...s, sales: sold(s.user.name), trialUsed: s.trialUsed || (!!plan.trial && !plan.staffOnly), membership: extendMembership(s.membership, planId, keep) };
         const r = s.remote.find((x) => x.id === memberId);
         if (r) {
-          const next = extendMembership(r.membership ?? null, planId);
+          const next = extendMembership(r.membership ?? null, planId, keep);
           return { ...s, sales: sold(r.name), remote: s.remote.map((x) => (x.id === memberId ? { ...x, membership: next } : x)) };
         }
         const base = members.find((m) => m.id === memberId);
@@ -742,7 +743,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const waiting = (state.pendingGrants ?? []).filter((g) => !g.error && !granting.current.has(g.gid));
     waiting.forEach((g) => {
       granting.current.add(g.gid);
-      grantRemoteOnce(state.staffCode, { id: g.memberId, name: g.name, phone: g.phone, membership: g.membership, gid: g.gid }).then((r) => {
+      grantRemoteOnce(state.staffCode, { id: g.memberId, name: g.name, phone: g.phone, membership: g.membership, gid: g.gid, ...(g.keep ? { keep: true } : {}) }).then((r) => {
         granting.current.delete(g.gid);
         if (r.status >= 200 && r.status < 300) setState((s) => ({ ...s, pendingGrants: (s.pendingGrants ?? []).filter((x) => x.gid !== g.gid) }));
         // refused for good (not a lost connection): kept with the reason, the desk sees it and asks the manager
