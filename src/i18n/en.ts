@@ -56,6 +56,7 @@ export const en: Record<TKey, string> = {
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
   trainer_quals: 'Qualifications',
+  dark_mode: 'Dark mode',
   pos_keep_left: 'Carry over {n} visits left to the new plan',
   stk_tab: 'Stock',
   stk_in_start: 'Receive goods',

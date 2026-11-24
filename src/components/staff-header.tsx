@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,6 +9,7 @@ import { ShiftBar, useShift } from '@/components/shift-bar';
 import { Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubById, clubs } from '@/data/mock';
+import { isDark, setDark } from '@/lib/dark';
 import { useApp, useI18n } from '@/store/app-context';
 
 /** Cyan header band shared by staff screens: shift info, club switch, exit. */
@@ -16,6 +18,8 @@ export function StaffHeader({ title, right }: { title: string; right?: React.Rea
   const { t } = useI18n();
   const club = clubById(staff?.clubId ?? 'c1');
   const shift = useShift();
+  const [dark, setDarkState] = useState(isDark);
+  const flipDark = () => (setDark(!dark), setDarkState(!dark));
 
   const pickClub = () => Alert.alert(t('staff_club'), undefined, [...clubs.map((c) => ({ text: c.name, onPress: () => setStaffClub(c.id) })), { text: t('cancel'), style: 'cancel' as const }]);
 
@@ -45,6 +49,9 @@ export function StaffHeader({ title, right }: { title: string; right?: React.Rea
           </Pressable>
           <Row gap={4}>
             {right}
+            <Pressable onPress={flipDark} hitSlop={8} style={styles.iconBtn} accessibilityLabel={t('dark_mode')}>
+              <Ionicons name={dark ? 'sunny-outline' : 'moon-outline'} size={18} color={Colors.text} />
+            </Pressable>
             <Pressable onPress={() => router.replace('/(tabs)')} hitSlop={8} style={styles.iconBtn} accessibilityLabel={t('staff_back_member')}>
               <Ionicons name="phone-portrait-outline" size={18} color={Colors.text} />
             </Pressable>
