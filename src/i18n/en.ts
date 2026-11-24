@@ -57,7 +57,6 @@ export const en: Record<TKey, string> = {
   rules_title: 'Club rules',
   trainer_quals: 'Qualifications',
   dark_mode: 'Dark mode',
-  pos_keep_left: 'Carry over {n} visits left to the new plan',
   stk_tab: 'Stock',
   stk_in_start: 'Receive goods',
   stk_in_save: 'Receive goods ({n})',

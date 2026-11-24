@@ -94,8 +94,6 @@ export default function StaffPosScreen() {
   const [bonusTo, setBonusTo] = useState('');
   // a comment on the check, for anyone at the desk (sports nutrition: who advised, what was agreed)
   const [saleNote, setSaleNote] = useState('');
-  // a pass that ended with visits left: the desk carries them onto the new plan (on by default, can be switched off)
-  const [keepLeft, setKeepLeft] = useState(true);
   // the manager changes a line's price right in the check (not the catalog): tap the sum
   const [priceEdit, setPriceEdit] = useState<{ key: string; text: string } | null>(null);
   const applyPrice = () => {
@@ -121,7 +119,6 @@ export default function StaffPosScreen() {
   const shown = useMemo(() => products.filter((p) => p.inStock && (cat === 'all' || p.category === cat)), [products, cat]);
 
   const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
-  const carry = client && !client.active && (client.visitsLeft ?? 0) > 0 && lines.some((l) => l.planId && plans.find((p) => p.id === l.planId)?.visits) ? client.visitsLeft! : 0;
   // Member discount applies to goods only; plans are already priced for members.
   const goods = lines.filter((l) => !l.planId && !l.trainerId).reduce((s, l) => s + l.price * l.qty, 0);
   const memberDisc = client?.active ? Math.round(goods * MEMBER_DISCOUNT) : 0;
@@ -216,7 +213,7 @@ export default function StaffPosScreen() {
     planLines.forEach((l) => {
       for (let i = 0; i < l.qty; i++) {
         const amount = whole ? Math.round(l.price * share) : l.price;
-        grantPlan(client!.id, l.planId!, amount, parts(amount), meta(l.price, amount), carry > 0 && keepLeft && i === 0);
+        grantPlan(client!.id, l.planId!, amount, parts(amount), meta(l.price, amount));
       }
     });
     // Personal training: one sale per package, tied to the trainer for the owner's reports.
@@ -285,7 +282,6 @@ export default function StaffPosScreen() {
     setReceipt(null);
     setLines([]);
     setClient(null);
-    setKeepLeft(true);
     setQuery('');
     setCash('');
     setError(null);
@@ -650,14 +646,6 @@ export default function StaffPosScreen() {
                 <TextInput value={saleNote} onChangeText={(x) => setSaleNote(x.replace(/[<>]/g, ''))} maxLength={120} placeholder={t('pos_note_ph')} placeholderTextColor={Colors.textMuted} style={[styles.searchInput, { height: 40, flex: 0, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: Spacing.three, backgroundColor: Colors.surface }]} />
               </View>
             ) : null}
-            {carry > 0 ? (
-              <Pressable onPress={() => setKeepLeft((v) => !v)} style={[styles.keep, keepLeft && { borderColor: Colors.success, backgroundColor: 'rgba(76,195,138,0.1)' }]}>
-                <Ionicons name={keepLeft ? 'checkbox' : 'square-outline'} size={20} color={keepLeft ? Colors.success : Colors.textMuted} />
-                <T type="small" style={{ flex: 1, fontWeight: '700' }} color={keepLeft ? Colors.success : Colors.textSecondary}>
-                  {t('pos_keep_left', { n: carry })}
-                </T>
-              </Pressable>
-            ) : null}
             <Row gap={Spacing.two} style={{ alignItems: 'center' }}>
               <Ionicons name="pricetag-outline" size={16} color={StaffAccent} />
               <TextInput value={promoCode} onChangeText={setPromoCode} placeholder={t('pos_promo_ph')} placeholderTextColor={Colors.textMuted} autoCapitalize="characters" style={[styles.searchInput, { height: 38, flex: 1 }]} />
@@ -796,7 +784,6 @@ function Sum({ label, value, big }: { label: string; value: string; big?: boolea
 }
 
 const styles = StyleSheet.create({
-  keep: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border },
   premium: { gap: 6, padding: Spacing.two, borderRadius: Radius.md, backgroundColor: 'rgba(46,160,90,0.08)' },
   debtBox: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.md, borderWidth: 1, borderColor: 'rgba(214,59,71,0.4)', backgroundColor: 'rgba(214,59,71,0.06)' },
   root: { flex: 1, backgroundColor: Colors.background },

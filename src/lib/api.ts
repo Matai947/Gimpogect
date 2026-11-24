@@ -229,7 +229,7 @@ export const fetchTrainerPins = async (code: string) => (await call<{ set: strin
 export const editMembershipRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('membership-edit', { method: 'POST', code, body: c });
 export const grantRemote = (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership }) => call<{ ok: true }>('grant', { method: 'POST', code, body: c });
 /** The same grant with its own id (a retry never prolongs twice) and the answer's status: 0 = no connection, 4xx = refused. */
-export const grantRemoteOnce = async (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership; gid: string; keep?: boolean }) => {
+export const grantRemoteOnce = async (code: string, c: { id: string; name: string; phone: string; membership: RemoteMembership; gid: string }) => {
   const r = await raw('grant', { method: 'POST', code, body: c });
   return { status: r.status, error: (r.data as { error?: string } | null)?.error };
 };

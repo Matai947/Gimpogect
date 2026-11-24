@@ -58,7 +58,6 @@ export const ru = {
   rules_title: 'Правила клуба',
   trainer_quals: 'Квалификация',
   dark_mode: 'Тёмный фон',
-  pos_keep_left: 'Перенести остаток: {n} посещ. на новый абонемент',
   stk_tab: 'Склад',
   stk_in_start: 'Приёмка товара',
   stk_in_save: 'Принять товар ({n})',

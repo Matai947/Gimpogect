@@ -957,9 +957,7 @@ async function handler(req, res) {
         // a running pass is prolonged; otherwise a new one starts today with the plan's own length and counts
         const today = dayOf(Date.now());
         const running = was && (!was.endDate || was.endDate >= today);
-        // a pass ended with visits left: the desk may carry them onto the new one instead of letting them burn
-        const keep = body.keep === true && !running && was && was.visitsLeft > 0 ? { visitsLeft: Math.min(1000, Number(was.visitsLeft) || 0) } : {};
-        const next = await prolong(running ? was : { startDate: today, endDate: today, freezeDaysLeft: 0, freezesLeft: 0, ...keep }, membership.planId);
+        const next = await prolong(running ? was : { startDate: today, endDate: today, freezeDaysLeft: 0, freezesLeft: 0 }, membership.planId);
         if (!next) return res.status(403).json({ error: 'only the manager changes a running pass' });
         Object.keys(membership).forEach((k) => delete membership[k]);
         Object.assign(membership, next);
