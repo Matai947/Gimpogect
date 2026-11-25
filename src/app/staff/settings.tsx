@@ -1,6 +1,8 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { AdminSettings } from '@/components/admin/admin-settings';
+import { AdminsEditor } from '@/components/admin/admins-editor';
+import { AdminSection } from '@/components/admin/fields';
 import { StaffAccent } from '@/components/member-result';
 import { StaffHeader } from '@/components/staff-header';
 import { Colors, Spacing } from '@/constants/theme';
@@ -15,7 +17,16 @@ export default function StaffSettings() {
     <View style={styles.root}>
       <StaffHeader title={t('tab_settings')} />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {canManage ? <AdminSettings accent={StaffAccent} /> : <T type="small" color={Colors.textMuted}>{t('manager_only')}</T>}
+        {canManage ? (
+          <>
+            <AdminSection title={t('adm_codes')} hint={t('adm_codes_hint')} accent={StaffAccent}>
+              <AdminsEditor accent={StaffAccent} codeOnly />
+            </AdminSection>
+            <AdminSettings accent={StaffAccent} />
+          </>
+        ) : (
+          <T type="small" color={Colors.textMuted}>{t('manager_only')}</T>
+        )}
       </ScrollView>
     </View>
   );

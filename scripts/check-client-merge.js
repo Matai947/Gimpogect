@@ -41,6 +41,7 @@ global.fetch = async (url, init = {}) => {
   }
   if (path === 'settings') {
     const key = (q.get('key') || '').replace(/^eq\./, '');
+    if (!init.method && key.startsWith('like.')) return ok([...settings].filter(([k]) => k.startsWith(key.slice(5, -1))).map(([, data]) => ({ data })));
     if (!init.method) return ok(settings.has(key) ? [{ data: settings.get(key) }] : []);
     if (init.method === 'POST') {
       const row = JSON.parse(init.body);
@@ -141,6 +142,22 @@ const call = (op, body) => send('POST', op, body, { 'x-code': 'owner-test' });
   assert.deepEqual([counted.d.revision.lines[0].was, counted.d.revision.lines[0].n], [15, 12], 'the shortage was not worked out');
   assert.equal(settings.get('content:stock').v.c1.p1, 12, 'the shelf was not set to the count');
   console.log('ok: receiving adds to the shelf, the count shows the shortage');
+
+  // the manager sets a new code for an ordinary admin, but cannot touch another manager or remove anyone
+  const mk = async (name, code, role) => (await call('admin-save', { name, code, role })).d.id;
+  const desk = await mk('Админ', '111111', 'admin');
+  const boss = await mk('Управ', '222222', 'manager');
+  const token = async (code) => (await call('staff-login', { code })).d.token;
+  const bossT = await token('222222');
+  const asBoss = (op, b) => send('POST', op, b, { 'x-code': bossT });
+  assert.equal((await asBoss('admin-save', { id: desk, name: 'Взлом', code: '333333', role: 'manager' })).code, 200);
+  const deskNow = settings.get('admin:' + desk);
+  assert.deepEqual([deskNow.name, deskNow.role], ['Админ', 'admin'], 'the manager changed more than the code');
+  assert.equal((await send('POST', 'admin-save', { id: desk, name: 'Админ', code: '444444' }, { 'x-code': await token('333333') })).code, 403, 'an admin changed codes');
+  assert.equal((await asBoss('admin-save', { id: boss, name: 'Управ', code: '555555' })).code, 403, 'the manager changed a manager');
+  assert.equal((await asBoss('admin-save', { name: 'Новый', code: '666666' })).code, 403, 'the manager added an admin');
+  assert.equal((await asBoss('admin-del', { id: desk })).code, 403, 'the manager removed an admin');
+  console.log('ok: the manager changes only ordinary admins\' codes');
 })().catch((e) => {
   console.error(e.message);
   process.exit(1);

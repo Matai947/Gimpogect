@@ -7,8 +7,9 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { deleteAdmin, fetchAdmins, saveAdmin, type AdminRec, type StaffRole } from '@/lib/api';
 import { useApp, useI18n } from '@/store/app-context';
 
-/** Owner: the administrators and their personal codes. A code is never shown back, only set anew. */
-export function AdminsEditor({ accent }: { accent: string }) {
+/** Owner: the administrators and their personal codes. A code is never shown back, only set anew.
+ *  `codeOnly` (the manager): ordinary admins only, a new code for one of them, no adding or removing. */
+export function AdminsEditor({ accent, codeOnly = false }: { accent: string; codeOnly?: boolean }) {
   const { staffCode } = useApp();
   const { t } = useI18n();
   const [list, setList] = useState<AdminRec[] | null>(null);
@@ -81,30 +82,37 @@ export function AdminsEditor({ accent }: { accent: string }) {
             <T type="small" color={accent} style={{ fontWeight: '700', padding: 6 }} onPress={() => startEdit(a)}>
               {t('edit')}
             </T>
-            <T type="small" color={Colors.danger} style={{ fontWeight: '700', padding: 6 }} onPress={() => remove(a.id)}>
-              {sure === a.id ? t('admin_del_sure') : t('admin_del')}
-            </T>
+            {codeOnly ? null : (
+              <T type="small" color={Colors.danger} style={{ fontWeight: '700', padding: 6 }} onPress={() => remove(a.id)}>
+                {sure === a.id ? t('admin_del_sure') : t('admin_del')}
+              </T>
+            )}
           </Row>
         ))
       )}
 
+      {codeOnly && !editing ? null : (
       <View style={styles.form}>
         <T type="small" style={{ fontWeight: '700' }}>
-          {editing ? t('admin_edit_title') : t('admin_add_title')}
+          {codeOnly ? name : editing ? t('admin_edit_title') : t('admin_add_title')}
         </T>
-        <Field label={t('admin_name')} value={name} onChange={setName} placeholder="Айбол" />
-        <T type="small" color={Colors.textMuted}>
-          {t('admin_role')}
-        </T>
-        <ChipRow>
-          <Chip label={t('role_admin')} active={role === 'admin'} onPress={() => setRole('admin')} />
-          <Chip label={t('role_manager')} active={role === 'manager'} onPress={() => setRole('manager')} />
-          <Chip label={t('role_accountant')} active={role === 'accountant'} onPress={() => setRole('accountant')} />
-        </ChipRow>
-        <T type="small" color={Colors.textMuted}>
-          {role === 'manager' ? t('role_manager_hint') : role === 'accountant' ? t('role_accountant_hint') : t('role_admin_hint')}
-        </T>
-        <Field label={editing ? t('admin_new_code') : t('admin_code')} value={code} onChange={(v) => setCode(v.replace(/\D/g, '').slice(0, 8))} keyboard="number-pad" placeholder="••••••" />
+        {codeOnly ? null : (
+          <>
+            <Field label={t('admin_name')} value={name} onChange={setName} placeholder="Айбол" />
+            <T type="small" color={Colors.textMuted}>
+              {t('admin_role')}
+            </T>
+            <ChipRow>
+              <Chip label={t('role_admin')} active={role === 'admin'} onPress={() => setRole('admin')} />
+              <Chip label={t('role_manager')} active={role === 'manager'} onPress={() => setRole('manager')} />
+              <Chip label={t('role_accountant')} active={role === 'accountant'} onPress={() => setRole('accountant')} />
+            </ChipRow>
+            <T type="small" color={Colors.textMuted}>
+              {role === 'manager' ? t('role_manager_hint') : role === 'accountant' ? t('role_accountant_hint') : t('role_admin_hint')}
+            </T>
+          </>
+        )}
+        <Field label={editing ? t(codeOnly ? 'admin_code' : 'admin_new_code') : t('admin_code')} value={code} onChange={(v) => setCode(v.replace(/\D/g, '').slice(0, 8))} keyboard="number-pad" placeholder="••••••" />
         <T type="small" color={Colors.textMuted}>
           {t('admin_code_hint')}
         </T>
@@ -114,7 +122,7 @@ export function AdminsEditor({ accent }: { accent: string }) {
           </T>
         ) : null}
         <Row gap={Spacing.two}>
-          <Button title={editing ? t('save') : t('admin_add')} onPress={save} disabled={busy || name.trim().length < 2 || (!editing && code.length < 6) || (code.length > 0 && code.length < 6)} style={{ flex: 1, backgroundColor: accent }} />
+          <Button title={editing ? t('save') : t('admin_add')} onPress={save} disabled={busy || name.trim().length < 2 || ((!editing || codeOnly) && code.length < 6) || (code.length > 0 && code.length < 6)} style={{ flex: 1, backgroundColor: accent }} />
           {editing ? (
             <Button
               title={t('cancel')}
@@ -128,6 +136,7 @@ export function AdminsEditor({ accent }: { accent: string }) {
           ) : null}
         </Row>
       </View>
+      )}
     </View>
   );
 }

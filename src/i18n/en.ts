@@ -55,6 +55,8 @@ export const en: Record<TKey, string> = {
   auth_start: 'Start',
   auth_terms: 'By continuing you agree to the membership terms and privacy policy',
   rules_title: 'Club rules',
+  adm_codes: 'Admin passwords',
+  adm_codes_hint: 'Tap Edit next to an admin and enter a new 6–8 digit code. The old code stops working at once',
   trainer_quals: 'Qualifications',
   dark_mode: 'Dark mode',
   stk_tab: 'Stock',

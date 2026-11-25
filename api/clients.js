@@ -1727,14 +1727,24 @@ async function handler(req, res) {
       return res.status(200).json({ set: rows.map((r) => r.key.slice(11)) });
     }
 
-    /* ---- administrators: the owner creates them, changes their codes and removes them ---- */
+    /* ---- administrators: the owner creates them, changes their codes and removes them;
+       the manager may only set a new code for an ordinary administrator ---- */
     if (op === 'admins' || op === 'admin-save' || op === 'admin-del') {
-      if (!isOwner(req)) return res.status(403).json({ error: 'owner only' });
-      if (req.method === 'GET' && op === 'admins') return res.status(200).json({ admins: (await listAdmins()).map(({ hash: _h, ...a }) => a) });
+      const owner = isOwner(req);
+      if (!owner && !(manages() && op !== 'admin-del')) return res.status(403).json({ error: 'owner only' });
+      if (req.method === 'GET' && op === 'admins')
+        return res.status(200).json({ admins: (await listAdmins()).filter((a) => owner || (a.role ?? 'admin') === 'admin').map(({ hash: _h, ...a }) => a) });
       if (req.method === 'POST' && op === 'admin-save') {
-        const name = str(body.name, 40);
+        let name = str(body.name, 40);
         const code = String(body.code ?? '');
         const id = str(body.id, 13);
+        if (!owner) {
+          // the manager: an existing ordinary admin, a new code, nothing else
+          const was = id && ADMIN_ID.test(id) ? (await listAdmins()).find((a) => a.id === id) : null;
+          if (!was || (was.role ?? 'admin') !== 'admin' || !code) return res.status(403).json({ error: 'owner only' });
+          name = was.name;
+          body.role = 'admin';
+        }
         // U+FFFD = text that arrived in a broken encoding; it would show as question marks everywhere.
         if (name.length < 2 || /[<>�]/.test(name) || (id && !ADMIN_ID.test(id)) || (code && !/^\d{6,8}$/.test(code)) || (!id && !code)) return res.status(400).json({ error: 'bad data' });
         if (code && code.length === OWNER_CODE.length && code === OWNER_CODE) return res.status(400).json({ error: 'bad data' });
