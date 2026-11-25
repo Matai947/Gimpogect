@@ -77,6 +77,7 @@ export function AdminsEditor({ accent, codeOnly = false }: { accent: string; cod
               </T>
               <T type="small" color={Colors.textMuted}>
                 {a.role === 'manager' ? t('role_manager') : a.role === 'accountant' ? t('role_accountant') : t('role_admin')} • {t('admin_code_set', { date: new Date(a.at).toLocaleDateString('ru-RU') })}
+                {a.codeBy ? ` (${a.codeBy})` : ''}
               </T>
             </View>
             <T type="small" color={accent} style={{ fontWeight: '700', padding: 6 }} onPress={() => startEdit(a)}>

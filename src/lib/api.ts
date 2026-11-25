@@ -77,7 +77,7 @@ export const staffLoginRemote = async (code: string) => {
   return { status: r.status, data: r.status === 200 ? (r.data as { role: 'owner' } | { role: 'admin' | 'manager' | 'accountant'; token: string; name: string; id: string }) : null };
 };
 export type StaffRole = 'admin' | 'manager' | 'accountant';
-export type AdminRec = { id: string; name: string; role?: StaffRole; at: number; since: number };
+export type AdminRec = { id: string; name: string; role?: StaffRole; at: number; since: number; codeBy?: string };
 export const fetchAdmins = async (code: string) => (await call<{ admins: AdminRec[] }>('admins', { code }))?.admins ?? null;
 export const saveAdmin = async (code: string, b: { id?: string; name: string; code: string; role: StaffRole }) => ({ status: (await raw('admin-save', { method: 'POST', code, body: b })).status });
 export const deleteAdmin = (code: string, id: string) => call<{ ok: true }>('admin-del', { method: 'POST', code, body: { id } });
