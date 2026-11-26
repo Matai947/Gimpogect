@@ -8,6 +8,7 @@ import { Badge, Button, Card, Row, Screen, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { DAY_ONLY_UNTIL, clubById, clubHour, formatDateLong, toISODate } from '@/data/mock';
 import { fetchQrProof } from '@/lib/api';
+import { PushPrompt } from '@/components/push-prompt';
 import { useApp, useI18n, useMembershipInfo } from '@/store/app-context';
 
 const REFRESH_SEC = 30;
@@ -118,6 +119,10 @@ export default function QrScreen() {
       ) : (
         <Button title={t('to_plans')} icon="card-outline" onPress={() => router.replace('/membership')} style={{ alignSelf: 'stretch' }} />
       )}
+      {/* at the desk the admin can help turn notifications on: asked every time, «later» or not */}
+      <View style={{ alignSelf: 'stretch' }}>
+        <PushPrompt always />
+      </View>
     </Screen>
   );
 }

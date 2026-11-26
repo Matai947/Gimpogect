@@ -23,9 +23,9 @@ function iphoneTab() {
   return /iPhone|iPad|iPod/.test(n.userAgent) && !n.standalone && !matchMedia('(display-mode: standalone)').matches;
 }
 
-function initial(): 'ask' | 'iphone' | null {
+function initial(always: boolean): 'ask' | 'iphone' | null {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
-  if (Date.now() - Number(get(LATER) || 0) < WEEK) return null;
+  if (!always && Date.now() - Number(get(LATER) || 0) < WEEK) return null;
   const s = pushState();
   if (s === 'off') return 'ask';
   if (s === 'unsupported' && iphoneTab()) return 'iphone';
@@ -33,10 +33,10 @@ function initial(): 'ask' | 'iphone' | null {
 }
 
 /** The client's home screen: the club's messages reach only phones that turned them on, so ask right here. */
-export function PushPrompt() {
+export function PushPrompt({ always = false }: { always?: boolean }) {
   const { t } = useI18n();
   const { user, token } = useApp();
-  const [mode, setMode] = useState(initial);
+  const [mode, setMode] = useState(() => initial(always));
   const [busy, setBusy] = useState(false);
   const [bad, setBad] = useState('');
   if (!mode || !user) return null;
