@@ -1739,14 +1739,13 @@ async function handler(req, res) {
       if (req.method === 'GET' && op === 'admins')
         return res.status(200).json({ admins: (await listAdmins()).filter((a) => owner || (a.role ?? 'admin') === 'admin').map(({ hash: _h, ...a }) => a) });
       if (req.method === 'POST' && op === 'admin-save') {
-        let name = str(body.name, 40);
+        const name = str(body.name, 40);
         const code = String(body.code ?? '');
         const id = str(body.id, 13);
         if (!owner) {
-          // the manager: an existing ordinary admin, a new code, nothing else
+          // the manager: an existing ordinary admin, a new name or code, never the role
           const was = id && ADMIN_ID.test(id) ? (await listAdmins()).find((a) => a.id === id) : null;
-          if (!was || (was.role ?? 'admin') !== 'admin' || !code) return res.status(403).json({ error: 'owner only' });
-          name = was.name;
+          if (!was || (was.role ?? 'admin') !== 'admin') return res.status(403).json({ error: 'owner only' });
           body.role = 'admin';
         }
         // U+FFFD = text that arrived in a broken encoding; it would show as question marks everywhere.
@@ -1761,7 +1760,7 @@ async function handler(req, res) {
         const role = ['manager', 'accountant', 'admin'].includes(body.role) ? body.role : old ? old.role : 'admin';
         const rec = { id: id || 'a' + now.toString(36) + Math.random().toString(36).slice(2, 5), name, role, hash: code ? hashPassword(code) : old.hash, at: code ? now : old.at, since: old ? old.since : now };
         // the manager knows the code they set: the owner sees who set it
-        if (!owner) rec.codeBy = admin.name;
+        if (!owner && code) rec.codeBy = admin.name;
         await sb('settings?on_conflict=key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ key: 'admin:' + rec.id, data: rec }) });
         return res.status(200).json({ ok: true, id: rec.id });
       }

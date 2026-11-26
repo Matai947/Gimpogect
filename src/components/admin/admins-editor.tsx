@@ -8,7 +8,7 @@ import { deleteAdmin, fetchAdmins, saveAdmin, type AdminRec, type StaffRole } fr
 import { useApp, useI18n } from '@/store/app-context';
 
 /** Owner: the administrators and their personal codes. A code is never shown back, only set anew.
- *  `codeOnly` (the manager): ordinary admins only, a new code for one of them, no adding or removing. */
+ *  `codeOnly` (the manager): ordinary admins only, a new name or code for one of them, no roles, adding or removing. */
 export function AdminsEditor({ accent, codeOnly = false }: { accent: string; codeOnly?: boolean }) {
   const { staffCode } = useApp();
   const { t } = useI18n();
@@ -95,11 +95,11 @@ export function AdminsEditor({ accent, codeOnly = false }: { accent: string; cod
       {codeOnly && !editing ? null : (
       <View style={styles.form}>
         <T type="small" style={{ fontWeight: '700' }}>
-          {codeOnly ? name : editing ? t('admin_edit_title') : t('admin_add_title')}
+          {editing ? t('admin_edit_title') : t('admin_add_title')}
         </T>
+        <Field label={t('admin_name')} value={name} onChange={setName} placeholder="Айбол" />
         {codeOnly ? null : (
           <>
-            <Field label={t('admin_name')} value={name} onChange={setName} placeholder="Айбол" />
             <T type="small" color={Colors.textMuted}>
               {t('admin_role')}
             </T>
@@ -113,7 +113,7 @@ export function AdminsEditor({ accent, codeOnly = false }: { accent: string; cod
             </T>
           </>
         )}
-        <Field label={editing ? t(codeOnly ? 'admin_code' : 'admin_new_code') : t('admin_code')} value={code} onChange={(v) => setCode(v.replace(/\D/g, '').slice(0, 8))} keyboard="number-pad" placeholder="••••••" />
+        <Field label={editing ? t('admin_new_code') : t('admin_code')} value={code} onChange={(v) => setCode(v.replace(/\D/g, '').slice(0, 8))} keyboard="number-pad" placeholder="••••••" />
         <T type="small" color={Colors.textMuted}>
           {t('admin_code_hint')}
         </T>
@@ -123,7 +123,7 @@ export function AdminsEditor({ accent, codeOnly = false }: { accent: string; cod
           </T>
         ) : null}
         <Row gap={Spacing.two}>
-          <Button title={editing ? t('save') : t('admin_add')} onPress={save} disabled={busy || name.trim().length < 2 || ((!editing || codeOnly) && code.length < 6) || (code.length > 0 && code.length < 6)} style={{ flex: 1, backgroundColor: accent }} />
+          <Button title={editing ? t('save') : t('admin_add')} onPress={save} disabled={busy || name.trim().length < 2 || (!editing && code.length < 6) || (code.length > 0 && code.length < 6)} style={{ flex: 1, backgroundColor: accent }} />
           {editing ? (
             <Button
               title={t('cancel')}

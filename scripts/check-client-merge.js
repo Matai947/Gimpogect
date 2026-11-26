@@ -160,7 +160,7 @@ const call = (op, body) => send('POST', op, body, { 'x-code': 'owner-test' });
   const asBoss = (op, b) => send('POST', op, b, { 'x-code': bossT });
   assert.equal((await asBoss('admin-save', { id: desk, name: 'Взлом', code: '333333', role: 'manager' })).code, 200);
   const deskNow = settings.get('admin:' + desk);
-  assert.deepEqual([deskNow.name, deskNow.role], ['Админ', 'admin'], 'the manager changed more than the code');
+  assert.deepEqual([deskNow.name, deskNow.role], ['Взлом', 'admin'], 'the manager changed the role or not the name');
   assert.equal(deskNow.codeBy, 'Управ', 'the owner cannot see who set the code');
   assert.equal((await send('POST', 'admin-save', { id: desk, name: 'Админ', code: '444444' }, { 'x-code': await token('333333') })).code, 403, 'an admin changed codes');
   assert.equal((await asBoss('admin-save', { id: boss, name: 'Управ', code: '555555' })).code, 403, 'the manager changed a manager');
