@@ -1482,6 +1482,7 @@ async function handler(req, res) {
       const url = ['/', '/shop', '/membership'].includes(String(body.url)) ? body.url : '/';
       const audience = ['all', 'active', 'expired'].includes(body.audience) ? body.audience : 'all';
       const clubId = (await validClub(body.clubId)) ? body.clubId : '';
+      const image = /^https:\/\/[^\s<>"']{1,500}$/.test(String(body.image || '')) ? String(body.image) : undefined;
       if (title.length < 2 || /[<>]/.test(title + text)) return res.status(400).json({ error: 'bad data' });
       const webpush = webOn ? require('web-push') : null;
       if (webpush) webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:info@7gym.kz', process.env.VAPID_PUBLIC, process.env.VAPID_PRIVATE);
@@ -1496,7 +1497,7 @@ async function handler(req, res) {
         const live = !!(c && c.membership && c.membership.endDate >= today);
         return audience === 'active' ? live : !!c && !live;
       });
-      const payload = JSON.stringify({ title, body: text, url });
+      const payload = JSON.stringify({ title, body: text, url, image });
       let sent = 0;
       let failed = 0;
       const forget = (key) => sb(`settings?key=eq.${key}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
@@ -1505,7 +1506,7 @@ async function handler(req, res) {
       for (let i = 0; i < native.length; i += 100) {
         const batch = native.slice(i, i + 100);
         try {
-          const r = await fetch('https://exp.host/--/api/v2/push/send', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(batch.map((x) => ({ to: x.expo, title, body: text, data: { url }, sound: 'default', channelId: 'news', priority: 'high' }))), signal: AbortSignal.timeout(15000) });
+          const r = await fetch('https://exp.host/--/api/v2/push/send', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(batch.map((x) => ({ to: x.expo, title, body: text, data: { url }, sound: 'default', channelId: 'news', priority: 'high', ...(image ? { richContent: { image } } : {}) }))), signal: AbortSignal.timeout(15000) });
           const tickets = (await r.json()).data || [];
           for (let k = 0; k < batch.length; k++) {
             const tk = tickets[k] || {};

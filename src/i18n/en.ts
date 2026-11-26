@@ -57,6 +57,8 @@ export const en: Record<TKey, string> = {
   rules_title: 'Club rules',
   adm_codes: 'Administrators',
   adm_codes_hint: 'Tap Edit next to an admin to change the name or the code (6–8 digits). The old code stops working at once',
+  promo_push: 'Send the clients a phone notification',
+  promo_push_code: 'Promo code {code}',
   trainer_quals: 'Qualifications',
   dark_mode: 'Dark mode',
   stk_tab: 'Stock',

@@ -11,6 +11,8 @@ self.addEventListener('push', (event) => {
       body: d.body || '',
       icon: '/icon-192.png',
       badge: '/icon-192.png',
+      // the promotion's banner, shown big on Android (iPhone shows text only)
+      ...(d.image ? { image: d.image } : {}),
       data: { url: d.url || '/' },
     }),
   );

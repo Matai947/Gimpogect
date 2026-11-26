@@ -6,6 +6,7 @@ import { Button, Chip, Row, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import type { Promo } from '@/data/content';
 import { addDays, clubs, formatDateLong, toISODate } from '@/data/mock';
+import { pushSendRemote } from '@/lib/api';
 import { useApp, useI18n } from '@/store/app-context';
 
 type Form = { id: string; isNew: boolean; title: string; text: string; kind: Promo['kind']; value: string; code: string; clubId: string; start: string; end: string; active: boolean; image?: string };
@@ -14,13 +15,16 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Administrators: promotions and promo codes with dates, for one club or the whole network. Switch off at any time. */
 export function PromosEditor({ accent }: { accent: string }) {
-  const { content, saveContent } = useApp();
+  const { content, saveContent, staffCode } = useApp();
   const { t } = useI18n();
   const [form, setForm] = useState<Form | null>(null);
+  // a new promotion goes to the clients' phones as a notification too (like the fitness apps do)
+  const [notify, setNotify] = useState(true);
+  const [msg, setMsg] = useState<{ text: string; bad: boolean } | null>(null);
   const list = content.promos ?? [];
   const set = (patch: Partial<Form>) => setForm((f) => (f ? { ...f, ...patch } : f));
 
-  const open = (p: Promo) => setForm({ id: p.id, isNew: false, title: p.title, text: p.text, kind: p.kind, value: p.value ? String(p.value) : '', code: p.code ?? '', clubId: p.clubId, start: p.start, end: p.end, active: p.active, image: p.image });
+  const open = (p: Promo) => (setNotify(false), setMsg(null), setForm({ id: p.id, isNew: false, title: p.title, text: p.text, kind: p.kind, value: p.value ? String(p.value) : '', code: p.code ?? '', clubId: p.clubId, start: p.start, end: p.end, active: p.active, image: p.image }));
   const ready = !!form && form.title.trim().length >= 2 && DAY.test(form.start) && DAY.test(form.end) && form.start <= form.end && (form.kind === 'info' || Number(form.value) > 0) && (form.kind !== 'percent' || Number(form.value) <= 100);
 
   const save = () => {
@@ -40,6 +44,12 @@ export function PromosEditor({ accent }: { accent: string }) {
     };
     saveContent('promos', form.isNew ? [...list, item] : list.map((p) => (p.id === form.id ? item : p)));
     setForm(null);
+    if (!notify || !item.active) return;
+    const body = item.text.slice(0, 240) || (item.code ? t('promo_push_code', { code: item.code }) : '');
+    setMsg({ text: '…', bad: false });
+    void pushSendRemote(staffCode, { title: item.title.slice(0, 60), body, url: '/', audience: 'all', clubId: item.clubId === 'all' ? '' : item.clubId, image: item.image }).then((r) =>
+      setMsg(r ? { text: t('push_sent', { n: r.sent }), bad: false } : { text: t('push_fail'), bad: true }),
+    );
   };
 
   const remove = () => {
@@ -53,6 +63,11 @@ export function PromosEditor({ accent }: { accent: string }) {
 
   return (
     <View style={{ gap: Spacing.two }}>
+      {msg && !form ? (
+        <T type="small" color={msg.bad ? Colors.danger : Colors.success} style={{ fontWeight: '700' }}>
+          {msg.text}
+        </T>
+      ) : null}
       {list.length === 0 && !form ? (
         <T type="small" color={Colors.textMuted}>
           {t('adm_promo_none')}
@@ -120,6 +135,7 @@ export function PromosEditor({ accent }: { accent: string }) {
             <Chip label={t('adm_promo_month')} onPress={() => set({ start: today, end: toISODate(addDays(new Date(), 30)) })} />
           </Row>
           <Toggle label={t('adm_promo_active')} value={form.active} onChange={(v) => set({ active: v })} accent={accent} />
+          <Toggle label={t('promo_push')} value={notify} onChange={setNotify} accent={accent} />
           {!ready ? (
             <T type="small" color={Colors.textMuted}>
               {t('adm_promo_check')}
@@ -136,7 +152,7 @@ export function PromosEditor({ accent }: { accent: string }) {
           title={t('adm_promo_new')}
           icon="add-circle-outline"
           variant="secondary"
-          onPress={() => setForm({ id: `p${Date.now().toString(36)}`, isNew: true, title: '', text: '', kind: 'percent', value: '', code: '', clubId: 'all', start: today, end: toISODate(addDays(new Date(), 30)), active: true })}
+          onPress={() => (setNotify(true), setMsg(null), setForm({ id: `p${Date.now().toString(36)}`, isNew: true, title: '', text: '', kind: 'percent', value: '', code: '', clubId: 'all', start: today, end: toISODate(addDays(new Date(), 30)), active: true }))}
         />
       )}
     </View>
