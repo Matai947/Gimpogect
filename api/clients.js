@@ -1274,7 +1274,7 @@ async function handler(req, res) {
       }, 'revision ' + staffName(''));
       if (!ok) return res.status(409).json({ error: 'busy' });
       const now = Date.now();
-      const rev = { ts: now, clubId: body.clubId, staff: staffName(body.staff), lines };
+      const rev = { ...(body.kind === 'start' || body.kind === 'end' ? { kind: body.kind } : {}), ts: now, clubId: body.clubId, staff: staffName(body.staff), lines };
       await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: `revision:${now}${Math.random().toString(36).slice(2, 5)}`, data: rev }) });
       return res.status(200).json({ ok: true, revision: rev, stock: (await getContent()).stock || {} });
     }

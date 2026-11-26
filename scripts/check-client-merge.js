@@ -147,6 +147,8 @@ const call = (op, body) => send('POST', op, body, { 'x-code': 'owner-test' });
   assert.equal([...settings].filter(([k]) => k.startsWith('stockin:')).map(([, d]) => d.lines[0].n).pop(), 8, 'the delivery was not worked out');
   assert.equal((await call('stock-receive', { clubId: 'c1', staff: 'Тест', counts: [{ ...line, has: 3 }] })).code, 400, 'a delivery took goods away');
   assert.equal(settings.get('content:stock').v.c1.p1, 20, 'a smaller hall count changed the shelf');
+  const opened = await call('stock-revision', { clubId: 'c1', staff: 'Тест', kind: 'start', counts: [{ ...line, n: 20 }] });
+  assert.equal(opened.d.revision.kind, 'start', 'the shift start count is not marked');
   console.log('ok: receiving adds to the shelf, the count shows the shortage');
 
   // the manager sets a new code for an ordinary admin, but cannot touch another manager or remove anyone

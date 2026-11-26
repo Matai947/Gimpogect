@@ -8,7 +8,7 @@ import { Button, Chip, ChipRow, Row, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { clubById, clubs, formatPrice } from '@/data/mock';
 import { hasCode, type Product } from '@/data/shop';
-import { fetchRevisions, fetchStockIns, stockReceive, stockRevision, type Revision } from '@/lib/api';
+import { fetchRevisions, stockRevision, type Revision } from '@/lib/api';
 import { makeXlsx } from '@/lib/xlsx';
 import { clubStock, useApp, useCanManage, useCatalog, useI18n } from '@/store/app-context';
 
@@ -38,11 +38,12 @@ const revSums = (r: Revision) =>
   );
 
 type Filter = 'all' | 'low' | 'zero' | 'untracked';
-type Mode = 'count' | 'in';
+type Mode = 'start' | 'end';
 
 /**
- * The club's stock. Any administrator receives goods (added to the shelf) and counts the shelf after the shift: the
- * program works out the shortage and surplus and shows them as a table. The manager also exports and sees every club.
+ * The club's stock, kept like the desk's paper sheet: at the start of the shift the admin counts what is in the hall
+ * («Приём»), after it counts again («Остаток»). Each count is set against the books (start count minus the till's
+ * sales), so the table shows what went missing and on whose shift. The manager also exports and sees every club.
  */
 export default function StaffStock() {
   const { t, td } = useI18n();
@@ -53,20 +54,18 @@ export default function StaffStock() {
   const club = clubById(clubId)?.name ?? clubId;
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
-  // a count or a delivery being typed: product id -> the number typed
+  // a count being typed: product id -> how many are in the hall
   const [mode, setMode] = useState<Mode | null>(null);
   const [typed, setTyped] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<{ text: string; bad: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [revisions, setRevisions] = useState<Revision[]>([]);
-  const [ins, setIns] = useState<Revision[]>([]);
   const [openRev, setOpenRev] = useState<number | null>(null);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let live = true;
     fetchRevisions(staffCode).then((r) => live && r && setRevisions(r.filter((x) => x.clubId === clubId)));
-    fetchStockIns(staffCode).then((r) => live && r && setIns(r.filter((x) => x.clubId === clubId)));
     return () => {
       live = false;
     };
@@ -81,7 +80,7 @@ export default function StaffStock() {
       .sort((a, b) => a.category.localeCompare(b.category, 'ru') || a.name.localeCompare(b.name, 'ru'));
   }, [products, filter, query]);
 
-  const filled = products.filter((p) => mode && typed[p.id] !== undefined && typed[p.id] !== '' && (mode === 'count' || Number(typed[p.id]) > (p.stock ?? 0)));
+  const filled = products.filter((p) => mode && typed[p.id] !== undefined && typed[p.id] !== '');
   const total = list.reduce((a, p) => ({ q: a.q + (p.byWeight ? 0 : (p.stock ?? 0)), sum: a.sum + (p.byWeight ? Math.round(((p.stock ?? 0) * p.price) / 100) : (p.stock ?? 0) * p.price) }), { q: 0, sum: 0 });
 
   // laid out like an accounting «stock in warehouses» report: every club a column, then the total
@@ -126,25 +125,16 @@ export default function StaffStock() {
       ['Излишек', '', '', '', '', s.over],
     ], [60, 10, 10, 10, 10, 16]);
   };
-  const exportIn = (r: Revision) =>
-    saveExcel(`Приёмка ${club} ${dmy(r.ts)} ${hm(r.ts).replace(':', '-')}.xlsx`, 'Приёмка', [
-      [`Приёмка • ${club} • ${dmy(r.ts)} ${hm(r.ts)} • ${r.staff}`],
-      ['Товар', 'Цена, ₸', 'Было', 'Пришло', 'Стало', 'Сумма, ₸'],
-      ...r.lines.map((l) => [l.name, l.price, l.was ?? 0, l.n, (l.was ?? 0) + l.n, l.n * l.price]),
-      ['Итого', '', '', r.lines.reduce((a, l) => a + l.n, 0), '', r.lines.reduce((a, l) => a + l.n * l.price, 0)],
-    ], [60, 10, 10, 10, 10, 14]);
-
   const save = async () => {
     if (!filled.length || !mode) return;
     setBusy(true);
     const b = { clubId, staff: staff?.name ?? '', counts: filled.map((p) => ({ id: p.id, n: Number(typed[p.id]), name: p.name, price: p.price })) };
-    // a delivery: the desk types what is in the hall now, the server works out how many came
-    const r = mode === 'count' ? await stockRevision(staffCode, b) : await stockReceive(staffCode, { ...b, counts: b.counts.map(({ n, ...l }) => ({ ...l, has: n })) });
+    const r = await stockRevision(staffCode, { ...b, kind: mode });
     setBusy(false);
     if (!r) return setMsg({ text: t('stk_fail'), bad: true });
-    setMsg({ text: mode === 'count' ? '' : t('stk_in_saved', { n: filled.length, q: filled.reduce((a, p) => a + Number(typed[p.id]) - (p.stock ?? 0), 0) }), bad: false });
+    setMsg(null);
     // the count's result opens at once as a table
-    const rev = mode === 'count' ? (r as { revision?: Revision }).revision : undefined;
+    const rev = (r as { revision?: Revision }).revision;
     if (rev) setOpenRev(rev.ts);
     setMode(null);
     setTyped({});
@@ -177,19 +167,19 @@ export default function StaffStock() {
 
         {mode ? (
           <Row gap={Spacing.two} style={{ flexWrap: 'wrap' }}>
-            <Button title={mode === 'count' ? t('stk_save', { n: filled.length }) : t('stk_in_save', { n: filled.length })} icon="checkmark-done-outline" size="sm" onPress={() => void save()} disabled={busy || !filled.length} style={{ flexGrow: 1, backgroundColor: StaffAccent }} />
+            <Button title={mode === 'end' ? t('stk_save', { n: filled.length }) : t('stk_in_save', { n: filled.length })} icon="checkmark-done-outline" size="sm" onPress={() => void save()} disabled={busy || !filled.length} style={{ flexGrow: 1, backgroundColor: StaffAccent }} />
             <Button title={t('cancel')} size="sm" variant="ghost" onPress={() => setMode(null)} />
           </Row>
         ) : (
           <Row gap={Spacing.two} style={{ flexWrap: 'wrap' }}>
-            <Button title={t('stk_in_start')} icon="download-outline" size="sm" onPress={() => start('in')} style={{ flexGrow: 1, backgroundColor: StaffAccent }} />
-            <Button title={t('stk_start')} icon="clipboard-outline" size="sm" onPress={() => start('count')} style={{ flexGrow: 1, backgroundColor: StaffAccent }} />
+            <Button title={t('stk_in_start')} icon="download-outline" size="sm" onPress={() => start('start')} style={{ flexGrow: 1, backgroundColor: StaffAccent }} />
+            <Button title={t('stk_start')} icon="clipboard-outline" size="sm" onPress={() => start('end')} style={{ flexGrow: 1, backgroundColor: StaffAccent }} />
             {canManage ? <Button title={t('stk_excel')} icon="document-outline" size="sm" variant="secondary" onPress={exportNow} style={{ flexGrow: 1 }} /> : null}
           </Row>
         )}
         {mode ? (
           <T type="small" color={Colors.textMuted}>
-            {mode === 'count' ? t('stk_count_hint') : t('stk_in_hint')}
+            {mode === 'end' ? t('stk_count_hint') : t('stk_in_hint')}
           </T>
         ) : null}
         {msg?.text ? (
@@ -205,7 +195,7 @@ export default function StaffStock() {
 
         {list.map((p) => {
           const v = typed[p.id];
-          const d = mode === 'count' && v !== undefined && v !== '' ? Number(v) - (p.stock ?? 0) : 0;
+          const d = mode && v !== undefined && v !== '' ? Number(v) - (p.stock ?? 0) : 0;
           return (
             <Row key={p.id} gap={Spacing.two} style={styles.line}>
               <View style={{ flex: 1 }}>
@@ -215,13 +205,6 @@ export default function StaffStock() {
                 <T type="small" color={Colors.textMuted} numberOfLines={1}>
                   {td(p.category)} • {formatPrice(p.price)}
                   {d ? <T type="small" color={d < 0 ? Colors.danger : Colors.success} style={{ fontWeight: '700' }}>{` • ${d < 0 ? t('stk_short') : t('stk_over')} ${Math.abs(d)} ${unit(p)}`}</T> : null}
-                  {mode === 'in' && v ? (
-                    Number(v) > (p.stock ?? 0) ? (
-                      <T type="small" color={Colors.success} style={{ fontWeight: '700' }}>{` • ${t('stk_in_came', { n: Number(v) - (p.stock ?? 0) })}`}</T>
-                    ) : (
-                      <T type="small" color={Colors.danger} style={{ fontWeight: '700' }}>{` • ${t('stk_in_less')}`}</T>
-                    )
-                  ) : null}
                 </T>
               </View>
               <T type="body" color={p.stock === 0 ? Colors.danger : p.stock === undefined ? Colors.textMuted : Colors.text} style={{ fontWeight: '800', minWidth: 52, textAlign: 'right' }}>
@@ -231,7 +214,7 @@ export default function StaffStock() {
                 <TextInput
                   value={v ?? ''}
                   onChangeText={(x) => setTyped((c) => ({ ...c, [p.id]: x.replace(/\D/g, '').slice(0, 6) }))}
-                  placeholder={mode === 'count' ? t('stk_fact') : t('stk_in_fact')}
+                  placeholder={t('stk_in_fact')}
                   placeholderTextColor={Colors.textMuted}
                   keyboardType="number-pad"
                   style={styles.fact}
@@ -255,7 +238,7 @@ export default function StaffStock() {
               <Pressable key={r.ts} onPress={() => setOpenRev((x) => (x === r.ts ? null : r.ts))} style={styles.line}>
                 <Row gap={Spacing.two} style={{ alignItems: 'center' }}>
                   <T type="small" style={{ flex: 1 }}>
-                    {t('stk_rev_line', { date: `${dmy(r.ts)} ${hm(r.ts)}`, staff: r.staff, n: r.lines.length, short: formatPrice(s.short), over: formatPrice(s.over) })}
+                    {r.kind ? `${t(r.kind === 'start' ? 'stk_in_start' : 'stk_start')} • ` : ''}{t('stk_rev_line', { date: `${dmy(r.ts)} ${hm(r.ts)}`, staff: r.staff, n: r.lines.length, short: formatPrice(s.short), over: formatPrice(s.over) })}
                   </T>
                   <Ionicons name={openRev === r.ts ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textMuted} />
                 </Row>
@@ -264,25 +247,6 @@ export default function StaffStock() {
           })
         )}
 
-        <T type="label" color={Colors.textSecondary} style={{ marginTop: Spacing.three }}>
-          {t('stk_in_history')}
-        </T>
-        {ins.length === 0 ? (
-          <T type="small" color={Colors.textMuted}>
-            {t('stk_in_none')}
-          </T>
-        ) : (
-          ins.map((r) => (
-            <Pressable key={r.ts} onPress={() => exportIn(r)} style={styles.line}>
-              <Row gap={Spacing.two} style={{ alignItems: 'center' }}>
-                <T type="small" style={{ flex: 1 }}>
-                  {t('stk_in_line', { date: `${dmy(r.ts)} ${hm(r.ts)}`, staff: r.staff, n: r.lines.length, q: r.lines.reduce((a, l) => a + l.n, 0), sum: formatPrice(r.lines.reduce((a, l) => a + l.n * l.price, 0)) })}
-                </T>
-                <Ionicons name="download-outline" size={18} color={Colors.textMuted} />
-              </Row>
-            </Pressable>
-          ))
-        )}
       </ScrollView>
     </View>
   );
@@ -297,7 +261,7 @@ function RevTable({ r, onExcel, onClose }: { r: Revision; onExcel: () => void; o
     <View style={styles.table}>
       <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <T type="subheading">
-          {t('stk_table')} • {dmy(r.ts)} {hm(r.ts)}
+          {r.kind ? t(r.kind === 'start' ? 'stk_in_start' : 'stk_start') : t('stk_table')} • {dmy(r.ts)} {hm(r.ts)}
         </T>
         <Pressable onPress={onClose} hitSlop={8}>
           <Ionicons name="close" size={20} color={Colors.textMuted} />
