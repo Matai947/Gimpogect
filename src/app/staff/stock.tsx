@@ -81,7 +81,7 @@ export default function StaffStock() {
       .sort((a, b) => a.category.localeCompare(b.category, 'ru') || a.name.localeCompare(b.name, 'ru'));
   }, [products, filter, query]);
 
-  const filled = products.filter((p) => mode && typed[p.id] !== undefined && typed[p.id] !== '' && (mode === 'count' || Number(typed[p.id]) > 0));
+  const filled = products.filter((p) => mode && typed[p.id] !== undefined && typed[p.id] !== '' && (mode === 'count' || Number(typed[p.id]) > (p.stock ?? 0)));
   const total = list.reduce((a, p) => ({ q: a.q + (p.byWeight ? 0 : (p.stock ?? 0)), sum: a.sum + (p.byWeight ? Math.round(((p.stock ?? 0) * p.price) / 100) : (p.stock ?? 0) * p.price) }), { q: 0, sum: 0 });
 
   // laid out like an accounting «stock in warehouses» report: every club a column, then the total
@@ -138,10 +138,11 @@ export default function StaffStock() {
     if (!filled.length || !mode) return;
     setBusy(true);
     const b = { clubId, staff: staff?.name ?? '', counts: filled.map((p) => ({ id: p.id, n: Number(typed[p.id]), name: p.name, price: p.price })) };
-    const r = mode === 'count' ? await stockRevision(staffCode, b) : await stockReceive(staffCode, b);
+    // a delivery: the desk types what is in the hall now, the server works out how many came
+    const r = mode === 'count' ? await stockRevision(staffCode, b) : await stockReceive(staffCode, { ...b, counts: b.counts.map(({ n, ...l }) => ({ ...l, has: n })) });
     setBusy(false);
     if (!r) return setMsg({ text: t('stk_fail'), bad: true });
-    setMsg({ text: mode === 'count' ? '' : t('stk_in_saved', { n: filled.length, q: filled.reduce((a, p) => a + Number(typed[p.id]), 0) }), bad: false });
+    setMsg({ text: mode === 'count' ? '' : t('stk_in_saved', { n: filled.length, q: filled.reduce((a, p) => a + Number(typed[p.id]) - (p.stock ?? 0), 0) }), bad: false });
     // the count's result opens at once as a table
     const rev = mode === 'count' ? (r as { revision?: Revision }).revision : undefined;
     if (rev) setOpenRev(rev.ts);
@@ -214,7 +215,13 @@ export default function StaffStock() {
                 <T type="small" color={Colors.textMuted} numberOfLines={1}>
                   {td(p.category)} • {formatPrice(p.price)}
                   {d ? <T type="small" color={d < 0 ? Colors.danger : Colors.success} style={{ fontWeight: '700' }}>{` • ${d < 0 ? t('stk_short') : t('stk_over')} ${Math.abs(d)} ${unit(p)}`}</T> : null}
-                  {mode === 'in' && Number(v) > 0 ? <T type="small" color={Colors.success} style={{ fontWeight: '700' }}>{` • → ${(p.stock ?? 0) + Number(v)} ${unit(p)}`}</T> : null}
+                  {mode === 'in' && v ? (
+                    Number(v) > (p.stock ?? 0) ? (
+                      <T type="small" color={Colors.success} style={{ fontWeight: '700' }}>{` • ${t('stk_in_came', { n: Number(v) - (p.stock ?? 0) })}`}</T>
+                    ) : (
+                      <T type="small" color={Colors.danger} style={{ fontWeight: '700' }}>{` • ${t('stk_in_less')}`}</T>
+                    )
+                  ) : null}
                 </T>
               </View>
               <T type="body" color={p.stock === 0 ? Colors.danger : p.stock === undefined ? Colors.textMuted : Colors.text} style={{ fontWeight: '800', minWidth: 52, textAlign: 'right' }}>

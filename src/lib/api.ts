@@ -148,7 +148,7 @@ export const stockSet = (code: string, b: { clubId: string; id: string; n: numbe
 /** The month-end count: what the books said (was, null = not counted before) and what was on the shelf (n). */
 export type Revision = { ts: number; clubId: string; staff: string; lines: { id: string; name: string; price: number; was: number | null; n: number }[] };
 export const stockRevision = (code: string, b: { clubId: string; staff: string; counts: { id: string; n: number; name: string; price: number }[] }) => call<{ ok: true; revision: Revision }>('stock-revision', { method: 'POST', code, body: b });
-export const stockReceive = (code: string, b: { clubId: string; staff: string; counts: { id: string; n: number; name: string; price: number }[] }) => call<{ ok: true }>('stock-receive', { method: 'POST', code, body: b });
+export const stockReceive = (code: string, b: { clubId: string; staff: string; counts: { id: string; has: number; name: string; price: number }[] }) => call<{ ok: true }>('stock-receive', { method: 'POST', code, body: b });
 export const fetchStockIns = async (code: string) => (await call<{ ins: Revision[] }>('stock-ins', { code }))?.ins ?? null;
 export const fetchRevisions = async (code: string) => (await call<{ revisions: Revision[] }>('revisions', { code }))?.revisions ?? null;
 /** 'short' = the sending club has fewer than that on its shelf. */

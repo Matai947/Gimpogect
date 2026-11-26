@@ -141,6 +141,12 @@ const call = (op, body) => send('POST', op, body, { 'x-code': 'owner-test' });
   assert.equal(counted.code, 200);
   assert.deepEqual([counted.d.revision.lines[0].was, counted.d.revision.lines[0].n], [15, 12], 'the shortage was not worked out');
   assert.equal(settings.get('content:stock').v.c1.p1, 12, 'the shelf was not set to the count');
+  // a delivery typed as what is in the hall now: the server works out how many came, never takes any away
+  assert.equal((await call('stock-receive', { clubId: 'c1', staff: 'Тест', counts: [{ ...line, has: 20 }] })).code, 200);
+  assert.equal(settings.get('content:stock').v.c1.p1, 20, 'the hall count was not set');
+  assert.equal([...settings].filter(([k]) => k.startsWith('stockin:')).map(([, d]) => d.lines[0].n).pop(), 8, 'the delivery was not worked out');
+  assert.equal((await call('stock-receive', { clubId: 'c1', staff: 'Тест', counts: [{ ...line, has: 3 }] })).code, 400, 'a delivery took goods away');
+  assert.equal(settings.get('content:stock').v.c1.p1, 20, 'a smaller hall count changed the shelf');
   console.log('ok: receiving adds to the shelf, the count shows the shortage');
 
   // the manager sets a new code for an ordinary admin, but cannot touch another manager or remove anyone

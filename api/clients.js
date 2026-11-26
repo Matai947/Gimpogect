@@ -1287,7 +1287,8 @@ async function handler(req, res) {
     if (req.method === 'POST' && op === 'stock-receive') {
       if (!authed()) return res.status(403).json({ error: 'staff only' });
       const rows = Array.isArray(body.counts) ? body.counts.slice(0, 1000) : [];
-      const counts = (await withCatalog(rows.map((r) => ({ id: str(r && r.id, 24), n: int(r && r.n, 100000), name: str(r && r.name, 120), price: int(r && r.price, 100000000) })))).filter((r) => /^[A-Za-z0-9_-]{1,24}$/.test(r.id) && r.n > 0 && !/[<>]/.test(r.name));
+      // `has` = how many are in the hall now (what the desk counts); `n` = how many came (older phones)
+      const counts = (await withCatalog(rows.map((r) => ({ id: str(r && r.id, 24), n: int(r && r.n, 100000), has: r && r.has !== undefined ? int(r.has, 100000) : undefined, name: str(r && r.name, 120), price: int(r && r.price, 100000000) })))).filter((r) => /^[A-Za-z0-9_-]{1,24}$/.test(r.id) && (r.has !== undefined ? r.has > 0 : r.n > 0) && !/[<>]/.test(r.name));
       if (!counts.length || !(await validClub(body.clubId))) return res.status(400).json({ error: 'bad data' });
       const lines = [];
       const ok = await editStock((all) => {
@@ -1295,13 +1296,16 @@ async function handler(req, res) {
         lines.length = 0;
         for (const r of counts) {
           const was = Number(shelf[r.id]) || 0;
-          if (was + r.n > 100000) return null;
-          lines.push({ id: r.id, name: r.name, price: r.price, was, n: r.n });
-          shelf[r.id] = was + r.n;
+          // fewer in the hall than on the books is a shortage: that is the count's job, not a delivery's
+          const n = r.has !== undefined ? r.has - was : r.n;
+          if (n <= 0) continue;
+          if (was + n > 100000) return null;
+          lines.push({ id: r.id, name: r.name, price: r.price, was, n });
+          shelf[r.id] = was + n;
         }
-        return true;
+        return lines.length ? true : null;
       }, 'receive ' + staffName(''));
-      if (!ok) return res.status(409).json({ error: 'busy' });
+      if (!ok) return res.status(lines.length ? 409 : 400).json({ error: lines.length ? 'busy' : 'nothing came' });
       const now = Date.now();
       await sb('settings', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ key: `stockin:${now}${Math.random().toString(36).slice(2, 5)}`, data: { ts: now, clubId: body.clubId, staff: staffName(body.staff), lines } }) });
       return res.status(200).json({ ok: true, stock: (await getContent()).stock || {} });
