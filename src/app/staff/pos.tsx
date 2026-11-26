@@ -607,8 +607,8 @@ export default function StaffPosScreen() {
                     <TextInput value={priceEdit.text} onChangeText={(x) => setPriceEdit({ key: l.key, text: x.replace(/\D/g, '').slice(0, 7) })} onSubmitEditing={applyPrice} onBlur={applyPrice} keyboardType="number-pad" autoFocus selectTextOnFocus placeholder={t('pos_price_ph')} placeholderTextColor={Colors.textMuted}
                       style={{ width: 90, height: 34, borderRadius: Radius.md, borderWidth: 1.5, borderColor: StaffAccent, paddingHorizontal: 8, color: Colors.text, fontSize: 15, fontWeight: '700', textAlign: 'right', backgroundColor: Colors.surface }} />
                   ) : (
-                    <Pressable disabled={!canManage || !!l.planId} onPress={() => setPriceEdit({ key: l.key, text: String(l.price) })} hitSlop={6} style={{ minWidth: 78, alignItems: 'flex-end' }}>
-                      <T type="small" style={{ fontWeight: '700', textAlign: 'right', textDecorationLine: canManage && !l.planId ? 'underline' : 'none' }} color={l.was !== undefined ? StaffAccent : Colors.text}>
+                    <Pressable disabled={!canManage} onPress={() => setPriceEdit({ key: l.key, text: String(l.price) })} hitSlop={6} style={{ minWidth: 78, alignItems: 'flex-end' }}>
+                      <T type="small" style={{ fontWeight: '700', textAlign: 'right', textDecorationLine: canManage ? 'underline' : 'none' }} color={l.was !== undefined ? StaffAccent : Colors.text}>
                         {formatPrice(l.price * l.qty)}
                       </T>
                       {l.was !== undefined ? (
